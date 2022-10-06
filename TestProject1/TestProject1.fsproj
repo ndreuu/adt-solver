@@ -2,6 +2,7 @@
 
     <PropertyGroup>
         <TargetFramework>net6.0</TargetFramework>
+        <OutputType>Exe</OutputType>
 
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
@@ -11,7 +12,6 @@
         <Compile Include="UnitTest1.fs" />
         <Compile Include="Approximation.fs" />
         <Compile Include="Program.fs" />
-        <Content Include="cvc-scripts\cvc-get-model.sh" />
     </ItemGroup>
 
     <ItemGroup>
