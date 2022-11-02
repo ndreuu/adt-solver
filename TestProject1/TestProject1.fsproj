@@ -12,6 +12,7 @@
         <Compile Include="UnitTest1.fs" />
         <Compile Include="Approximation.fs" />
         <Compile Include="Program.fs" />
+        <Content Include=".editorconfig" />
     </ItemGroup>
 
     <ItemGroup>

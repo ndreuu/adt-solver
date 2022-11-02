@@ -1,5 +1,10 @@
 module Approximation
 
+open System
+open Microsoft.FSharp.Collections
+open Microsoft.VisualBasic.CompilerServices
+open Microsoft.Z3
+open NUnit.Framework
 open SMTLIB2.Parser
 open SMTLIB2.Prelude
 open Operation
@@ -7,7 +12,7 @@ open SMTLIB2.Operations
 
 module Linearization =
   let linearization file =
-    let p = Parser()
+    let p = Parser ()
     let commands = p.ParseFile file
 
     //Should be in Operations
@@ -22,7 +27,7 @@ module Linearization =
         List.fold
           (fun (i, acc) _ ->
             (i - 1,
-             (sprintf "c_%s" <| (i + pdng + 1).ToString())
+             (sprintf "c_%s" <| (i + pdng + 1).ToString ())
              :: acc))
           (xs.Length - 1, [])
           xs
@@ -30,16 +35,24 @@ module Linearization =
       cnsts
 
     let terms pdng args =
-      List.map2 (fun c (x, _) -> Apply(mul, [ Ident(c, IntSort); Ident(x, IntSort) ])) (constants pdng args) args
+      List.map2
+        (fun c (x, _) ->
+          Apply (
+            mul,
+            [ Ident (c, IntSort)
+              Ident (x, IntSort) ]
+          ))
+        (constants pdng args)
+        args
 
     let sum pdng =
       function
-      | [] -> Ident(sprintf "c_%s" <| pdng.ToString(), IntSort)
+      | [] -> Ident (sprintf "c_%s" <| pdng.ToString (), IntSort)
       | t :: ts ->
-        Apply(
+        Apply (
           plus,
-          [ Ident(sprintf "c_%s" <| pdng.ToString(), IntSort)
-            List.fold (fun acc x -> Apply(plus, [ x; acc ])) t ts ]
+          [ Ident (sprintf "c_%s" <| pdng.ToString (), IntSort)
+            List.fold (fun acc x -> Apply (plus, [ x; acc ])) t ts ]
         )
 
 
@@ -47,12 +60,12 @@ module Linearization =
       fun cs pdng ->
         cs
         |> List.fold
-             (fun (pd, acc) (name, _, (args : operation list)) ->
+             (fun (pd, acc) (name, _, (args: operation list)) ->
                (args.Length + pd + 1,
-                Definition(
-                  DefineFun(
-                    name.ToString(),
-                    List.map (fun arg -> (arg.ToString(), IntSort)) args,
+                Definition (
+                  DefineFun (
+                    name.ToString (),
+                    List.map (fun arg -> (arg.ToString (), IntSort)) args,
                     IntSort,
                     sum pd
                     <| List.rev (terms pd (List.map (fun x -> (opName x, ())) args))
@@ -68,21 +81,21 @@ module Linearization =
             match x with
             | Command (DeclareDatatype (_, cs)) ->
               let pdng', def = a cs pdng
-                // cs
-                // |> List.fold
-                //      (fun (pd, acc) (name, _, args) ->
-                //        (args.Length + pd + 1,
-                //         Definition(
-                //           DefineFun(
-                //             name.ToString(),
-                //             List.map (fun arg -> (arg.ToString(), IntSort)) args,
-                //             IntSort,
-                //             sum pd
-                //             <| List.rev (terms pd (List.map (fun x -> (opName x, ())) args))
-                //           )
-                //         )
-                //         :: acc))
-                //      (pdng, [])
+              // cs
+              // |> List.fold
+              //      (fun (pd, acc) (name, _, args) ->
+              //        (args.Length + pd + 1,
+              //         Definition(
+              //           DefineFun(
+              //             name.ToString(),
+              //             List.map (fun arg -> (arg.ToString(), IntSort)) args,
+              //             IntSort,
+              //             sum pd
+              //             <| List.rev (terms pd (List.map (fun x -> (opName x, ())) args))
+              //           )
+              //         )
+              //         :: acc))
+              //      (pdng, [])
 
               (pdng', def @ acc)
             | Command (DeclareDatatypes [ _, cs ]) ->
@@ -91,7 +104,7 @@ module Linearization =
               // printfn $"{pdng'}"
               // printfn $"{def}"
               // failwith "AAAA"
-              (pdng', def @ acc)              
+              (pdng', def @ acc)
             | Command (DeclareDatatypes _) -> failwith "???"
             | _ -> (pdng, acc))
           (0, [])
@@ -108,11 +121,11 @@ module Linearization =
               let _, args =
                 sorts
                 |> List.fold
-                     (fun (i, acc) _ -> (i - 1, (sprintf "x_%s" <| i.ToString(), IntSort) :: acc))
+                     (fun (i, acc) _ -> (i - 1, (sprintf "x_%s" <| i.ToString (), IntSort) :: acc))
                      (sorts.Length - 1, [])
 
               (pdng + args.Length + 1,
-               Definition(DefineFun(name.ToString(), args, IntSort, sum pdng <| List.rev (terms pdng args)))
+               Definition (DefineFun (name.ToString (), args, IntSort, sum pdng <| List.rev (terms pdng args)))
                :: acc)
             | _ -> r)
           (padding, [])
@@ -124,22 +137,23 @@ module Linearization =
       let quantiInt =
         List.map (fun (name, _) -> name, IntSort) in
 
-      let geq_op typ = Operation.makeElementaryRelationFromSorts ">=" [typ; typ]
+      let geq_op typ =
+        Operation.makeElementaryRelationFromSorts ">=" [ typ; typ ]
       // equal_op
       let rec helper smt =
         match smt with
-        | Apply (UserDefinedOperation _, _) as app -> Apply(geq_op IntSort, [ app; Number 0 ])
-        | And smtExprs -> And(smtExprs |> List.map (fun x -> helper x))
-        | Or smtExprs -> Or(smtExprs |> List.map (fun x -> helper x))
-        | Not smtExpr -> Not(helper smtExpr)
-        | Hence (smtExpr1, smtExpr2) -> Hence(helper smtExpr1, helper smtExpr2)
+        | Apply (UserDefinedOperation _, _) as app -> Apply (geq_op IntSort, [ app; Number 0 ])
+        | And smtExprs -> And (smtExprs |> List.map (fun x -> helper x))
+        | Or smtExprs -> Or (smtExprs |> List.map (fun x -> helper x))
+        | Not smtExpr -> Not (helper smtExpr)
+        | Hence (smtExpr1, smtExpr2) -> Hence (helper smtExpr1, helper smtExpr2)
         | QuantifierApplication (quantifier, smtExpr) ->
           QuantifierApplication (
             quantifier
             |> List.map (function
-              | ForallQuantifier vars -> ForallQuantifier(quantiInt vars)
-              | ExistsQuantifier vars -> ExistsQuantifier(quantiInt vars)
-              | StableForallQuantifier vars -> StableForallQuantifier(quantiInt vars)),
+              | ForallQuantifier vars -> ForallQuantifier (quantiInt vars)
+              | ExistsQuantifier vars -> ExistsQuantifier (quantiInt vars)
+              | StableForallQuantifier vars -> StableForallQuantifier (quantiInt vars)),
             helper smtExpr
           )
         | _ -> smt
@@ -148,7 +162,7 @@ module Linearization =
       |> List.fold
            (fun acc x ->
              match x with
-             | Assert expr -> Assert(helper expr) :: acc
+             | Assert expr -> Assert (helper expr) :: acc
              | _ -> acc)
            []
       |> List.rev
@@ -169,26 +183,26 @@ module Linearization =
                     | StableForallQuantifier vars ->
                       acc
                       @ (vars
-                         |> List.map (fun x -> Command(DeclareConst x))))
+                         |> List.map (fun x -> Command (DeclareConst x))))
                   [],
-             Assert(f smtExpr))
-          | Assert expr -> ([], Assert(f expr))
+             Assert (f smtExpr))
+          | Assert expr -> ([], Assert (f expr))
           | _ -> ([], asrt))
 
-    let skAsserts = asserts' (fun x -> Not x)
+    let skAsserts = asserts' Not
 
-    let notSkAsserts = asserts' (fun x -> x)
+    let notSkAsserts = asserts' id
 
     let defConstants =
       (padding - 1)
-      |> List.unfold (fun i -> if i >= 0 then Some(i, i - 1) else None)
-      |> List.map (fun i -> Definition(DefineFun(sprintf "c_%s" <| i.ToString(), [], IntSort, Number 0)))
+      |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
+      |> List.map (fun i -> Definition (DefineFun (sprintf "c_%s" <| i.ToString (), [], IntSort, Number 0)))
       |> List.rev
 
     let decConstants =
       (padding - 1)
-      |> List.unfold (fun i -> if i >= 0 then Some(i, i - 1) else None)
-      |> List.map (fun i -> Command(DeclareConst(sprintf "c_%s" <| i.ToString(), IntSort)))
+      |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
+      |> List.map (fun i -> Command (DeclareConst (sprintf "c_%s" <| i.ToString (), IntSort)))
       |> List.rev
 
 
@@ -213,223 +227,504 @@ module Linearization =
     (defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
 
 
+module Result =
+  // Result.t
+  
+  let ( >>= ) x f = Result.bind f x 
+
+  let ( >> ) x f = x >>= fun _ -> f
+  let pure = Result.Ok
+  let error = Result.Error
+
 module SolverDeprecated =
   open System.Collections.Generic
-  open Microsoft.Z3
-  open SMTLIB2.Prelude
+  open Result
+  
+  module Evaluation =
+    module AST =
+      type Name = string
 
-  let ctx =
-    new Context([| ("model", "true") |] |> dict |> Dictionary)
+      type Expr =
+        | Int of int64
+        | Bool of bool
+        | Eq of Expr * Expr
+        | Add of Expr * Expr
+        | Mul of Expr * Expr
+        | And of Expr array
+        | Not of Expr
+        | Implies of Expr * Expr
+        | Var of Name
+        | Apply of Name * Expr list
 
-  let False: BoolExpr = ctx.MkFalse()
+      type Definition = Name * Name list * Expr
 
-  let True: BoolExpr = ctx.MkTrue()
+      type VarCtx = Map<Name, Microsoft.Z3.Expr>
 
-  let Eq: Expr -> Expr -> BoolExpr =
-    fun l r -> ctx.MkEq(l, r)
+      type FunCtx = Map<Name, Function>
 
-  let Add: ArithExpr -> ArithExpr -> ArithExpr =
-    fun l r -> ctx.MkAdd(l, r)
+      and Env =
+        { ctx_slvr: Context
+          ctx_vars: VarCtx
+          ctx_funs: FunCtx }
 
-  let Mul: ArithExpr -> ArithExpr -> ArithExpr =
-    fun l r -> ctx.MkMul(l, r)
+      and Function = Name list * Expr
 
-  let And: BoolExpr [] -> BoolExpr =
-    fun bools -> ctx.MkAnd(bools)
+      type Program =
+        | Def of Definition
+        | Declare of Name
+        | Assert of Expr
 
-  let Not: BoolExpr -> BoolExpr =
-    fun bool -> ctx.MkNot(bool)
+    open AST
 
-  let Int: int64 -> IntNum =
-    fun v -> ctx.MkInt(v)
+    module Interpreter =
+      let update =
+        fun k v map ->
+          Map.containsKey k map
+          |> function
+            | true -> Map.remove k map |> Map.add k v
+            | false -> Map.add k v map
 
-  let Implies: BoolExpr -> BoolExpr -> BoolExpr =
-    fun l r -> ctx.MkImplies(l, r)
+      let define =
+        fun env (name, args, expr) -> env.ctx_funs.Add (name, (args, expr))
 
-  let c: _ array =
-    [| Int 0
-       Int 0
-       Int 0
-       Int 0
-       Int 0
-       Int 0
-       Int 0 |]
+      let declare = List.map Declare
 
-  let nil = fun _ -> c[0]
+      let rec eval_expr: Env -> Expr -> Microsoft.Z3.Expr =
+        fun env ->
+          function
+          | Int x -> env.ctx_slvr.MkInt x
+          | Bool x -> env.ctx_slvr.MkBool x
+          | Eq (expr1, expr2) -> env.ctx_slvr.MkEq (eval_expr env expr1, eval_expr env expr2)
+          | Add (expr1, expr2) ->
+            env.ctx_slvr.MkAdd (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
+          | Mul (expr1, expr2) ->
+            env.ctx_slvr.MkMul (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
+          | And exprs ->
+            exprs
+            |> Array.map (fun x -> eval_expr env x :?> BoolExpr)
+            |> fun x -> env.ctx_slvr.MkAnd x
+          | Not expr -> env.ctx_slvr.MkNot (eval_expr env expr :?> BoolExpr)
+          | Implies (expr1, expr2) ->
+            env.ctx_slvr.MkImplies (eval_expr env expr1 :?> BoolExpr, eval_expr env expr2 :?> BoolExpr)
+          | Var x -> env.ctx_vars |> Map.find x
 
-  let cons =
-    fun car_0 cdr_0 -> Add c[1] (Add (Mul c[2] car_0) (Mul c[3] cdr_0))
+          | Apply (n, vs) ->
+            let args, body = env.ctx_funs |> Map.find n
+            let bindings = List.zip args vs
 
-  let len =
-    fun x0 x1 -> Add (c[4]) (Add (Mul (c[5]) (x0)) (Mul (c[6]) (x1)))
+            let ctx_vars =
+              bindings
+              |> List.fold (fun acc (arg, v) -> acc |> update arg (eval_expr env v)) env.ctx_vars
 
-  let solver = ctx.MkSolver("QF_LIA")
+            eval_expr { env with ctx_vars = ctx_vars } body
+
+      let eval_cmds =
+        fun env ->
+          List.fold
+            (fun (env, var_map, expr) cmd ->
+              match cmd with
+              | Declare n ->
+                let int_const = env.ctx_slvr.MkIntConst n
+
+                ({ env with ctx_vars = env.ctx_vars |> Map.add n int_const }, (n, int_const) :: var_map, expr)
+              | Assert e -> (env, var_map, eval_expr env e)
+              | Def d -> ({ env with ctx_funs = define env d }, var_map, expr))
+            (env, [], env.ctx_slvr.MkInt 0)
+
+      type Status =
+        | SAT of Map<Name, int64>
+        | UNSAT
+
+      let model =
+        fun env (solver: Solver) push pop cmds ->
+          cmds
+          |> eval_cmds env
+          |> fun (_, vars, v) ->
+               push ()
+               
+               solver.Add (v :?> BoolExpr)
+               
+               match solver.Check () with
+               | Status.SATISFIABLE ->
+                 printfn "SAT"
+
+                 let map =
+                   vars
+                   |> List.fold
+                        (fun acc (n, v) ->
+                          (n,
+                           solver.Model.Double (solver.Model.Eval (v, true))
+                           |> int64)
+                          :: acc)
+                        []
+                   |> Map
+
+                 pop ()
+
+                 SAT map
+               | Status.UNSATISFIABLE ->
+                 printfn "UNSAT"
+                 pop ()
+                 UNSAT
+               | _ ->
+                 printfn "UNKNOWN"
+                 pop ()
+                 UNSAT
+
+      let constants =
+        fun vs ->
+          List.fold
+            (fun (acc, i) v ->
+              (Def (sprintf "c_%s" <| i.ToString (), [], Int v)
+               :: acc,
+               i + 1))
+            ([], 0)
+            vs
+          |> fun (vs, _) -> vs |> List.rev
+
+      let converse_defs =
+        let rec to_var =
+          function
+          | Apply (n, _) -> Var n
+          | Int _
+          | Bool _
+          | Var _ as v -> v
+          | Eq (e1, e2) -> Eq (to_var e1, to_var e2)
+          | Add (e1, e2) -> Add (to_var e1, to_var e2)
+          | Mul (e1, e2) -> Mul (to_var e1, to_var e2)
+          | And es -> es |> Array.map (fun e -> to_var e) |> And
+          | Not e -> to_var e |> Not
+          | Implies (e1, e2) -> Implies (to_var e1, to_var e2)
+
+        List.map (function
+          | Def (n, args, e) -> Def (n, args, e |> to_var)
+          | otherwise -> otherwise)
+
+      let rec var_names =
+        fun expr ->
+          let rec helper =
+            fun acc ->
+              function
+              | Apply (_, vs) -> List.fold helper acc vs
+              | Int _
+              | Bool _ -> acc
+              | Var n -> acc |> Set.add n
+              | Eq (e1, e2)
+              | Add (e1, e2)
+              | Mul (e1, e2)
+              | Implies (e1, e2) -> helper (helper acc e2) e1
+              | And es -> es |> Array.fold helper acc
+              | Not e -> helper acc e
+
+          helper Set.empty expr
+
+      let declares =
+        fun expr -> var_names expr |> Set.toList |> declare
+
+      let const_decls =
+        List.unfold (fun i ->
+          if i < 0 then
+            None
+          else
+            Some (Declare (sprintf "c_%i" i), i - 1))
+
+      let rec subst =
+        fun map ->
+          function
+          | Int _
+          | Bool _ as v -> v
+          | Eq (e1, e2) -> Eq (subst map e1, subst map e2)
+          | Add (e1, e2) -> Add (subst map e1, subst map e2)
+          | Mul (e1, e2) -> Mul (subst map e1, subst map e2)
+          | And es -> es |> Array.map (fun e -> subst map e) |> And
+          | Not e -> subst map e |> Not
+          | Implies (e1, e2) -> Implies (subst map e1, subst map e2)
+          | Var n -> map |> Map.find n |> Int
+          | Apply (n, es) -> Apply (n, es |> List.map (fun e -> subst map e))
 
 
-  let xs_1 = ctx.MkIntConst("xs_1")
-  let x_1 = ctx.MkIntConst("x_1")
-  let ys_0 = ctx.MkIntConst("ys_0")
-  let y_0 = ctx.MkIntConst("y_0")
-  let z_0 = ctx.MkIntConst("z_0")
+      let env_var =
+        { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+          ctx_vars = Map.empty
+          ctx_funs = Map.empty }
+
+      let env_const =
+        { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+          ctx_vars = Map.empty
+          ctx_funs = Map.empty }
+
+      let cnts = constants [ 0; 0; 0; 0 ]
+
+      let solver_vars =
+        env_var.ctx_slvr.MkSolver "LIA"
+
+      let solver_consts =
+        env_const.ctx_slvr.MkSolver "NIA"
+      
+      let eval_consts =
+        fun cs ds (assrts: Expr list) ->
+          let env_vars =
+            { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+              ctx_vars = Map.empty
+              ctx_funs = Map.empty }
+
+          let env_consts =
+            { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+              ctx_vars = Map.empty
+              ctx_funs = Map.empty }
+
+          let solver_vars =
+            env_vars.ctx_slvr.MkSolver "LIA"
+
+          let solver_consts =
+            env_consts.ctx_slvr.MkSolver "NIA"
+
+          let rec loop =
+            fun cs ds assrt ->
+              model
+                env_vars
+                solver_vars
+                solver_vars.Push
+                solver_vars.Pop
+                (cs
+                 @ ds @ (declares assrt) @ [ assrt |> Not |> Assert ])
+              |> function
+                | SAT vs ->
+                  for v in vs do
+                    printfn "%O" v
+
+                  let const_decls =
+                    cs |> List.length |> (-) <| 1 |> const_decls
+
+                  let assert' =
+                    Assert (subst vs assrt) :: converse_defs ds
+                    |> List.rev
+
+                  const_decls @ assert'
+                  |> model env_consts solver_consts solver_consts.Push id
+                  |> function
+                    | SAT vs ->
+                      for v in vs do
+                        printfn "%O" v
+
+                      let constants =
+                        vs
+                        |> Map.fold (fun acc _ v -> v :: acc) []
+                        |> List.rev
+                        |> constants
+
+                      loop constants ds assrt
+                    | UNSAT -> error "Was started since constants"
+                    
+                | UNSAT -> pure cs
 
 
+          let rec check =
+            fun (cs : Program list) defs assrts f ->
+              let env =
+                { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+                  ctx_vars = Map.empty
+                  ctx_funs = Map.empty }
 
-  solver.Push()
+              let solver = env.ctx_slvr.MkSolver "LIA"
 
-  let plus =
-    makeElementaryOperationFromSorts "+" [ IntSort; IntSort ] IntSort
+              assrts
+              |> List.map (fun assrt ->
+                model
+                  env
+                  solver
+                  solver.Push
+                  solver.Pop
+                  (cs
+                   @ defs
+                     @ (declares assrt) @ [ assrt |> Not |> Assert ])
+                |> function
+                  | SAT _ ->
+                    printfn "SAT"
+                    false
+                  | UNSAT ->
+                    printfn "UNSAT"
+                    true)
+              |> List.fold (&&) true
+              |> function
+                | false -> f cs >>= fun cs -> check cs defs assrts f
+                | true -> pure cs
 
-  let mul =
-    makeElementaryOperationFromSorts "*" [ IntSort; IntSort ] IntSort
+          (fun cs ->
+               assrts
+               |> List.fold (fun cs assrt -> cs >>= fun cs -> loop cs ds assrt) (pure cs))
+          |> check cs ds assrts
 
-  let tst =
-    DefineFun(
-      "len",
-      [ ("x_0", IntSort); ("x_1", IntSort) ],
-      IntSort,
-      Apply(
-        plus,
-        [ Ident("c_4", IntSort)
-          Apply(
-            plus,
-            [ Apply(
-                mul,
-                [ Ident("c_5", IntSort)
-                  Ident("x_0", IntSort) ]
-              )
-              Apply(
-                mul,
-                [ Ident("c_6", IntSort)
-                  Ident("x_1", IntSort) ]
-              ) ]
+      let cnsts_cnt =
+        List.fold
+          (fun acc x ->
+            match x with
+            | Def (_, args, _) -> args |> List.length |> (+) <| acc + 1
+            | _ -> acc)
+          0
+
+      
+      
+      let f_defs =
+        [ Def ("nil_0", [], Apply ("c_0", []))
+          Def (
+            "cons_0",
+            [ "car_0"; "cdr_0" ],
+            Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "car_0"), Mul (Apply ("c_3", []), Var "cdr_0")))
           ) ]
-      )
-    )
 
-  printfn "\n\n%s\n\n" <| tst.ToString()
-
-
-  type Result<'TSuccess, 'TFailure> =
-    | Success of 'TSuccess
-    | Failure of 'TFailure
-    override x.ToString() =
-      match x with
-      | Success x -> x.ToString()
-      | Failure x -> x.ToString()
-
-
-  let call =
-    fun name (args: _ list) (funs: Map<string, smtExpr>) ->
-      let rec helper expr =
-        function
-        | arg :: args as argums ->
-          match expr with
-          | Apply (ElementaryOperation ("+", _, _), [ Ident (c, _); y ]) ->
-            match helper y argums with
-            | Some (r, _) -> Some(Add (ctx.MkIntConst(c)) (r), args)
-            | _ -> None
-          | Apply (ElementaryOperation ("+", _, _), [ x; y ]) ->
-            match helper x argums with
-            | Some (r, args') ->
-              match helper y args' with
-              | Some (r', args'') -> Some(Add r r', args'')
-              | _ -> None
-            | _ -> None
-          | Apply (ElementaryOperation ("*", _, _), [ Ident (c, _); Ident (n, _) ]) ->
-            Some(Mul (ctx.MkIntConst(c)) arg, args)
-          | _ -> None
-        | _ -> None
-
-      funs
-      |> Map.find name
-      |> fun x ->
-           match helper x args with
-           | Some (r, _) -> Some r
-           | _ -> None
-
-  let map = Map.empty<string, smtExpr>
-
-  let bb =
-    match tst with
-    | DefineFun (_, _, _, smtExpr) -> smtExpr
-
-  let newMap = map |> Map.add "len" bb
-  printfn "%s\n" <| newMap.ToString()
-
-  let aaaa =
-    call "len" [ Int 1; Int 2 ] newMap
-    |> function
-      | Some r -> Success r
-      | _ -> Failure ""
-
-  printfn "%s" <| aaaa.ToString()
-
-  solver.Add(
-    Implies
-      (And [| (Eq (len xs_1 x_1) (Int 0))
-              (Eq (len (cons y_0 xs_1) z_0) (Int 0))
-              (Eq x_1 z_0) |])
-      False
-  )
+      let f_defs1 =
+        [ Def ("nil_0", [], Apply ("c_0", []))
+          Def (
+            "cons_0",
+            [ "car_0"; "cdr_0" ],
+            Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "car_0"), Mul (Apply ("c_3", []), Var "cdr_0")))
+          )
+          Def (
+            "len_0",
+            [ "x_0"; "x_1" ],
+            Add (Apply ("c_4", []), Add (Mul (Apply ("c_5", []), Var "x_0"), Mul (Apply ("c_6", []), Var "x_1")))
+          ) ]
 
 
-  solver.Pop()
+      let assert1 =
+        Implies (
+          Eq (Apply ("len_0", [ Var "xs_01"; Var "n_01" ]), Int 0),
+          Eq (
+            Apply (
+              "len_0",
+              [ Apply ("cons_0", [ Var "x_01"; Var "xs_01" ])
+                Add (Var "n_01", Int 1) ]
+            ),
+            Int 0
+          )
+        )
+
+      let assert2 =
+        Implies (
+          And [| Eq (Apply ("len_0", [ Var "xs_2"; Var "x_2" ]), Int 0)
+                 Eq (
+                   Apply (
+                     "len_0",
+                     [ Apply ("cons_0", [ Var "y_2"; Var "xs_2" ])
+                       Var "z_2" ]
+                   ),
+                   Int 0
+                 )
+                 Eq (Var "x_2", Var "z_2") |],
+          Bool false
+        )
+
+      let assert3 =
+        Eq (Apply ("len_0", [ Apply ("nil_0", []); Int 0 ]), Int 0)
+
+      let cur_assert =
+        Implies (
+          And [| Eq (Var "cdr_1", Var "x")
+                 Eq (Apply ("cons_0", [ Var "car_1"; Var "cdr_1" ]), Var "z")
+                 Eq (Var "x", Var "z") |],
+          Bool false
+        )
+
+      let assert_with_end =
+        Implies (Eq (Var "cdr_1", Var "n"), Eq (Apply ("cons_0", [ Var "car_1"; Var "cdr_1" ]), Add (Var "n", Int 1)))
+
+      let assert_f_vars =
+        declare [ "car_1"; "cdr_1"; "x"; "z" ]
+        @ [ cur_assert |> Not |> Assert ]
+
+      let cmds = f_defs @ assert_f_vars
+
+      let test1 () =
+        (cnts @ cmds)
+        |> model env_var solver_vars solver_vars.Push solver_vars.Pop
+        |> function
+          | SAT map_vars ->
+            for v in map_vars do
+              printfn "%O" v.Key
+              printfn "%O" v.Value
+
+        (constants [ 0; 2; 0; 0 ] @ cmds)
+        |> model env_var solver_vars solver_vars.Push solver_vars.Pop
+        |> function
+          | SAT map_vars ->
+            for v in map_vars do
+              printfn "%O" v.Key
+              printfn "%O" v.Value
 
 
-  solver.Add(
-    Not(
-      Implies
-        (And [| (Eq (len xs_1 x_1) (Int 0))
-                (Eq (len (cons y_0 xs_1) z_0) (Int 0))
-                (Eq x_1 z_0) |])
-        False
-    )
-  )
+      
+      let test_eval () =
+        eval_consts
+        <| ( (constants
+            <| List.unfold (fun i -> if i = 0 then None else Some (int64 0, i - 1)) (cnsts_cnt f_defs1)))
+        // <| f_defs
+        <| f_defs1
+        // <| [  cur_assert; assert_with_end ]
+        // <| [  cur_assert; assert_with_end;  ]
+        // <| [  assert2; assert1; assert3  ]
+        // <| [ assert1; assert3; assert2 ]
+      // <| [  assert1; assert2; assert3;]
+      // <| [   assert3; assert2; assert1; ]
+      <| [
+             assert2
+             assert3 
+             assert1
+             ]
+
+      
+      let test () =
+        model env_var solver_vars solver_vars.Push solver_vars.Pop (cnts @ cmds)
+        |> function
+          | SAT map_vars ->
+            for v in map_vars do
+              printfn "%O --- %O" v.Key v.Value
+
+            const_decls 3
+            @ converse_defs f_defs
+              @ [ subst map_vars cur_assert |> Assert ]
+            |> model env_const solver_consts solver_consts.Push (fun () -> ())
+        |> function
+          | SAT map_consts ->
+            for v in map_consts do
+              printfn "%O --- %O" v.Key v.Value
+
+            let constants =
+              map_consts
+              |> Map.fold (fun acc _ v -> v :: acc) []
+              |> List.rev
+              |> constants
+
+            (constants @ cmds)
+        |> model env_var solver_vars solver_vars.Push solver_vars.Pop
+        |> function
+          | SAT map_vars ->
+            for v in map_vars do
+              printfn "%O --- %O" v.Key v.Value
 
 
 
 
-  // ctx.Dispose()
-
-  //solver.Set("completion", true)
-  //solver.Set("candidate_models", true)
-  let a () =
-    // printfn "%s\n" <| solver.Help
-    // printfn "%O\n" <| solver.ParameterDescriptions.
-
-    match solver.Check() with
-    | Status.SATISFIABLE ->
-      // printf "vvvvvvvvvvvvvvvvvvvv\n"
-      // printfn "%s\n" <| solver.Model.ToString()
-
-      printfn "xs_1>>>>>%s\n"
-      <| solver.Model.Eval(xs_1, true).ToString()
-
-      printfn "x_1>>>>>%s\n"
-      <| solver.Model.Eval(x_1, true).ToString()
-
-      printfn "ys_0>>>>>%s\n"
-      <| solver.Model.Eval(ys_0, true).ToString()
-
-      printfn "y_0>>>>>%s\n"
-      <| solver.Model.Eval(y_0, true).ToString()
-
-      printfn "z_0>>>>>%s\n"
-      <| solver.Model.Eval(z_0, true).ToString()
 
 
-      printfn "z_1>>>>>%s\n"
-      <| solver.Model.Eval(z_0, true).ToString()
+  // const_decls 3 @ f_defs @ [subst map_vars cur_assert |> Assert] |> consts_model env_const solver solver.Push
+  // (cnts @ cmds)
+  // |> vars_model env_var
+  // |> fun _ -> cnts1 @ cmds |> vars_model env_var
+  // |> fun _ -> cnts @ cmds |> vars_model env_var
+  // |> fun _ -> cnts3 @ cmds |> vars_model env_var
 
-      printfn "z_2>>>>>%s\n"
-      <| solver.Model.Eval(z_0, true).ToString()
+  // let test1 =
+  //   const_cmds
+  //   |> consts_model env_const solver solver.Push
+  //   |> fun _ ->
+  //        const_cmds1
+  //        |> consts_model env_const solver solver.Push
 
+  open Evaluation
 
-
-      printf "S"
-    | Status.UNSATISFIABLE -> printf "U"
-    | _ -> printf "?"
-
+  let ttt =
+    Interpreter.test_eval ()
 
 module Solver =
   ()

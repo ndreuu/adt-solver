@@ -1,10 +1,12 @@
 open System.Diagnostics
 open System.IO
+open Approximation
 open Microsoft.FSharp.Collections
 open Newtonsoft.Json
 open SMTLIB2
 open System.Threading.Tasks
 open Approximation.Linearization
+open Approximation.SolverDeprecated
 
 module Program =
   type Result<'TSuccess, 'TFailure> =
@@ -73,61 +75,64 @@ module Program =
       | CheckSynth -> "(check-synth)"
 
   [<EntryPoint>]
-  let main args =
-    let synths =
-      fun dataTypes functions notSkAsserts ->
-        let buildSynth =
-          fun xs acc ->
-            List.fold
-              (fun acc x ->
-                match x with
-                | Definition (DefineFun (symbol, sortedVars, sort, _)) -> SynthFun(symbol, sortedVars, sort) :: acc
-                | Command (DeclareConst (symbol, sort)) -> DeclareVar(symbol, sort) :: acc
-                | Assert expr -> Сonstraint expr :: acc)
-              acc
-              xs
-
-        []
-        |> buildSynth dataTypes
-        |> buildSynth functions
-        |> buildSynth (List.fold (fun acc (decs, x) -> acc @ decs @ [ x ]) [] notSkAsserts)
-        |> fun xs -> CheckSynth :: xs
-        |> List.rev
-
-    let wirteSytnth =
-      fun pwd syn ->
-        syn
-        |> List.fold (fun acc x -> sprintf "%s%s\n" acc <| x.ToString()) "(set-logic LIA)\n"
-        |> fun content -> File.WriteAllText(pwd, content)
-
-    let cvc =
-      fun pwd file ->
-        sprintf "cvc %s/%s" pwd file
-        |> executeShellCommand
-        |> Async.RunSynchronously
-
-
-    let run file out =
-      let _, _, dataTypes, functions, _, _, notSkAsserts =
-        linearization file
-          // "/home/andrew/Downloads/CAV2022Orig/TIP.Original.Linear/prod_prop_16.smt2"
-
-      synths dataTypes functions notSkAsserts
-      |> wirteSytnth out
-           // "/home/andrew/sys/tst/syn.sl"
-
-      // cvc "/home/andrew/sys/tst" "syn.sl"
-      // |> fun r ->
-      //      match r.ExitCode with
-      //      | 0 ->
-      //          printfn "%s\n" r.StandardOutput
-      //          printfn "YAYAYAY"
-      //      | _ ->
-      //        printfn "A"
-
-    match args with
-    | [| file; out |] -> run file out
-    | _ -> printfn "file out"
+  let main _ =
+    
+    ttt 
+    
+    // let synths =
+    //   fun dataTypes functions notSkAsserts ->
+    //     let buildSynth =
+    //       fun xs acc ->
+    //         List.fold
+    //           (fun acc x ->
+    //             match x with
+    //             | Definition (DefineFun (symbol, sortedVars, sort, _)) -> SynthFun(symbol, sortedVars, sort) :: acc
+    //             | Command (DeclareConst (symbol, sort)) -> DeclareVar(symbol, sort) :: acc
+    //             | Assert expr -> Сonstraint expr :: acc)
+    //           acc
+    //           xs
+    //
+    //     []
+    //     |> buildSynth dataTypes
+    //     |> buildSynth functions
+    //     |> buildSynth (List.fold (fun acc (decs, x) -> acc @ decs @ [ x ]) [] notSkAsserts)
+    //     |> fun xs -> CheckSynth :: xs
+    //     |> List.rev
+    //
+    // let wirteSytnth =
+    //   fun pwd syn ->
+    //     syn
+    //     |> List.fold (fun acc x -> sprintf "%s%s\n" acc <| x.ToString()) "(set-logic LIA)\n"
+    //     |> fun content -> File.WriteAllText(pwd, content)
+    //
+    // let cvc =
+    //   fun pwd file ->
+    //     sprintf "cvc %s/%s" pwd file
+    //     |> executeShellCommand
+    //     |> Async.RunSynchronously
+    //
+    //
+    // let run file out =
+    //   let _, _, dataTypes, functions, _, _, notSkAsserts =
+    //     linearization file
+    //       // "/home/andrew/Downloads/CAV2022Orig/TIP.Original.Linear/prod_prop_16.smt2"
+    //
+    //   synths dataTypes functions notSkAsserts
+    //   |> wirteSytnth out
+    //        // "/home/andrew/sys/tst/syn.sl"
+    //
+    //   // cvc "/home/andrew/sys/tst" "syn.sl"
+    //   // |> fun r ->
+    //   //      match r.ExitCode with
+    //   //      | 0 ->
+    //   //          printfn "%s\n" r.StandardOutput
+    //   //          printfn "YAYAYAY"
+    //   //      | _ ->
+    //   //        printfn "A"
+    //
+    // match args with
+    // | [| file; out |] -> run file out
+    // | _ -> printfn "file out"
     
 
 
