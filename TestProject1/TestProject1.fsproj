@@ -9,16 +9,17 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="UnitTest1.fs" />
+        <Compile Include="Utils.fs" />
         <Compile Include="Approximation.fs" />
+        <Compile Include="UnitTest1.fs" />
         <Compile Include="Program.fs" />
         <Content Include=".editorconfig" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
+        <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
-        <PackageReference Include="Microsoft.Z3" Version="4.10.2" />
+        <PackageReference Include="Microsoft.Z3" Version="4.10.1" />
         <PackageReference Include="NUnit" Version="3.13.3" />
         <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
         <PackageReference Include="NUnit.Analyzers" Version="3.3.0" />

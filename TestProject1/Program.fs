@@ -2,11 +2,11 @@ open System.Diagnostics
 open System.IO
 open Approximation
 open Microsoft.FSharp.Collections
-open Newtonsoft.Json
 open SMTLIB2
 open System.Threading.Tasks
 open Approximation.Linearization
 open Approximation.SolverDeprecated
+open Utils
 
 module Program =
   type Result<'TSuccess, 'TFailure> =
@@ -75,9 +75,25 @@ module Program =
       | CheckSynth -> "(check-synth)"
 
   [<EntryPoint>]
-  let main _ =
+  let main args =
+    match args with 
+    | [| path |] -> RmNats.change path; 0
+    | _ -> 1
+//    match args with
+//    | [| path |] ->
+//      run path
+//      |> function
+//        | Ok r ->
+//           printfn "%s" r
+//           0
+//        | Error e ->
+//            printfn "%s" e
+//            0
+//    | _ ->
+//        printfn "_"
+//        1
     
-    ttt 
+
     
     // let synths =
     //   fun dataTypes functions notSkAsserts ->
@@ -427,4 +443,3 @@ module Program =
     // // Parser().ParseFile "/home/andrew/sys/bm.vars.smt2"
     // // |> List.iter (function | Definition (DefineFun x) -> printfn "%s\n" <| x.ToString() | _ -> ())
     // // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    0
