@@ -501,7 +501,7 @@ module SolverDeprecated =
                     |> List.rev
                   
                   // for v in ds do printfn "%O" v
-                  // printfn "______________________"
+                  // printfn "______________SsdfDF________"
                   // for v in assert' do printfn "%O" v
                   // printfn ""
                   
@@ -540,7 +540,7 @@ module SolverDeprecated =
                   solver
                   solver.Push
                   solver.Pop
-                  (cs
+                  (hard_defs@ cs
                    @ defs
                      @ (declares assrt) @ [ assrt |> Not |> Assert ])
                 |> function
@@ -721,7 +721,7 @@ module SolverDeprecated =
       
       let test_eval () =
         let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-          linearization "/home/andrew/adt-solver/d/versions/41010/isaplanner_prop_16.smt2"
+          linearization "/home/andrew/adt-solver/d/versions/41010/len.smt2"
         eval_consts
         <| defs defFuns
         <| defs (dataTypes@functions)

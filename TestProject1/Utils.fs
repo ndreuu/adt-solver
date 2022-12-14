@@ -47,8 +47,14 @@ module RmNats =
       else
         Some (IntSort, state - 1))
 
+  // symbol * sorted_var list * sort * smtExpr
   let constructors_to_fns =
-    List.map (fun (name, cnt) -> Command (DeclareFun (name, int_sorts cnt, IntSort)))
+    List.map
+      (fun (name, cnt) ->
+        match cnt with
+          | 0 -> Definition (DefineFun (name, [], IntSort, Number 0))
+          | 1 -> Definition (DefineFun (name, [("x", IntSort)], IntSort, Apply (ElementaryOperation ("+", [IntSort; IntSort], IntSort), [Ident ("x", IntSort); Number 1] )))
+          | n -> failwith ("wrong NAT constructor " + n.ToString() + name))
 
   let nat_names =
     let rm_nat_data' acc cmd =
