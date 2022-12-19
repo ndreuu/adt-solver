@@ -38,7 +38,7 @@ let Test1 () =
      // |> List.fold (fun _ x -> printfn "%O"  x) ()
      // RmNats.change "/home/andrew/Downloads/false_productive_use_of_failure_app_inj1.smt2"
      // Evaluation.Interpreter.test_defs ()
-     Evaluation.Interpreter.test_eval ()
+     // Evaluation.Interpreter.test_eval ()
      Assert.Pass()
      
      

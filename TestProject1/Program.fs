@@ -92,6 +92,19 @@ module Program =
     | _ ->
         printfn "_"
         1
+    // match args with
+    // | [| path |] ->
+    //   run path
+    //   |> function
+    //     | Ok r ->
+    //        printfn "%s" r
+    //        0
+    //     | Error e ->
+    //         printfn "%s" e
+    //         0
+    // | _ ->
+    //     printfn "_"
+    //     1
     
 
     

@@ -708,39 +708,39 @@ module SolverDeprecated =
 
       let run =
         fun path ->
-          let defFuns, _, _, dataTypes, functions, _, skAsserts, _ =
+          let hardDefs, _, _, dataTypes, functions, _, skAsserts, _ =
             linearization path
           eval_consts
-          <| defs defFuns
+          <| defs hardDefs
           <| defs (dataTypes@functions)
-          <| List.map (snd >> assrt) skAsserts
+          <| List.map (snd >> assrt) (skAsserts |> List.rev)
           >>= fun cs ->
             cs
             |> List.fold (fun acc c -> sprintf "%s\n%O" acc c) ""
             |> pure
       
-      let test_eval () =
-        let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-          linearization "/home/andrew/adt-solver/d/versions/41010/len.smt2"
-        eval_consts
-        <| defs defFuns
-        <| defs (dataTypes@functions)
-        <| List.map (snd >> assrt) skAsserts
-        >>= fun cs ->
-          for c in cs do
-            printfn "%O" c
-          pure ()
+      // let test_eval () =
+      //   let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
+      //     linearization "/home/andrew/adt-solver/d/versions/41010/len.smt2"
+      //   eval_consts
+      //   <| defs defFuns
+      //   <| defs (dataTypes@functions)
+      //   <| List.map (snd >> assrt) skAsserts
+      //   >>= fun cs ->
+      //     for c in cs do
+      //       printfn "%O" c
+      //     pure ()
     
-      let test_defs () =
-        let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-          linearization "/home/andrew/adt-solver/d/versions/41010/isaplanner_prop_16.smt2"
-        
-        for v in defs defFuns do
-          printfn "%O" v
+      // let test_defs () =
+      //   let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
+      //     linearization "/home/andrew/adt-solver/d/versions/41010/isaplanner_prop_16.smt2"
+      //   
+      //   for v in defs defFuns do
+      //     printfn "%O" v
         
   open Evaluation
 
-  let ttt = Interpreter.test_eval 
+  // let ttt = Interpreter.test_eval 
 
   let defs = Interpreter.defs
   
