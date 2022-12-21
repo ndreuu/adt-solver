@@ -16,7 +16,6 @@ module RmNats =
 
   let string: originalCommand list -> string =
     List.fold (fun acc x -> sprintf "%s\n%O" acc x) ""
-  //fst(name constr) and len of last
 
   let nat_constructors =
     List.fold
@@ -147,36 +146,3 @@ module RmNats =
      | true -> printf "rm_mr"
      | false -> printfn "%s" <| replace_nat cmds 
       
-      // File.WriteAllText(file, replace_nat file)
-    // File.WriteAllText(replace_nat file, file)
-    // only_nat <| commands file
-    // replace_nat file, file
-      
-        
-    
-    // let rm_nat_data' acc cmd =
-      // let helper nats =
-        // function
-        // | Command (DeclareDatatype (_, _))   ->
-          // name :: nats
-        // | Command (DeclareDatatypes vs) ->
-          // List.fold
-            // (fun nats (name: string, _) ->
-              // if name.Contains ("nat", StringComparison.OrdinalIgnoreCase) then
-                // name :: nats
-              // else
-                // acc)
-            // acc
-            // vs
-        // | _ -> nats
-      // helper acc cmd
-    // List.fold rm_nat_data' []
-
-    // List.map (fun (x: originalCommand) -> sprintf "%O" x)
-// |>
-
-// let filter cmds nat_names=
-//   List.filter (function
-//                | Command (DeclareDatatype (name, _))
-//                | Command (DeclareDatatypes [(name, _)]) when nat_names |> List.contains name -> false
-//                | _ -> true) cmds

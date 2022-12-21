@@ -125,7 +125,6 @@ module Linearization =
       let eq_op typ =
         Operation.makeElementaryRelationFromSorts "=" [ typ; typ ]
 
-      // equal_op
       let rec helper smt =
         match smt with
         | Apply (UserDefinedOperation _, _) as app -> Apply (eq_op IntSort, [ app; Number 0 ])
@@ -153,7 +152,6 @@ module Linearization =
            []
       |> List.rev
 
-    ////// WRONG FOR EXIST QUANTIFIER
     let asserts' =
       fun f ->
         asserts
@@ -216,8 +214,6 @@ module Linearization =
 
 
 module Result =
-  // Result.t
-
   let (>>=) x f = Result.bind f x
 
   let ( *> ) x f = x >>= fun _ -> f
@@ -336,8 +332,6 @@ module SolverDeprecated =
 
                match solver.Check () with
                | Status.SATISFIABLE ->
-                 // printfn "SAT"
-
                  let map =
                    vars
                    |> List.fold
@@ -353,11 +347,9 @@ module SolverDeprecated =
 
                  SAT map
                | Status.UNSATISFIABLE ->
-                 // printfn "UNSAT"
                  pop ()
                  UNSAT
                | _ ->
-                 // printfn "UNKNOWN"
                  pop ()
                  UNSAT
 
@@ -446,8 +438,6 @@ module SolverDeprecated =
           ctx_vars = Map.empty
           ctx_funs = Map.empty }
 
-      let cnts = constants [ 0; 0; 0; 0 ]
-      
       let cnsts_cnt =
         List.fold
           (fun acc x ->
@@ -490,9 +480,6 @@ module SolverDeprecated =
                  @ ds @ (declares assrt) @ [ assrt |> Not |> Assert ])
               |> function
                 | SAT vs ->
-                  // for v in vs do
-                    // printfn "%O" v
-
                   let const_decls =
                     cs |> List.length |> (-) <| 1 |> const_decls
 
@@ -500,18 +487,10 @@ module SolverDeprecated =
                     Assert (subst vs assrt) :: converse_defs ds
                     |> List.rev
                   
-                  // for v in ds do printfn "%O" v
-                  // printfn "______________SsdfDF________"
-                  // for v in assert' do printfn "%O" v
-                  // printfn ""
-                  
                   hard_defs @ const_decls @ assert'
                   |> model env_consts solver_consts solver_consts.Push id
                   |> function
                     | SAT vs ->
-                      // for v in vs do
-                        // printfn "%O" v
-
                       let constants =
                         vs
                         |> Map.fold (fun acc _ v -> v :: acc) []
@@ -545,29 +524,20 @@ module SolverDeprecated =
                      @ (declares assrt) @ [ assrt |> Not |> Assert ])
                 |> function
                   | SAT _ ->
-                    // printfn "SAT"
                     false
                   | UNSAT ->
-                    // printfn "UNSAT"
                     true)
               |> List.fold (&&) true
               |> function
                 | false -> f cs >>= fun cs -> check cs defs assrts f
-                // | false -> check (f cs) defs assrts f
                 | true -> pure cs
 
           (fun cs ->
             assrts
             |> List.fold (fun cs assrt -> cs >>= fun cs -> loop cs ds assrt) (pure cs))
-            // |> List.fold (fun cs assrt ->  loop cs ds assrt) ( cs))
           |> check cs ds assrts
 
       open Linearization
-
-      // let defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-      //   // linearization "/home/andrew/Downloads/CAV2022Orig(3)/TIP.Original.Linear/isaplanner_prop_23.smt2"
-      //   linearization "/home/andrew/sys/len.orig.smt2"
-
 
       let rec expr =
         function
@@ -585,126 +555,11 @@ module SolverDeprecated =
         | smtExpr.And e -> e |> List.toArray |> Array.map expr |> And
         | smtExpr.Not e -> expr e |> Not
         | Hence (e1, e2) -> Implies (expr e1, expr e2)
-        // | Or smtExprs -> smtExprs |> List.toArray |> Array.map expr |> Or
-        // | _ -> failwith "AAAA"
-      // | Let of (sorted_var * smtExpr) list * smtExpr
-      // | Match of smtExpr * (smtExpr * smtExpr) list
-      // | Ite of smtExpr * smtExpr * smtExpr
-      // | QuantifierApplication of quantifiers * smtExpr
       let assrt = function originalCommand.Assert (smtExpr.Not e) -> expr e
 
-      //////////////////////////////////////////////////////////////////
       let defs =
         let args = List.map fst
         List.map (function | Definition (DefineFun (symbol, args', _, smtExpr)) -> Def (symbol, args args', expr smtExpr))
-      // 0
-      //////////////////////////////////////////////////////////////////
-
-      // match dataTypes |> List.head with
-      // | Assert
-
-      let f_defs =
-        [ Def ("nil_0", [], Apply ("c_0", []))
-          Def (
-            "cons_0",
-            [ "car_0"; "cdr_0" ],
-            Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "car_0"), Mul (Apply ("c_3", []), Var "cdr_0")))
-          ) ]
-
-      let f_defs1 =
-        [ Def ("nil_0", [], Apply ("c_0", []))
-          Def (
-            "cons_0",
-            [ "car_0"; "cdr_0" ],
-            Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "car_0"), Mul (Apply ("c_3", []), Var "cdr_0")))
-          )
-          Def (
-            "len_0",
-            [ "x_0"; "x_1" ],
-            Add (Apply ("c_4", []), Add (Mul (Apply ("c_5", []), Var "x_0"), Mul (Apply ("c_6", []), Var "x_1")))
-          ) ]
-
-
-      let assert1 =
-        Implies (
-          Eq (Apply ("len_0", [ Var "xs_01"; Var "n_01" ]), Int 0),
-          Eq (
-            Apply (
-              "len_0",
-              [ Apply ("cons_0", [ Var "x_01"; Var "xs_01" ])
-                Add (Var "n_01", Int 1) ]
-            ),
-            Int 0
-          )
-        )
-
-      let assert2 =
-        Implies (
-          And [| Eq (Apply ("len_0", [ Var "xs_2"; Var "x_2" ]), Int 0)
-                 Eq (
-                   Apply (
-                     "len_0",
-                     [ Apply ("cons_0", [ Var "y_2"; Var "xs_2" ])
-                       Var "z_2" ]
-                   ),
-                   Int 0
-                 )
-                 Eq (Var "x_2", Var "z_2") |],
-          Bool false
-        )
-
-      let assert3 =
-        Eq (Apply ("len", [ Apply ("nil", []); Int 0 ]), Int 0)
-
-      
-      let assert11 =
-        Implies (
-          Eq (Apply ("len", [ Var "xs"; Var "n" ]), Int 0),
-          Eq (
-            Apply (
-              "len",
-              [ Apply ("cons", [ Var "x"; Var "xs" ])
-                Add (Var "n", Int 1) ]
-            ),
-            Int 0
-          )
-        )
-
-      let assert22 =
-        Implies (
-          And [| Eq (Apply ("len", [ Var "xs"; Var "x" ]), Int 0)
-                 Eq (
-                   Apply (
-                     "len",
-                     [ Apply ("cons", [ Var "y"; Var "xs" ])
-                       Var "z" ]
-                   ),
-                   Int 0
-                 )
-                 Eq (Var "x", Var "z") |],
-          Bool false
-        )
-
-      let assert33 =
-        Eq (Apply ("len", [ Apply ("nil", []); Int 0 ]), Int 0)
-
-      
-      let cur_assert =
-        Implies (
-          And [| Eq (Var "cdr_1", Var "x")
-                 Eq (Apply ("cons_0", [ Var "car_1"; Var "cdr_1" ]), Var "z")
-                 Eq (Var "x", Var "z") |],
-          Bool false
-        )
-
-      let assert_with_end =
-        Implies (Eq (Var "cdr_1", Var "n"), Eq (Apply ("cons_0", [ Var "car_1"; Var "cdr_1" ]), Add (Var "n", Int 1)))
-
-      let assert_f_vars =
-        declare [ "car_1"; "cdr_1"; "x"; "z" ]
-        @ [ cur_assert |> Not |> Assert ]
-
-      let cmds = f_defs @ assert_f_vars
 
       let run =
         fun path ->
@@ -719,28 +574,8 @@ module SolverDeprecated =
             |> List.fold (fun acc c -> sprintf "%s\n%O" acc c) ""
             |> pure
       
-      // let test_eval () =
-      //   let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-      //     linearization "/home/andrew/adt-solver/d/versions/41010/len.smt2"
-      //   eval_consts
-      //   <| defs defFuns
-      //   <| defs (dataTypes@functions)
-      //   <| List.map (snd >> assrt) skAsserts
-      //   >>= fun cs ->
-      //     for c in cs do
-      //       printfn "%O" c
-      //     pure ()
-    
-      // let test_defs () =
-      //   let defFuns, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts =
-      //     linearization "/home/andrew/adt-solver/d/versions/41010/isaplanner_prop_16.smt2"
-      //   
-      //   for v in defs defFuns do
-      //     printfn "%O" v
-        
-  open Evaluation
 
-  // let ttt = Interpreter.test_eval 
+  open Evaluation
 
   let defs = Interpreter.defs
   
