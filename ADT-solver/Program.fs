@@ -36,9 +36,6 @@ module Program =
 
   [<EntryPoint>]
   let main args =
-//    match args with 
-//    | [| path |] -> RmNats.change path; 0
-//    | _ -> 1
     match args with
     | [| path |] ->
       run path
