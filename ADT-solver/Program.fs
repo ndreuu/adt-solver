@@ -7,6 +7,7 @@ open Approximation.Linearization
 open Approximation.SolverDeprecated
 open Utils
 
+
 module Program =
   type Result<'TSuccess, 'TFailure> =
     | Success of 'TSuccess
@@ -36,16 +37,19 @@ module Program =
 
   [<EntryPoint>]
   let main args =
-    match args with
-    | [| path |] ->
-      run path
-      |> function
-        | Ok r ->
-           printfn "%s" r
-           0
-        | Error e ->
-            printfn "%s" e
-            1
-    | _ ->
-        printfn "_"
-        1
+    // ProofBased.aaa ()
+    run ""
+    1
+    // match args with
+    // | [| path |] ->
+    //   run path
+    //   |> function
+    //     | Ok r ->
+    //        printfn "%s" r
+    //        0
+    //     | Error e ->
+    //         printfn "%s" e
+    //         1
+    // | _ ->
+    //     printfn "_"
+    //     1

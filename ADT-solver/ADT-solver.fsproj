@@ -10,8 +10,10 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Z3Interpreter.fs" />
         <Compile Include="Utils.fs" />
         <Compile Include="Approximation.fs" />
+        <Compile Include="ProofBased.fs" />
         <Content Include=".editorconfig" />
         <Compile Include="Program.fs" />
     </ItemGroup>
