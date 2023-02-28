@@ -141,13 +141,13 @@ let listConst =
 //     DeclConst ("c_2")
 //     DeclConst ("c_3") ]
 //
-// let listDefFuns =
-//   [ Def ("nil", [], Apply ("c_0", []))
-//     Def (
-//       "cons",
-//       [ "x"; "y" ],
-//       Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y")))
-//     ) ]
+let listDefFuns =
+  [ Def ("nil", [], Apply ("c_0", []))
+    Def (
+      "cons",
+      [ "x"; "y" ],
+      Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y")))
+    ) ]
 //
 //
 // let listDefFunsLearher =
@@ -158,60 +158,60 @@ let listConst =
 //       Add (Var ("c_1"), Add (Mul (Var ("c_2"), Var "x"), Mul (Var ("c_3"), Var "y")))
 //     ) ]
 //
-// let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
+let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
 //
-// let listAssert1 =
-//   Assert (ForAll ([| "ys1" |], App ("app", [| Apply ("nil", []); Var "ys1"; Var "ys1" |])))
+let listAssert1 =
+   Assert (ForAll ([| "ys1" |], App ("app", [| Apply ("nil", []); Var "ys1"; Var "ys1" |])))
 //
-// let listAssert2 =
-//   Assert (
-//     ForAll (
-//       [| "x2"; "xs2"; "ys2"; "zs2" |],
-//       Implies (
-//         App ("app", [| Var "xs2"; Var "ys2"; Var "zs2" |]),
-//         App (
-//           "app",
-//           [| Apply ("cons", [ Var "x2"; Var "xs2" ])
-//              Var "ys2"
-//              Apply ("cons", [ Var "x2"; Var "zs2" ]) |]
-//         )
-//       )
-//     )
-//   )
+let listAssert2 =
+  Assert (
+    ForAll (
+      [| "x2"; "xs2"; "ys2"; "zs2" |],
+      Implies (
+        App ("app", [| Var "xs2"; Var "ys2"; Var "zs2" |]),
+        App (
+          "app",
+          [| Apply ("cons", [ Var "x2"; Var "xs2" ])
+             Var "ys2"
+             Apply ("cons", [ Var "x2"; Var "zs2" ]) |]
+        )
+      )
+    )
+  )
 //
-// let listAssert3 =
-//   Assert (ForAll ([| "x3" |], App ("last", [| Apply ("cons", [ Var "x3"; Apply ("nil", []) ]); Var "x3" |])))
+let listAssert3 =
+   Assert (ForAll ([| "x3" |], App ("last", [| Apply ("cons", [ Var "x3"; Apply ("nil", []) ]); Var "x3" |])))
 //
-// let listAssert4 =
-//   Assert (
-//     ForAll (
-//       [| "xs4"; "n4"; "x4" |],
-//       Implies (
-//         And (
-//           [| Not (Eq (Var "xs4", Apply ("nil", [])))
-//              App ("last", [| Var "xs4"; Var "n4" |]) |]
-//         ),
-//         App ("last", [| Apply ("cons", [ Var "x4"; Var "xs4" ]); Var "n4" |])
-//       )
-//     )
-//   )
-//
-// let listAssert5 =
-//   Assert (
-//     ForAll (
-//       [| "ys5"; "zs5"; "m5"; "xs5"; "n5" |],
-//       Implies (
-//         And (
-//           [| App ("app", [| Var "xs5"; Var "ys5"; Var "zs5" |])
-//              App ("last", [| Var "ys5"; Var "n5" |])
-//              App ("last", [| Var "zs5"; Var "m5" |])
-//              Not (Eq (Var "ys5", Apply ("nil", [])))
-//              Not (Eq (Var "n5", Var "m5")) |]
-//         ),
-//         Bool false
-//       )
-//     )
-//   )
+let listAssert4 =
+  Assert (
+    ForAll (
+      [| "xs4"; "n4"; "x4" |],
+      Implies (
+        And (
+          [| Not (Eq (Var "xs4", Apply ("nil", [])))
+             App ("last", [| Var "xs4"; Var "n4" |]) |]
+        ),
+        App ("last", [| Apply ("cons", [ Var "x4"; Var "xs4" ]); Var "n4" |])
+      )
+    )
+  )
+
+let listAssert5 =
+  Assert (
+    ForAll (
+      [| "ys5"; "zs5"; "m5"; "xs5"; "n5" |],
+      Implies (
+        And (
+          [| App ("app", [| Var "xs5"; Var "ys5"; Var "zs5" |])
+             App ("last", [| Var "ys5"; Var "n5" |])
+             App ("last", [| Var "zs5"; Var "m5" |])
+             Not (Eq (Var "ys5", Apply ("nil", [])))
+             Not (Eq (Var "n5", Var "m5")) |]
+        ),
+        Bool false
+      )
+    )
+  )
 
 
 
@@ -738,8 +738,8 @@ let uniqVars i vs =
 
 
 let chck () =
-  // solve listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  solve dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
+  solve listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
+  // solve dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
   
 
 

@@ -31,10 +31,6 @@ module AST =
   type Definition = Name * Name list * Expr
 
   
-  // type Blyat =
-    // | E of Microsoft.Z3.Expr
-    // | S of  Microsoft.Z3.Symbol
-    
   type VarCtx = Map<Name, Microsoft.Z3.Expr>
   type DecFunsCtx = Map<Name, FuncDecl>
   type FunCtx = Map<Name, Function>
