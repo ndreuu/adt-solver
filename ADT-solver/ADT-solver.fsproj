@@ -13,13 +13,20 @@
         <Compile Include="Z3Interpreter.fs" />
         <Compile Include="Utils.fs" />
         <Compile Include="Approximation.fs" />
-        <Compile Include="ProofBased.fs" />
         <Content Include=".editorconfig" />
+        <Compile Include="ProofBased\Utils.fs" />
+        <Compile Include="ProofBased\Solver.fs" />
+        <Content Include="RedlogParser\RedTrace.g4" />
+        <Content Include="RedlogParser\RedTraceParser\RedTraceParser.csproj" />
+        <Compile Include="RedlogParser\RedTrace\Parser.fs" />
+        <Compile Include="Tests\ProofBased\Test.fs" />
         <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
+        <PackageReference Include="FParsec" Version="1.1.1" />
+        <PackageReference Include="FParsec.CSharp" Version="12.2.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
         <PackageReference Include="Microsoft.Z3" Version="4.11.2" />
         <PackageReference Include="NUnit" Version="3.13.3" />
@@ -28,6 +35,10 @@
         <PackageReference Include="coverlet.collector" Version="3.1.2" />
     </ItemGroup>
 
+<!--    <ItemGroup>-->
+<!--        <ProjectReference Include=".\RedlogParser\RedTraceParser\RedTraceParser.csproj" />-->
+<!--    </ItemGroup>-->
+    
     <ItemGroup>
         <Reference Include="SMTLIB2">
             <HintPath>..\SMTLIB2\SMTLIB2\bin\Debug\net6.0\SMTLIB2.dll</HintPath>
@@ -35,6 +46,10 @@
         <Reference Include="SMTLIB2Parser">
             <HintPath>..\SMTLIB2\SMTLIB2\bin\Debug\net6.0\SMTLIB2Parser.dll</HintPath>
         </Reference>
+        <Reference Include="RedTraceParser">
+            <HintPath>.\RedlogParser\RedTraceParser\bin\Debug\net6.0\RedTraceParser.dll</HintPath>
+        </Reference>
     </ItemGroup>
+    
 
 </Project>

@@ -1,6 +1,10 @@
+open System
 open System.IO
+open System.Text
+open System.Text.RegularExpressions
 open Approximation
 open Microsoft.FSharp.Collections
+open Microsoft.FSharp.Core
 open SMTLIB2
 open System.Threading.Tasks
 open Approximation.Linearization
@@ -12,10 +16,11 @@ module Program =
   type Result<'TSuccess, 'TFailure> =
     | Success of 'TSuccess
     | Failure of 'TFailure
-    override x.ToString() =
+
+    override x.ToString () =
       match x with
-      | Success x -> x.ToString()
-      | Failure x -> x.ToString()
+      | Success x -> x.ToString ()
+      | Failure x -> x.ToString ()
 
 
   type CommandResult =
@@ -28,7 +33,8 @@ module Program =
     | DeclareVar of ident * sort
     | Сonstraint of smtExpr
     | CheckSynth
-    override x.ToString() =
+
+    override x.ToString () =
       match x with
       | SynthFun (symbol, sortedVars, sort) -> $"(synth-fun {symbol} (%s{SortedVars.toString sortedVars}) {sort})"
       | DeclareVar (ident, sort) -> $"(declare-var {ident} {sort})"
@@ -37,19 +43,13 @@ module Program =
 
   [<EntryPoint>]
   let main args =
-    // ProofBased.aaa ()
-    run ""
+    // ProofBased.Solver.aa ()
+    ProofBased.Utils.aa ()
     1
     // match args with
     // | [| path |] ->
-    //   run path
-    //   |> function
-    //     | Ok r ->
-    //        printfn "%s" r
-    //        0
-    //     | Error e ->
-    //         printfn "%s" e
-    //         1
-    // | _ ->
-    //     printfn "_"
-    //     1
+    // run path
+    // |> function
+    // | Ok r ->
+    // printfn "%s" r
+    // 0

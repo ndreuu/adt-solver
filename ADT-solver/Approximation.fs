@@ -311,14 +311,14 @@ module SolverDeprecated =
           helper Set.empty expr
 
       let declares =
-        fun expr -> var_names expr |> Set.toList |> declare
+        fun expr -> var_names expr |> Set.toList |> declConsts
 
       let const_decls =
         List.unfold (fun i ->
           if i < 0 then
             None
           else
-            Some (Declare (sprintf "c_%i" i), i - 1))
+            Some (DeclConst (sprintf "c_%i" i), i - 1))
 
       let rec subst =
         fun map ->
@@ -337,14 +337,16 @@ module SolverDeprecated =
 
 
       let env_var =
-        { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
-          ctx_vars = Map.empty
-          ctx_funs = Map.empty }
+        { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+          ctxVars = Map.empty
+          ctxFuns = Map.empty
+          ctxDecfuns = Map.empty }
 
       let env_const =
-        { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
-          ctx_vars = Map.empty
-          ctx_funs = Map.empty }
+        { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+          ctxVars = Map.empty
+          ctxFuns = Map.empty
+          ctxDecfuns = Map.empty }
 
       let cnsts_cnt =
         List.fold
@@ -362,20 +364,22 @@ module SolverDeprecated =
             |> constants
             
           let env_vars =
-            { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
-              ctx_vars = Map.empty
-              ctx_funs = Map.empty }
+            { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+              ctxVars = Map.empty
+              ctxFuns = Map.empty
+              ctxDecfuns = Map.empty }
 
           let env_consts =
-            { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
-              ctx_vars = Map.empty
-              ctx_funs = Map.empty }
+            { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+              ctxVars = Map.empty
+              ctxFuns = Map.empty
+              ctxDecfuns = Map.empty }
 
           let solver_vars =
-            env_vars.ctx_slvr.MkSolver "LIA"
+            env_vars.ctxSlvr.MkSolver "LIA"
 
           let solver_consts =
-            env_consts.ctx_slvr.MkSolver "NIA"
+            env_consts.ctxSlvr.MkSolver "NIA"
 
           let rec loop =
             fun cs ds assrt ->
@@ -414,11 +418,13 @@ module SolverDeprecated =
           let rec check =
             fun (cs: Program list) defs assrts f ->
               let env =
-                { ctx_slvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
-                  ctx_vars = Map.empty
-                  ctx_funs = Map.empty }
+                { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
+                  ctxVars = Map.empty
+                  ctxFuns = Map.empty
+                  ctxDecfuns = Map.empty }
 
-              let solver = env.ctx_slvr.MkSolver "LIA"
+
+              let solver = env.ctxSlvr.MkSolver "LIA"
 
               assrts
               |> List.map (fun assrt ->
@@ -447,27 +453,11 @@ module SolverDeprecated =
 
       open Linearization
 
-      let rec expr =
-        function
-        | Number i -> Int i
-        | BoolConst b -> Bool b
-        | Ident (ident, _) -> Var ident
-        | smtExpr.Apply (operation, exprs) ->
-          match operation, exprs with
-          | ElementaryOperation (ident, _, _), [e1; e2] when ident = "+" -> Add (expr e1, expr e2)
-          | ElementaryOperation (ident, _, _), [e1; e2] when ident = "*" -> Mul (expr e1, expr e2)
-          | ElementaryOperation (ident, _, _), [e1; e2] when ident = "=" -> Eq (expr e1, expr e2)
-          | ElementaryOperation (ident, _, _), [e1; e2] when ident = ">=" -> Ge (expr e1, expr e2)
-          | ElementaryOperation (ident, _, _), es
-          | UserDefinedOperation (ident, _, _), es -> Apply (ident, es |> List.map expr)
-        | smtExpr.And e -> e |> List.toArray |> Array.map expr |> And
-        | smtExpr.Not e -> expr e |> Not
-        | Hence (e1, e2) -> Implies (expr e1, expr e2)
-      let assrt = function originalCommand.Assert (smtExpr.Not e) -> expr e
+      let assrt = function originalCommand.Assert (smtExpr.Not e) -> smtExpr2expr e
 
       let defs =
         let args = List.map fst
-        List.map (function | Definition (DefineFun (symbol, args', _, smtExpr)) -> Def (symbol, args args', expr smtExpr))
+        List.map (function | Definition (DefineFun (symbol, args', _, smtExpr)) -> Def (symbol, args args', smtExpr2expr smtExpr))
 
       let run =
         fun path ->
