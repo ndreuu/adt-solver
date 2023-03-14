@@ -5,6 +5,7 @@ open System.Text.RegularExpressions
 open Approximation
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
+open ProofBased
 open SMTLIB2
 open System.Threading.Tasks
 open Approximation.Linearization
@@ -44,7 +45,9 @@ module Program =
   [<EntryPoint>]
   let main args =
     // ProofBased.Solver.aa ()
-    ProofBased.Utils.aa ()
+    // ProofBased.Utils.aa ()
+    // Utils.RmNats.change "/home/andrew/Downloads/CAV2022Orig(13)/TIP.Original.Linear"
+    Solver.chck ()
     1
     // match args with
     // | [| path |] ->

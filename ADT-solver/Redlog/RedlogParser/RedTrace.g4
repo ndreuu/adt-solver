@@ -6,19 +6,22 @@ expr : '(' and expr+ ')'
      | '(' or expr+ ')'
      | '(' ncgong body nil ')'
      | '(' equal body nil ')'
+     | '(' gr body nil ')'
+     | '(' ls body nil ')'
      | '(' neq body nil ')'
      | '(' leq body nil ')'
      | '(' geq body nil ')'
      | '(' ball id expr expr ')'
      ;
 
+//body : '('( factor | '('mul(')'?) |  num)+(')'?);
+body : '('(factor | num | '('mul')')+')';
+
 mul : factor
-    | power (factor | num)+
-    | power '(' mul+ ')'
+    | power ( factor | num |  '(' mul ')' )+
     ;
 
-body : '('('('mul')' | factor | num)+')';
-ncgong : '(' NCONG ('('mul')' | factor | num) ')';
+ncgong : '(' NCONG (factor | num | '('mul')')+ ')';
 
 factor : '('power'.'number')';
 power : '('id'.'number')';
@@ -29,6 +32,8 @@ id : ID;
 and : AND;
 or : OR;
 equal : EQUAL;
+gr : GR;
+ls : LS;
 neq : NEQ;
 leq : LEQ;
 geq : GEQ;
@@ -38,6 +43,8 @@ nil : NIL;
 AND : 'and';
 OR : 'or';
 EQUAL : 'equal';
+GR : 'greaterp';
+LS : 'lessp';
 LEQ : 'leq';
 NEQ : 'neq';
 GEQ : 'geq';
@@ -47,7 +54,7 @@ NIL : 'nil';
 
 PREAMBULA : '(!*fof (pasf)';
 POSTAMBULA : 't)';
-ID : '!_'?[a-z]+NUM;
+ID : '!_'?[a-z]+('_'?)NUM;
 NUM : '0' | '-'?[1-9][0-9]*;
 WS : [ \t\n]+ -> skip;
 

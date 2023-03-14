@@ -1,330 +1,413 @@
-module Z3Interpreter
+module RedlogParser.RedTrace.Parser
 
-open Microsoft.FSharp.Collections
-open Microsoft.Z3
-open RedlogParser.RedTrace
-open SMTLIB2.Prelude
+open System
+open Antlr4.Runtime
+open Antlr4.Runtime.Tree
+open Microsoft.FSharp.Core
+open SMTLIB2
 open Utils
 
-module AST =
-  type Name = string
+let parseNumber (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int64.Parse
 
-  type ArgsNum = int
+let parsePower (power: RedTraceParser.PowerContext) =
+  match (power.GetChild 1, power.GetChild 3) with
+  | (:? RedTraceParser.IdContext as id), (:? RedTraceParser.NumberContext as number) ->
+    let app = Apply (UserDefinedOperation (id.GetText (), [], IntSort), [])
 
-  type Expr =
-    | Int of int64
-    | Bool of bool
-    | Eq of Expr * Expr
-    | Lt of Expr * Expr
-    | Gt of Expr * Expr
-    | Le of Expr * Expr
-    | Ge of Expr * Expr
-    | Mod of Expr * Expr
-    | Add of Expr * Expr
-    | Neg of Expr
-    | Mul of Expr * Expr
-    | And of Expr array
-    | Or of Expr array
-    | Not of Expr
-    | Implies of Expr * Expr
-    | Var of Name
-    | Apply of Name * Expr list
-    | ForAll of Name array * Expr
-    | App of Name * Expr array
-    | Ite of Expr * Expr * Expr
+    let power app number =
+      let rec helper app acc n =
+        match n with
+        | 0 -> acc
+        | n -> helper app (Apply (mulOp, [ app; acc ])) (n - 1)
 
-  let rec expr2smtExpr =
-    function
-    | Int i -> Number i
-    | Bool b -> BoolConst b
-    | Eq (expr1, expr2) -> smtExpr.Apply (eqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Gt (expr1, expr2) -> smtExpr.Apply (grOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Lt (expr1, expr2) -> smtExpr.Apply (lsOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Le (expr1, expr2) -> smtExpr.Apply (leqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Ge (expr1, expr2) -> smtExpr.Apply (geqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Add (expr1, expr2) -> smtExpr.Apply (addOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Neg expr -> smtExpr.Apply (negOp, [ expr2smtExpr expr ])
-    | Mod (expr1, expr2) -> smtExpr.Apply (modOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Mul (expr1, expr2) -> smtExpr.Apply (mulOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | And exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.And
-    | Or exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.Or
-    | Not expr -> expr2smtExpr expr |> smtExpr.Not
-    | Implies (expr1, expr2) -> Hence (expr2smtExpr expr1, expr2smtExpr expr2)
-    | Var n -> Ident (n, IntSort)
-    | App (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), Array.map expr2smtExpr exprs |> Array.toList)
-    | Apply (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
-    | ForAll (names, e) ->
-      QuantifierApplication (
-        [ names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> ForallQuantifier ],
-        expr2smtExpr e
-      )
-    | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
+      helper app app (number - 1)
 
-  type Definition = Name * Name list * Expr
+    power app (number.NUM().GetText () |> Int32.Parse)
 
-  type VarCtx = Map<Name, Microsoft.Z3.Expr>
-  type DecFunsCtx = Map<Name, FuncDecl>
-
-  type FunCtx = Map<Name, Function>
-
-  and Env =
-    { ctxSlvr: Context
-      ctxVars: VarCtx
-      ctxFuns: FunCtx
-      ctxDecfuns: DecFunsCtx }
-
-  and Function = Name list * Expr
-
-  type Program =
-    | Def of Definition
-    | DeclConst of Name
-    | Decl of Name * ArgsNum
-    | Assert of Expr
-
-  let program2originalCommand =
-    function
-      | Def (n, ns, e) -> originalCommand.Definition (DefineFun (n, List.map (fun n -> (n, IntSort)) ns, IntSort, expr2smtExpr e))
-      | DeclConst n -> originalCommand.Command (command.DeclareConst (n, IntSort))
-      | Decl (n, num) ->
-        let args = List.unfold (fun state -> if state = 0 then None else Some (IntSort, state - 1))
-        Command (DeclareFun (n, args num, BoolSort))
-      | Assert e -> originalCommand.Assert (expr2smtExpr e)
-
-  // let rec withFuns ident exprs = Apply (ident, exprs |> List.map (smtExpr2expr usedOps))
-  // and withConsts ident _ = Var ident
-  
-  // and f: Name list -> (Name -> smtExpr list -> Expr) = withConsts
-  
-  // let rec withFuns usedOps ident exprs = Apply (ident, exprs |> List.map (smtExpr2expr withFuns usedOps))
-  // and withConsts _ ident _ = Var ident
-  
-  let rec smtExpr2expr =
-    function
-    | Number i -> Int i
-    | BoolConst b -> Bool b
-    | Ident (ident, _) ->
-      printfn $"iiiiiiiiiiiii{ident}"
-      Var ident
-    | smtExpr.Apply (operation, exprs) ->
-      match operation, exprs with
-      | UserDefinedOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "+" -> Add (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e ] when ident = "-" -> Neg (smtExpr2expr e)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "*" -> Mul (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "=" -> Eq (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<" -> Lt (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">" -> Gt (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<=" -> Le (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">=" -> Ge (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2expr e1, smtExpr2expr e2)
-      | ElementaryOperation (ident, _, _), es
-      | UserDefinedOperation (ident, _, _), es -> Apply (ident, es |> List.map smtExpr2expr)
-    | smtExpr.And e -> e |> List.toArray |> Array.map smtExpr2expr |> And
-    | smtExpr.Or e -> e |> List.toArray |> Array.map smtExpr2expr |> Or
-    | smtExpr.Not e -> smtExpr2expr e |> Not
-    | Hence (e1, e2) -> Implies (smtExpr2expr e1, smtExpr2expr e2)
-    | QuantifierApplication ([ ForallQuantifier args ], expr) -> ForAll (List.map fst args |> List.toArray, smtExpr2expr expr)
-    | otherwise -> failwith $"{otherwise.ToString()}"
-
-  let rec smtExpr2expr' =
-    function
-    | Number i -> Int i
-    | BoolConst b -> Bool b
-    | Ident (ident, _) ->
-      printfn $"iiiiiiiiiiiii{ident}"
-      Var ident
-    | smtExpr.Apply (operation, exprs) ->
-      match operation, exprs with
-      | UserDefinedOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "+" -> Add (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e ] when ident = "-" -> Neg (smtExpr2expr' e)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "*" -> Mul (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "=" -> Eq (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<" -> Lt (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">" -> Gt (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<=" -> Le (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">=" -> Ge (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2expr' e1, smtExpr2expr' e2)
-      | ElementaryOperation (ident, _, _), _
-      | UserDefinedOperation (ident, _, _), _ -> Var ident
-    | smtExpr.And e -> e |> List.toArray |> Array.map smtExpr2expr' |> And
-    | smtExpr.Or e -> e |> List.toArray |> Array.map smtExpr2expr' |> Or
-    | smtExpr.Not e -> smtExpr2expr' e |> Not
-    | Hence (e1, e2) -> Implies (smtExpr2expr' e1, smtExpr2expr' e2)
-    | QuantifierApplication ([ ForallQuantifier args ], expr) -> ForAll (List.map fst args |> List.toArray, smtExpr2expr' expr)
-    | otherwise -> failwith $"{otherwise.ToString()}"
-
-
-
-  
-          
-  let def2decVars =
-    let rec toVar =
-      function
-      | Apply (n, _) -> Var n
-      | Int _
-      | Bool _
-      | Var _ as v -> v
-      | Eq (e1, e2) -> Eq (toVar e1, toVar e2)
-      | Lt (e1, e2) -> Lt (toVar e1, toVar e2)
-      | Gt (e1, e2) -> Gt (toVar e1, toVar e2)
-      | Le (e1, e2) -> Le (toVar e1, toVar e2)
-      | Ge (e1, e2) -> Ge (toVar e1, toVar e2)
-      | Add (e1, e2) -> Add (toVar e1, toVar e2)
-      | Neg e -> Neg (toVar e)
-      | Mod (e1, e2) -> Mod (toVar e1, toVar e2)
-      | Mul (e1, e2) -> Mul (toVar e1, toVar e2)
-      | And es -> es |> Array.map (fun e -> toVar e) |> And
-      | Or es -> es |> Array.map (fun e -> toVar e) |> Or
-      | Not e -> toVar e |> Not
-      | Implies (e1, e2) -> Implies (toVar e1, toVar e2)
-      | Ite (e1, e2, e3) -> Ite (toVar e1, toVar e2, toVar e3)
-      | ForAll _ | App _ as otherwise -> otherwise
+let rec simplifyMul =
+  function
+    | Apply (op, [ y; x ]) 
+    | Apply (op, [ x; y ]) when op = mulOp && x = Number 1 -> y
+    | Apply (op, [ y; x ]) 
+    | Apply (op, [ x; y ]) when op = mulOp && x = (Apply (negOp, [ Number 1 ])) ->
+      Apply (negOp, [ y ])
+    | otherwise -> otherwise 
     
-    List.map (function
-      | Def (n, args, e) -> Def (n, args, e |> toVar)
-      | otherwise -> otherwise)
+let parseFactor (factor: RedTraceParser.FactorContext) =
+  match (factor.GetChild 1, factor.GetChild 3) with
+  | (:? RedTraceParser.PowerContext as pow), (:? RedTraceParser.NumberContext as number) ->
+    let power = pow |> parsePower
+    let coeff =
+        match number |> parseNumber with
+        | n when n < 0 -> Apply(negOp, [Number (n * -1L)])
+        | n -> Number n
+    
+      // Number (number |> parseNumber)
+    // match Number (number |> parseNumber) with
+    // | Number 1L -> power
+    // | Number n when n < 0 -> Apply (mulOp, [ power; Apply (negOp, [ Number (n * -1L) ]) ])
+    // | coeff -> Apply (mulOp, [ power; coeff ])
+    Apply (mulOp, [ power; coeff ]) |> simplifyMul
+    
+let parseNum (num: RedTraceParser.NumContext) =
+  match num.GetChild 1 with
+  | :? RedTraceParser.NumberContext as number ->
+    match number |> parseNumber with
+    | n when n < 0 -> Apply(negOp, [Number (n * -1L)]) 
+    | n -> Number n
 
 
-open AST
+let parseFactorOrNum (v: IParseTree) =
+  match v with
+  | :? RedTraceParser.FactorContext as factor -> factor |> parseFactor
+  | :? RedTraceParser.NumContext as num -> num |> parseNum
 
-module Interpreter =
-  let update =
-    fun k v map ->
-      Map.containsKey k map
-      |> function
-        | true -> Map.remove k map |> Map.add k v
-        | false -> Map.add k v map
+let rec parseMul (mul: RedTraceParser.MulContext) =
+  match mul.GetChild 0 with
+  | :? RedTraceParser.FactorContext as factor -> parseFactor factor
+  | :? RedTraceParser.PowerContext as power ->
+    let power = power |> parsePower
+    let factorNumMuls i n =
+      let rec helper acc i n =
+        match acc with
+        | _ when i < n ->
+          match mul.GetChild i with
+          | :? RedTraceParser.FactorContext
+          | :? RedTraceParser.NumContext as v -> helper (parseFactorOrNum v :: acc) (i + 1) n
+          | :? RedTraceParser.MulContext as mul -> helper (parseMul mul :: acc) (i + 1) n
+          | _ -> helper acc (i + 1) n
+        | _ -> acc
+      
+      helper [] i n |> List.rev
+    
+    match mul.GetChild 1 with
+    | :? RedTraceParser.FactorContext
+    | :? RedTraceParser.NumContext as v ->
+      let acc = Apply (mulOp, [ power; v |> parseFactorOrNum ]) |> simplifyMul
+      
+      factorNumMuls 2 mul.ChildCount
+      |> List.fold (fun acc v -> Apply (addOp, [ acc; Apply (mulOp, [ power; v ]) |> simplifyMul])) acc
 
-  let define = fun env (name, args, expr) -> env.ctxFuns.Add (name, (args, expr))
+    | _ ->
+      let acc =
+        match mul.GetChild 2 with
+        | :? RedTraceParser.MulContext as mul -> Apply (mulOp, [ power; parseMul mul ]) |> simplifyMul
 
-  let declConsts = List.map DeclConst
+      factorNumMuls 3 mul.ChildCount
+      |> List.fold (fun acc v -> Apply (addOp, [ acc; Apply (mulOp, [ power; v ]) |> simplifyMul ])) acc
 
+let parseNcong (ncong: RedTraceParser.NcgongContext) =
+  match ncong.GetChild 2 with
+  | :? RedTraceParser.FactorContext
+  | :? RedTraceParser.NumContext as v -> parseFactorOrNum v
+  | _ ->
+    match ncong.GetChild 3 with
+    | :? RedTraceParser.MulContext as mul -> parseMul mul
 
+let rec parseBody (body: RedTraceParser.BodyContext) =
+  let factorNumMuls i n =
+    let rec helper acc i n =
+      match acc with
+      | _ when i < n ->
+        match body.GetChild i with
+        | :? RedTraceParser.FactorContext
+        | :? RedTraceParser.NumContext as v -> helper (parseFactorOrNum v :: acc) (i + 1) n
+        | :? RedTraceParser.MulContext as m -> helper (parseMul m :: acc) (i + 1) n
+        | _ -> helper acc (i + 1) n
+      | _ -> acc
 
-  // let rec eval_expr: Env -> Expr -> Blyat =
-  let rec eval_expr: Env -> Expr -> Microsoft.Z3.Expr =
-    fun env ->
-      function
-      | Int x -> env.ctxSlvr.MkInt x
-      | Bool x -> env.ctxSlvr.MkBool x
-      | Eq (expr1, expr2) -> env.ctxSlvr.MkEq (eval_expr env expr1, eval_expr env expr2)
-      | Lt (expr1, expr2) -> env.ctxSlvr.MkLt (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Gt (expr1, expr2) -> env.ctxSlvr.MkGt (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Le (expr1, expr2) -> env.ctxSlvr.MkLe (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Ge (expr1, expr2) -> env.ctxSlvr.MkGe (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Mod (expr1, expr2) -> env.ctxSlvr.MkMod (eval_expr env expr1 :?> IntExpr, eval_expr env expr2 :?> IntExpr)
-      | Add (expr1, expr2) -> env.ctxSlvr.MkAdd (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Neg expr -> env.ctxSlvr.MkSub (eval_expr env expr :?> ArithExpr)
-      | Mul (expr1, expr2) -> env.ctxSlvr.MkMul (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | And exprs ->
-        exprs
-        |> Array.map (fun x -> eval_expr env x :?> BoolExpr)
-        |> fun x -> env.ctxSlvr.MkAnd x
-      | Or exprs ->
-        exprs
-        |> Array.map (fun x -> eval_expr env x :?> BoolExpr)
-        |> fun x -> env.ctxSlvr.MkOr x
-      | Not expr -> env.ctxSlvr.MkNot (eval_expr env expr :?> BoolExpr)
-      | Implies (expr1, expr2) ->
-        env.ctxSlvr.MkImplies (eval_expr env expr1 :?> BoolExpr, eval_expr env expr2 :?> BoolExpr)
-      | Var x -> env.ctxVars |> Map.find x
-      | App (name, expr) ->
-        let decFun = env.ctxDecfuns |> Map.find name in
-        let args: Microsoft.Z3.Expr[] = Array.map (eval_expr env) expr
-        env.ctxSlvr.MkApp (decFun, args)
-      | Apply (n, vs) ->
-        env.ctxFuns
-        |> Map.find n
-        |> fun (args, body) ->
-             let bindings = List.zip args vs
+    helper [] i n |> List.rev
 
-             let ctx_vars =
-               bindings
-               |> List.fold (fun acc (arg, v) -> acc |> update arg (eval_expr env v)) env.ctxVars
+  match body.GetChild 1 with
+  | :? RedTraceParser.FactorContext
+  | :? RedTraceParser.NumContext as v ->
+    let acc = parseFactorOrNum v
 
-             eval_expr { env with ctxVars = ctx_vars } body
-      | ForAll ([||], expr) -> eval_expr env expr
-      | ForAll (names, expr) ->
-        let vars: Microsoft.Z3.Expr[] =
-          names
-          |> Array.map
-               (fun name ->
-                  // for n in names do
-                    // printfn $"{n}"
-                  env.ctxSlvr.MkIntConst name) in
+    factorNumMuls 2 body.ChildCount
+    |> List.fold (fun acc v -> Apply (addOp, [ acc; v ])) acc
 
-        let ctxVars =
-          Array.zip names vars
-          |> Array.fold (fun acc (name, value) -> acc |> Map.add name value) env.ctxVars in
+  | _ ->
+    match body.GetChild 2 with
+    | :? RedTraceParser.MulContext as mul ->
+      let acc = parseMul mul
 
-        env.ctxSlvr.MkForall (vars, eval_expr { env with ctxVars = ctxVars } expr)
-      | Ite (exprIf, exprThen, exprElse) ->
-        env.ctxSlvr.MkITE (eval_expr env exprIf :?> BoolExpr, eval_expr env exprThen, eval_expr env exprElse)
-
-  let eval_cmds =
-    fun env ->
-      List.fold
-        (fun (env, varMap, expr) cmd ->
-          match cmd with
-          | DeclConst n ->
-            let intConst = env.ctxSlvr.MkIntConst n
-
-            ({ env with ctxVars = env.ctxVars |> Map.add n intConst }, (n, intConst) :: varMap, expr)
-          | Assert e -> (env, varMap, eval_expr env e)
-          | Def d -> ({ env with ctxFuns = define env d }, varMap, expr)
-          | Decl (name, n) ->
-            let intsNum: Sort[] =
-              n
-              |> Array.unfold (fun state ->
-                if state = 0 then
-                  None
-                else
-                  Some (env.ctxSlvr.IntSort, state - 1))
-
-            let declFun =
-              env.ctxSlvr.MkFuncDecl (env.ctxSlvr.MkSymbol name, intsNum, env.ctxSlvr.MkBoolSort ())
-
-            ({ env with ctxDecfuns = env.ctxDecfuns |> Map.add name declFun }, varMap, expr))
-        (env, [], env.ctxSlvr.MkInt 0)
-
-
-  let evalCmds =
-    fun env (solver: Solver) ->
-      List.fold
-        (fun (env, varMap, expr) cmd ->
-          match cmd with
-          | DeclConst n ->
-            let intConst = env.ctxSlvr.MkIntConst n
-
-            ({ env with ctxVars = env.ctxVars |> Map.add n intConst }, (n, intConst) :: varMap, expr)
-          | Assert e ->
-            
-            let assrt = eval_expr env e in
-            solver.Assert [|assrt :?> BoolExpr|]
-            (env, varMap, eval_expr env e)
-          | Def d -> ({ env with ctxFuns = define env d }, varMap, expr)
-          | Decl (name, n) ->
-            let intsNum: Sort[] =
-              n
-              |> Array.unfold (fun state ->
-                if state = 0 then
-                  None
-                else
-                  Some (env.ctxSlvr.IntSort, state - 1))
-
-            let declFun =
-              env.ctxSlvr.MkFuncDecl (env.ctxSlvr.MkSymbol name, intsNum, env.ctxSlvr.MkBoolSort ())
-
-            ({ env with ctxDecfuns = env.ctxDecfuns |> Map.add name declFun }, varMap, expr))
-        (env, [], env.ctxSlvr.MkInt 0)
+      factorNumMuls 4 body.ChildCount
+      |> List.fold (fun acc v -> Apply (addOp, [ acc; v ])) acc
 
 
 
 
+let rec exprs (expr: RedTraceParser.ExprContext) i n =
+  let rec helper acc i n =
+    match acc with
+    | _ when i < n ->
+      match expr.GetChild i with
+      | :? RedTraceParser.ExprContext as e -> helper (parseExpr' e :: acc) (i + 1) n
+      | _ -> helper acc (i + 1) n
+    | _ -> acc
+
+  helper [] i n |> List.rev
+
+and parseExpr' (expr: RedTraceParser.ExprContext) =
+  match expr.GetChild 1 with
+  | :? RedTraceParser.AndContext -> And <| exprs expr 2 expr.ChildCount
+  | :? RedTraceParser.OrContext -> Or <| exprs expr 2 expr.ChildCount
+  | :? RedTraceParser.NcgongContext as ncong ->
+    let m = parseNcong ncong
+
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Not (Apply (eqOp, [ Apply (modOp, [ l; m ]); r ]))
+  | :? RedTraceParser.EqualContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Apply (eqOp, [ l; r ])
+  | :? RedTraceParser.GrContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Apply (grOp, [ l; r ])
+  | :? RedTraceParser.LsContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Apply (lsOp, [ l; r ])
+
+  | :? RedTraceParser.NeqContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Not (Apply (eqOp, [ l; r ]))
+  | :? RedTraceParser.LeqContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Apply (leqOp, [ l; r ])
+  | :? RedTraceParser.GeqContext ->
+    let l =
+      match expr.GetChild 2 with
+      | :? RedTraceParser.BodyContext as body -> parseBody body
+
+    let r =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.NilContext -> Number 0
+
+    Apply (geqOp, [ l; r ])
+
+  | :? RedTraceParser.BallContext ->
+    let head =
+      match expr.GetChild 3 with
+      | :? RedTraceParser.ExprContext as e -> parseExpr' e
+
+    let body =
+      match expr.GetChild 4 with
+      | :? RedTraceParser.ExprContext as e -> parseExpr' e
+    
+    let id = 
+      match expr.GetChild 2 with
+        | :? RedTraceParser.IdContext as id -> id.GetText()
+
+    QuantifierApplication ([ForallQuantifier [(id, IntSort)]], Hence(body, head))
+        
+    // head
+
+  | _ -> failwith "unreachable"
+
+// let rec headFromForallHence =
+  // function
+    // | QuantifierApplication ([ForallQuantifier _], Hence(_, head)) -> headFromForallHence head
+    // | expr -> expr 
+
+// let rec bodyFromForallHence =
+  // function
+    // | QuantifierApplication ([ForallQuantifier _], Hence(body, _)) -> bodyFromForallHence body
+    // | expr -> expr 
+
+let rec varFromForallHence =
+  function
+    | QuantifierApplication ([ForallQuantifier [var] ], _) -> var
+    | _ -> failwith "VAR"
+    
+
+let clauseBody =
+  let rec helper acc =
+    function
+      | And exprs | Or exprs -> List.fold helper acc exprs
+      | Not expr -> helper acc expr
+      | QuantifierApplication ([ForallQuantifier _], Hence(b, _)) -> b :: acc 
+      | _ -> acc
+      
+  helper [] >> List.rev
+    
+let rec clauseHead =
+  function
+    | And exprs -> And (List.map clauseHead exprs)
+    | Or exprs -> Or (List.map clauseHead exprs)
+    | Not expr -> Not (clauseHead expr)
+    | QuantifierApplication ([ForallQuantifier _], Hence(_, head)) -> clauseHead head
+    | expr -> expr
+
+let clauseVars =
+  let rec helper (acc: Set<_>) = 
+    function
+      | And exprs | Or exprs -> List.fold helper acc exprs
+      | Not expr -> helper acc expr
+      | QuantifierApplication ([ForallQuantifier [var] ], body) -> helper (acc |> Set.add var) body   
+      | Hence (expr1, expr2) -> helper (helper acc expr2) expr1
+      | _ -> acc
+  
+  helper Set.empty 
 
 
-let chck () = Eq (Int 1, Int 2) |> printfn "%O"
+let translateToSmt line =
+  let lexer = RedTraceLexer (CharStreams.fromString line)
+  let tokens = CommonTokenStream lexer
+  let parser = RedTraceParser tokens
+
+  let tree: RedTraceParser.ProgContext = parser.prog ()
+
+  match tree.GetChild 1 with
+  | :? RedTraceParser.ExprContext as expr ->
+      let smtExpr = parseExpr' expr
+      let bodyArgs = clauseBody smtExpr
+      let body =
+        match bodyArgs with
+        [] -> BoolConst true
+        | _ -> And (clauseBody smtExpr) 
+      let head = clauseHead smtExpr
+      let vars = clauseVars smtExpr |> Set.toList
+      // printfn "%O" <| QuantifierApplication ([ForallQuantifier vars], Hence (body, head))
+      QuantifierApplication ([ForallQuantifier vars], Hence (body, head))
+      // smtExpr 
+
+  
+
+// let parsePremises (expr: RedTraceParser.ExprContext) =
+//   let rec parsePremises' (expr: RedTraceParser.ExprContext) acc =
+//     let rec exprs (expr: RedTraceParser.ExprContext) i n =
+//       let rec helper acc' i n =
+//         match acc' with
+//         | _ when i < n ->
+//           match expr.GetChild i with
+//           | :? RedTraceParser.ExprContext as e -> helper (parsePremises' e acc :: acc') (i + 1) n
+//           | _ -> helper acc' (i + 1) n
+//         | _ -> acc'
+//
+//       helper [] i n |> List.rev
+//
+//     match expr.GetChild 1 with
+//     | :? RedTraceParser.BallContext ->
+//       let body =
+//         match expr.GetChild 4 with
+//         | :? RedTraceParser.ExprContext as e -> parseExpr' e
+//
+//       let acc =
+//         match expr.GetChild 3 with
+//         | :? RedTraceParser.ExprContext as e -> parsePremises' e acc
+//
+//       match acc, body with
+//       | BoolConst true, BoolConst true -> BoolConst true
+//       | BoolConst true, body -> body
+//       | acc, BoolConst true -> acc
+//       | _ -> And [ acc; body ]
+//
+//     | :? RedTraceParser.AndContext
+//     | :? RedTraceParser.OrContext ->
+//       exprs expr 2 expr.ChildCount
+//       |> List.fold
+//            (fun acc e ->
+//              match acc, e with
+//              | BoolConst true, BoolConst true -> BoolConst true
+//              | BoolConst true, e -> e
+//              | acc, BoolConst true -> acc
+//              | _ -> And [ acc; e ])
+//            acc
+//     | _ -> acc
+//
+//   parsePremises' expr (BoolConst true)
+
+let parseVars (expr: RedTraceParser.ExprContext) = 
+  let rec parseVars' (expr: RedTraceParser.ExprContext) acc =
+    let rec exprs (expr: RedTraceParser.ExprContext) i n =
+      let rec helper acc' i n =
+        match acc' with
+        | _ when i < n ->
+          match expr.GetChild i with
+          | :? RedTraceParser.ExprContext as e -> helper (parseVars' e acc :: acc') (i + 1) n
+          | _ -> helper acc' (i + 1) n
+        | _ -> acc'
+      
+      helper [] i n |> List.rev
+    
+    match expr.GetChild 1 with
+    | :? RedTraceParser.BallContext ->
+      let acc = 
+        match expr.GetChild 3 with
+        | :? RedTraceParser.ExprContext as e -> parseVars' e acc      
+      
+      
+      match expr.GetChild 2 with
+      | :? RedTraceParser.IdContext as id -> id.GetText() :: acc
+      
+    | :? RedTraceParser.AndContext | :? RedTraceParser.OrContext ->
+      exprs expr 2 expr.ChildCount
+      |> List.fold (@) []
+    | _ -> acc
+    
+  (parseVars' expr []) |> Set.ofList
+
+// let translateToSmt line =
+  // let lexer = RedTraceLexer (CharStreams.fromString line)
+  // let tokens = CommonTokenStream lexer
+  // let parser = RedTraceParser tokens
+
+  // let tree: RedTraceParser.ProgContext = parser.prog ()
+
+  // match tree.GetChild 1 with
+  // | :? RedTraceParser.ExprContext as expr ->
+      // let head = parseExpr' expr
+      // let body = parsePremises expr
+      // let vars = parseVars expr
+      
+      // QuantifierApplication ([ForallQuantifier (Set.map (fun v -> (v, IntSort)) vars |> Set.toList)], Hence (body, head))
+
+
+
+  
+
+
 
 let sd () =
   let line=
@@ -334,8 +417,10 @@ let sd () =
   // let parser = RedTraceParser tokens
 
   // let tree: RedTraceParser.ProgContext = parser.prog ()
-  // Parser.translateToSmt line |> smtExpr2expr
-  // |> printfn "%O"
+
+  translateToSmt line 
+  |> printfn "%O"
+
   // match tree.GetChild 1 with
   // | :? RedTraceParser.ExprContext as expr -> parseVars expr |> fun vs -> for v in vs do  printfn "%O" v
   // | :? RedTraceParser.ExprContext as expr -> translateToSmt expr |> printfn "%O"
