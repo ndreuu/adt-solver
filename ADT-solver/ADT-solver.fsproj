@@ -42,9 +42,6 @@
         <PackageReference Include="coverlet.collector" Version="3.1.2" />
     </ItemGroup>
 
-<!--    <ItemGroup>-->
-<!--        <ProjectReference Include=".\RedlogParser\RedTraceParser\RedTraceParser.csproj" />-->
-<!--    </ItemGroup>-->
     
     <ItemGroup>
         <Reference Include="SMTLIB2">
