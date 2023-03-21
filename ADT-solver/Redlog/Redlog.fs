@@ -96,7 +96,7 @@ let runRedlog definitions formula =
   subStr
   |> TextUtils.balancedBracket
   |> function
-    | Some s -> translateToSmt s |> Some
+    | Some s -> translateToSmt s |> Some 
     | _ -> None
   
 

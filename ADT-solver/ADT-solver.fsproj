@@ -10,6 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="Tree\Tree.fs" />
         <Compile Include="TextUtils.fs" />
         <Compile Include="Redlog\RedlogParser\RedTrace\Utils.fs" />
         <Compile Include="Redlog\RedlogParser\RedTrace\Parser.fs" />
