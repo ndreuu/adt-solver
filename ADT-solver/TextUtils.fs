@@ -22,4 +22,9 @@ let balancedBracket (str: string) =
       List.fold (fun acc c -> sprintf "%c%s" c acc) "" cs
       |> (fun str -> sprintf "(%s" str)
       |> Some
-    | None -> None  
+    | None -> None
+
+
+let rec adfs () =
+  printfn "SDFSFDF"
+  ()   
