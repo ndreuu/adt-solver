@@ -3,9 +3,8 @@ module Z3Interpreter
 open System.Collections.Generic
 open Microsoft.FSharp.Collections
 open Microsoft.Z3
-open RedlogParser.RedTrace
 open SMTLIB2.Prelude
-open Utils
+open IntOps
 
 module AST =
   type Name = string
