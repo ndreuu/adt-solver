@@ -193,15 +193,27 @@ module RmNats =
       | Some _ -> true
       | None -> false
 
+  
+  
 
   let blockedAsserts fName bool smts =
-    List.filter
-      (fun stmt ->
-        isBlockedAssert blockedAssert1 fName bool stmt
-        || isBlockedAssert blockedAssert2 fName bool stmt
-        || isBlockedAssert blockedAssert3 fName bool stmt
-        || isBlockedAssert blockedAssert4 fName bool stmt)
-      smts
+    let isEqBlockAsserts =
+      (smts |> List.filter (isBlockedAssert blockedAssert1 fName bool) |> List.length > 0) &&
+      (smts |> List.filter (isBlockedAssert blockedAssert2 fName bool) |> List.length > 0) &&
+      (smts |> List.filter (isBlockedAssert blockedAssert3 fName bool) |> List.length > 0) &&
+      (smts |> List.filter (isBlockedAssert blockedAssert4 fName bool) |> List.length > 0) 
+    
+    
+    if isEqBlockAsserts then       
+      List.filter
+        (fun stmt ->
+           (isBlockedAssert blockedAssert1 fName bool stmt
+           || isBlockedAssert blockedAssert2 fName bool stmt
+           || isBlockedAssert blockedAssert3 fName bool stmt
+           || isBlockedAssert blockedAssert4 fName bool stmt))
+        smts
+    else []
+      
 
   let rmBlockedAsserts (blockedAsserts: _ list) (stmts: originalCommand list) =
     stmts
@@ -333,7 +345,6 @@ module RmNats =
 
   let replace_nat_str (nat_names: _ list) =
     List.map (fun cmd ->
-      printfn $":::{cmd}"
 
       List.fold
         (fun (acc: string) (name: string) ->
@@ -546,16 +557,21 @@ module RmNats =
                  match decl with
                    | Command (DeclareFun (fName, [ADTSort boolName; _; _], _)) ->
                      let bool = ADTSort boolName 
-                     let blockedAsserts = blockedAsserts fName bool cmds
-                     let cmds' = rmBlockedAsserts blockedAsserts cmds
-                     let falseOpName, trueOpName = boolOps boolName cmds |> function Some (x, y) -> x, y | _ -> failwith "!!!!"
+                     let blockedAsserts = blockedAsserts fName bool acc
+                     // printfn $"--->{blockedAsserts}"
+                     let cmds' = rmBlockedAsserts blockedAsserts acc
+                     let falseOpName, trueOpName = boolOps boolName acc |> function Some (x, y) -> x, y | _ -> failwith "!!!!"
                      let falseOp = ElementaryOperation (falseOpName, [], ADTSort boolName)
                      let trueOp = ElementaryOperation (trueOpName, [], ADTSort boolName)
                      let f = UserDefinedOperation (fName, [], BoolSort)
                      let trueFun = Apply (trueOp, [])
                      let falseFun = Apply (falseOp, [])
-                     let newAsserts = transformEqAsserts f falseFun trueFun
-                     substitute decl newAsserts cmds'
+                     
+                     match blockedAsserts with
+                     | [] -> acc
+                     | _ ->
+                        let newAsserts = transformEqAsserts f falseFun trueFun
+                        substitute decl newAsserts cmds'
                    | _ -> acc
                  )
             cmds
@@ -615,6 +631,8 @@ module RmNats =
 
 
 let chck () =
+  // RmNats.change "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/TIP.Original.Linear/prod_prop_47.smt2" 
+  // |> printfn "%O"
   // printfn "%O" <| "diseqNat_567".Contains "diseqNat"
   // RmNats.change "/home/andrew/Downloads/CAV2022Orig(13)/benchmarks/TIP.Original.Linear/prod_prop_25.smt2"
 
