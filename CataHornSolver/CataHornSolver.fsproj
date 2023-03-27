@@ -14,6 +14,15 @@
         <Compile Include="Z3Interpreter.fs" />
         <Compile Include="Approximation.fs" />
         <Compile Include="Program.fs" />
+        <Compile Include="Parser.fs" />
+        <Compile Include="Process.fs" />
+        <Compile Include="Redlog.fs" />
+        <Content Include="RedTrace.g4" />
+        <Compile Include="Tree.fs" />
+        <Compile Include="Utils2.fs" />
+        <Compile Include="Solver.fs" />
+        <Compile Include="Test.fs" />
+        <Content Include="Tests\racer.horn.smt2" />
     </ItemGroup>
 
     <ItemGroup>

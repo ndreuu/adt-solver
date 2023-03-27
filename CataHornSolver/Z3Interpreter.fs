@@ -191,6 +191,35 @@ module AST =
       | otherwise -> otherwise)
 
 
+  let substituteVar =
+    let rec helper var value =
+      let helper' x = helper var value x
+  
+      function
+      | Var _ as x when x = var -> value
+      | Eq (expr1, expr2) -> Eq (helper' expr1, helper' expr2)
+      | Lt (expr1, expr2) -> Lt (helper' expr1, helper' expr2)
+      | Gt (expr1, expr2) -> Gt (helper' expr1, helper' expr2)
+      | Le (expr1, expr2) -> Le (helper' expr1, helper' expr2)
+      | Ge (expr1, expr2) -> Ge (helper' expr1, helper' expr2)
+      | Add (expr1, expr2) -> Add (helper' expr1, helper' expr2)
+      | Neg expr -> Neg (helper' expr)
+      | Mul (expr1, expr2) -> Mul (helper' expr1, helper' expr2)
+      | Mod (expr1, expr2) -> Mod (helper' expr1, helper' expr2)
+      | Implies (expr1, expr2) -> Implies (helper' expr1, helper' expr2)
+      | And exprs -> And (Array.map helper' exprs)
+      | Or exprs -> Or (Array.map helper' exprs)
+      | Not expr -> Not (helper' expr)
+      | Apply (n, exprs) -> Apply (n, exprs |> List.map helper')
+      | ForAll (ns, expr) -> ForAll (ns, helper' expr)
+      | App (n, exprs) -> App (n, exprs |> Array.map helper')
+      | Ite (expr1, expr2, expr3) -> Ite (helper' expr1, helper' expr2, helper' expr3)
+      | Int _
+      | Bool _
+      | Var _ as expr -> expr
+  
+    helper
+
 open AST
 
 module Interpreter =
