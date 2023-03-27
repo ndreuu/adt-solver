@@ -5,12 +5,10 @@ open System.Text.RegularExpressions
 open Approximation
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
-open ProofBased
 open SMTLIB2
 open System.Threading.Tasks
 open Approximation.Linearization
 open Approximation.SolverDeprecated
-open Utils
 
 
 module Program =
@@ -44,15 +42,9 @@ module Program =
 
   [<EntryPoint>]
   let main args =
-    // ProofBased.Solver.aa ()
-    // ProofBased.Utils.aa ()
-    // Utils.RmNats.change "/home/andrew/Downloads/CAV2022Orig(13)/TIP.Original.Linear"
-    Solver.chck ()
-    1
-    // match args with
-    // | [| path |] ->
-    // run path
-    // |> function
-    // | Ok r ->
-    // printfn "%s" r
-    // 0
+    match args with
+    | [| path |] ->
+      match run path with
+      | Ok v -> printfn $"{v}"; 0
+      | _ -> -1
+    | _ -> -1

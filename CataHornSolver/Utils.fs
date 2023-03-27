@@ -1,14 +1,23 @@
-module ADTSolver.Utils
+[<AutoOpen>]
+module Utils
 
 open System
 open System.IO
 open Microsoft.FSharp.Collections
-open Microsoft.Z3
-open NUnit.Framework.Constraints
 open SMTLIB2
 open SMTLIB2.Parser
 
+module IntOps =
+  let mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
+  let negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
+  let addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
+  let eqOp = ElementaryOperation ("=", [ IntSort; IntSort ], BoolSort)
+  let grOp = ElementaryOperation (">", [ IntSort; IntSort ], BoolSort)
 
+  let lsOp = ElementaryOperation ("<", [ IntSort; IntSort ], BoolSort)
+  let leqOp = ElementaryOperation ("<=", [ IntSort; IntSort ], BoolSort)
+  let geqOp = ElementaryOperation (">=", [ IntSort; IntSort ], BoolSort)
+  let modOp = ElementaryOperation ("mod", [ IntSort; IntSort ], IntSort)
 
 module RmNats =
   let string: originalCommand list -> string =
@@ -406,6 +415,8 @@ module RmNats =
     | Apply _ as expr -> expr
     | otherwise -> failwith $"{otherwise}"
 
+  let (|Proof|_|) _ = __notImplemented__()
+  
   let replace (natNames: string list) =
     function
     | Definition def ->
