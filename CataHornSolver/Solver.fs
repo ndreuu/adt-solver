@@ -248,8 +248,8 @@ let dA4 =
 
 
 
-let emptyEnv params =
-  { ctxSlvr = new Context (params |> dict |> Dictionary)
+let emptyEnv argss =
+  { ctxSlvr = new Context (argss |> dict |> Dictionary)
     ctxVars = Map.empty
     ctxFuns = Map.empty
     ctxDecfuns = Map.empty }
@@ -1532,13 +1532,14 @@ let apply2app appNames =
     | Int _
     | Bool _
     | Var _ as expr -> expr
-    | Eq (expr1, expr2) -> Eq (helper expr1, helper expr1)
+    | Eq (expr1, expr2) -> Eq (helper expr1, helper expr2)
     | Lt (expr1, expr2) -> Lt (helper expr1, helper expr2)
     | Gt (expr1, expr2) -> Gt (helper expr1, helper expr2)
     | Le (expr1, expr2) -> Le (helper expr1, helper expr2)
     | Ge (expr1, expr2) -> Ge (helper expr1, helper expr2)
     | Mod (expr1, expr2) -> Mod (helper expr1, helper expr2)
     | Add (expr1, expr2) -> Add (helper expr1, helper expr2)
+    | Subtract (expr1, expr2) -> Subtract (helper expr1, helper expr2)
     | Neg expr -> Neg (helper expr)
     | Mul (expr1, expr2) -> Mul (helper expr1, helper expr2)
     | And exprs -> And (Array.map helper exprs)

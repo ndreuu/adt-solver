@@ -212,7 +212,7 @@ module Result =
   let (>>=) x f = Result.bind f x
 
   let ( *> ) x f = x >>= fun _ -> f
-  let pure = Result.Ok
+  let just = Result.Ok
   let error = Result.Error
 
 module SolverDeprecated =
@@ -412,7 +412,7 @@ module SolverDeprecated =
                       loop constants ds assrt
                     | UNSAT -> error "Was started since constants"
 
-                | UNSAT -> pure cs
+                | UNSAT -> just cs
 
 
           let rec check =
@@ -444,11 +444,11 @@ module SolverDeprecated =
               |> List.fold (&&) true
               |> function
                 | false -> f cs >>= fun cs -> check cs defs assrts f
-                | true -> pure cs
+                | true -> just cs
 
           (fun cs ->
             assrts
-            |> List.fold (fun cs assrt -> cs >>= fun cs -> loop cs ds assrt) (pure cs))
+            |> List.fold (fun cs assrt -> cs >>= fun cs -> loop cs ds assrt) (just cs))
           |> check cs ds assrts
 
       open Linearization
@@ -470,7 +470,7 @@ module SolverDeprecated =
           >>= fun cs ->
             cs
             |> List.fold (fun acc c -> sprintf "%s\n%O" acc c) ""
-            |> pure
+            |> just
       
 
   open Evaluation
