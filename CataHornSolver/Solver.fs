@@ -281,7 +281,7 @@ let axiomAsserts clarify asserts name =
     | Assert (App (n, _)) when n = name -> true
     | _ -> false)
   |> fun x ->
-       printfn $"!!!!!!{x}"
+       // printfn $"!!!!!!{x}"
        clarify x
 
 let queryAssert asserts =
@@ -294,7 +294,7 @@ let queryAssert asserts =
 let rec assertsTree asserts consts defs decs =
   function
   | Node (Apply (name, _), []) ->
-    printfn $">>>>>{asserts}"
+    // printfn $">>>>>{asserts}"
     name |> axiomAsserts List.head asserts |> (fun x -> Node (x, []))
   | Node (Apply (name, _), ts) ->
     name
@@ -367,7 +367,7 @@ let vars =
 type apps = Map<Name, Expr list>
 
 let getApp name (apps: apps) =
-  printfn $"NNNN:: {name}"
+  // printfn $"NNNN:: {name}"
 
   apps
   |> Map.find name
@@ -601,7 +601,7 @@ let transitiveEqVars (exprs: Expr list) =
 
 
 let simplify' (exprs: Expr list) : Expr list =
-  printfn "AAAAAAAAAAA!"
+  // printfn "AAAAAAAAAAA!"
 
   let substituteVals varVals exprs =
     exprs
@@ -672,9 +672,9 @@ let asdf () =
 
 let simplify (exprs: Expr list) : Expr list =
   List.map expr2smtExpr exprs
-  |> fun vs ->
-       for v in vs do
-         printfn $"{v}"
+  // |> fun vs ->
+       // for v in vs do
+         // printfn $"{v}"
 
   simplify' exprs
 // exprs
@@ -977,7 +977,7 @@ let asfd () =
   // Add
   // (Mul (Apply ("c_8", []), Var "x"), Mul (Apply ("c_9", []), Var "y")) ))
   // |> printfn "%O"
-  notZeroFunConsts listDefFunsShiza |> printfn "%O"
+  // notZeroFunConsts listDefFunsShiza |> printfn "%O"
   // notZeroConsts [def] |> printfn "%O"
   // (and (or (c_5 != 0) (c_6 != 0)) (or (c_2 != 0) (c_3 != 0)) (or (c_8 != 0) (c_9 != 0)))
 
@@ -1070,7 +1070,7 @@ let branching constDefs funDefs =
          |> fun (newConsts', consts', def') -> (newConsts @ newConsts', consts', def' :: funs))
        ([], constDefs, funDefs')
   |> fun (newConsts, _, funDefs) ->
-       printfn $"{newConsts}"
+       // printfn $"{newConsts}"
        (newConsts, funDefs)
 
 let asdsdf () =
@@ -1103,10 +1103,10 @@ let asdsdf () =
     ))
   // |> ignore
   |> fun (_, xs, y) ->
-       printfn "%O" y
+       // printfn "%O" y
 
-       for x in xs do
-         printfn $"{x}"
+       // for x in xs do
+         // printfn $"{x}"
 
   // branching shiza listDefFunsShiza
   // |> fun (cs, xs, ys) ->
@@ -1166,43 +1166,43 @@ type Mode =
 let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof pushed (mode: Mode) =
   match proof with
   | [ Command (Proof (hyperProof, _, _)) ] ->
-    printfn "%O" hyperProof
+    // printfn "%O" hyperProof
     let clause = hyperProof2clause constDefs funDecls hyperProof asserts
 
-    printfn $"{clause}"
-    printfn $"{expr2smtExpr clause}"
+    // printfn $"{clause}"
+    // printfn $"{expr2smtExpr clause}"
 
-    printfn "SOLVING"
+    // printfn "SOLVING"
 
-    File.AppendAllText (
-      "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
-      $"{Redlog.redlogQuery (def2decVars constrDefs) clause}\n\n"
-    )
+    // File.AppendAllText (
+      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+      // $"{Redlog.redlogQuery (def2decVars constrDefs) clause}\n\n"
+    // )
 
-    File.AppendAllText (
-      "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
-      $"--------------------\n\n\n"
-    )
+    // File.AppendAllText (
+      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+      // $"--------------------\n\n\n"
+    // )
 
     let redlogResult = redlog (def2decVars constrDefs) clause
 
-    File.AppendAllText (
-      "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
-      $"{program2originalCommand redlogResult}\n\n"
-    )
+    // File.AppendAllText (
+      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+      // $"{program2originalCommand redlogResult}\n\n"
+    // )
 
-    File.AppendAllText (
-      "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
-      $"--------------------\n\n\n"
-    )
+    // File.AppendAllText (
+      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+      // $"--------------------\n\n\n"
+    // )
 
-    for v in List.map program2originalCommand ((constDefs |> List.map decConst) @ pushed @ [ redlogResult ]) do
-      File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+    // for v in List.map program2originalCommand ((constDefs |> List.map decConst) @ pushed @ [ redlogResult ]) do
+      // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
 
-    File.AppendAllText (
-      "/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2",
-      $"--------------------\n\n\n"
-    )
+    // File.AppendAllText (
+      // "/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2",
+      // $"--------------------\n\n\n"
+    // )
 
     let pushed' = pushed @ [ redlogResult ]
     printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
@@ -1220,8 +1220,8 @@ let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof
     | SAT ((env', defConsts')) ->
       printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
 
-      for v in List.rev defConsts' do
-        printfn $"{v}"
+      // for v in List.rev defConsts' do
+        // printfn $"{v}"
 
 
       (env', defConsts', constrDefs, pushed', mode)
@@ -1251,14 +1251,14 @@ let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof
 
     | UNSAT ((env, _)) ->
       // failwith "1234"
-      for v in List.map program2originalCommand constrDefs do
-        printfn "constrDef:: %O" v
+      // for v in List.map program2originalCommand constrDefs do
+        // printfn "constrDef:: %O" v
 
       // for v in List.map program2originalCommand funDefs do
       // printfn "funDef:: %O" v
 
       let newConsts, constrDefs' = branching constDefs constrDefs
-      printfn $"{constrDefs'}"
+      // printfn $"{constrDefs'}"
 
       solver.Pop () // rm conflict assert
       solver.Push ()
@@ -1330,19 +1330,20 @@ let unsat env (solver: Solver) =
       |> proof
         // id
         (fun _ ->
-          File.AppendAllText (
-            "/home/andrew/adt-solver/many-branches-search/dbg/proof",
-            $"{solver.Proof.ToString ()}\n\n"
-          ))
+          // File.AppendAllText (
+            // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+            // $"{solver.Proof.ToString ()}\n\n"
+          // )
+          ())
       // (File.AppendAllText
       // ("/home/andrew/adt-solver/many-branches-search/dbg/proof.smt2", $"{solver.Proof.ToString ()}\n\n\n") ))
       |> fun prettyProof ->
-           File.AppendAllText (
-             "/home/andrew/adt-solver/many-branches-search/dbg/proof",
-             $"PRETTY:\n{prettyProof.ToString ()}\n\n"
-           )
+           // File.AppendAllText (
+             // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+             // $"PRETTY:\n{prettyProof.ToString ()}\n\n"
+           // )
 
-           File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/proof", $"--------------------\n\n\n")
+           // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/proof", $"--------------------\n\n\n")
            prettyProof |> sprintf "%s"
     )
 
@@ -1374,10 +1375,10 @@ let rec teacher funDefs solverLearner envLearner constDefs constrDefs funDecls (
 
   let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
 
-  for v in List.map program2originalCommand cmds do
-    File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"{(v.ToString ())}\n\n")
+  // for v in List.map program2originalCommand cmds do
+    // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"{(v.ToString ())}\n\n")
 
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"--------------------\n\n\n")
+  // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"--------------------\n\n\n")
 
 
   z3solve
@@ -1430,10 +1431,10 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
   // Eq (Var "c_2", Int 1)
   // Eq (Var "c_3", Int 1) |] ) ]
 
-  for v in List.map program2originalCommand startCmds do
-    File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+  // for v in List.map program2originalCommand startCmds do
+    // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
 
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"--------------------\n\n\n")
+  // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"--------------------\n\n\n")
 
   let envDecConsts =
     z3solve
@@ -1451,11 +1452,11 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
   pushZeroOrOne solverLearner envDecConsts constDefs
   |> function
     | SAT (env'', defConsts') ->
-      printfn $"{defConsts'}"
+      // printfn $"{defConsts'}"
       printfn "<<<>>>><<>>>%O" <| solverLearner.Assertions.Length
 
-      for v in List.map program2originalCommand constrDefs do
-        printfn "v111111 %O" v
+      // for v in List.map program2originalCommand constrDefs do
+        // printfn "v111111 %O" v
       // teacher solverLearner env'' defConsts' funDefs funDecls asserts startCmds ZeroOne
       teacher funDefs solverLearner env'' defConsts' constrDefs funDecls asserts startCmds ZeroOnes
     | UNSAT _ -> failwith "?"
