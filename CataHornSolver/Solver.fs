@@ -266,6 +266,9 @@ let proofTree hProof =
 
   helper hProof
 
+
+let random xs = xs |> List.item (Random().Next(xs.Length))
+
 let impliesAsserts clarify asserts name =
   asserts
   |> List.filter (function
@@ -284,23 +287,23 @@ let axiomAsserts clarify asserts name =
        // printfn $"!!!!!!{x}"
        clarify x
 
-let queryAssert asserts =
+let queryAssert clarify asserts =
   asserts
   |> List.filter (function
     | Assert (ForAll (_, Implies (_, Bool false))) -> true
     | _ -> false)
-  |> List.head
+  |> clarify
 
 let rec assertsTree asserts consts defs decs =
   function
   | Node (Apply (name, _), []) ->
     // printfn $">>>>>{asserts}"
-    name |> axiomAsserts List.head asserts |> (fun x -> Node (x, []))
+    name |> axiomAsserts random asserts |> (fun x -> Node (x, []))
   | Node (Apply (name, _), ts) ->
     name
-    |> impliesAsserts List.head asserts
+    |> impliesAsserts random asserts
     |> fun x -> Node (x, ts |> List.map (assertsTree asserts consts defs decs))
-  | Node (Bool false, ts) -> Node (queryAssert asserts, ts |> List.map (assertsTree asserts consts defs decs))
+  | Node (Bool false, ts) -> Node (queryAssert random asserts, ts |> List.map (assertsTree asserts consts defs decs))
   | _ -> failwith "123"
 
 let renameVar =
