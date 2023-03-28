@@ -1,4 +1,4 @@
-(declare-datatype list ((nil) (cons (car Int) (cdr list))))
+(declare-datatypes ((list 0)) (((nil) (cons (car Int) (cdr list)))))
 
 (declare-fun Inv (list Int Int) Bool)
 (declare-fun length (list Int) Bool)
