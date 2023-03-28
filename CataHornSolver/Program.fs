@@ -1,15 +1,7 @@
-open System
-open System.IO
-open System.Text
-open System.Text.RegularExpressions
-open Approximation
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
+open ProofBased.Solver
 open SMTLIB2
-open System.Threading.Tasks
-open Approximation.Linearization
-open Approximation.SolverDeprecated
-
 
 module Program =
   type Result<'TSuccess, 'TFailure> =
@@ -44,7 +36,7 @@ module Program =
   let main args =
     match args with
     | [| path |] ->
-      match run path with
-      | Ok v -> printfn $"{v}"; 0
-      | _ -> -1
-    | _ -> -1
+      run path
+      0
+    | _ ->
+      1

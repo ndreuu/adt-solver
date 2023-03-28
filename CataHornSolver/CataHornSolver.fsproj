@@ -15,10 +15,9 @@
         <Compile Include="Approximation.fs" />
         <Compile Include="Parser.fs" />
         <Compile Include="Process.fs" />
-        <Compile Include="Redlog.fs" />
-        <Content Include="RedTrace.g4" />
-        <Compile Include="Tree.fs" />
         <Compile Include="Utils2.fs" />
+        <Compile Include="Redlog.fs" />
+        <Compile Include="Tree.fs" />
         <Compile Include="Solver.fs" />
         <Compile Include="Test.fs" />
         <Content Include="Tests\racer.horn.smt2" />
@@ -40,6 +39,10 @@
     <ItemGroup>
       <ProjectReference Include="..\SMTLIB2\SMTLIB2\SMTLIB2.fsproj" />
     </ItemGroup>
-    
+
+    <ItemGroup>
+        <ProjectReference Include="..\RedlogParser\RedlogParser.csproj" />
+    </ItemGroup>
+
 
 </Project>

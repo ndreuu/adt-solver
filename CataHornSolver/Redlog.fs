@@ -6,7 +6,7 @@ open RedlogParser.RedTrace.Parser
 open SMTLIB2.FSharpExtensions
 open Z3Interpreter.AST
 open Process.Process
-
+open ProofBased.Utils
 
 
 let rec expr2redlogExpr =
@@ -94,7 +94,7 @@ let runRedlog definitions formula =
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
   subStr
-  |> TextUtils.balancedBracket
+  |> balancedBracket
   |> function
     | Some s -> translateToSmt s |> Some 
     | _ -> None

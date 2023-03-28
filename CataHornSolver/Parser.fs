@@ -5,7 +5,8 @@ open Antlr4.Runtime
 open Antlr4.Runtime.Tree
 open Microsoft.FSharp.Core
 open SMTLIB2
-open Utils
+open IntOps
+
 
 let parseNumber (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int64.Parse
 

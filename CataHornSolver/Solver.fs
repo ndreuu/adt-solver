@@ -1599,6 +1599,62 @@ let run file =
     asserts''
 
 
+let aa () =
+  let file = "/home/andrew/adt-solver/many-branches-search/run/false_graph_d5.smt2"
+
+  // let file = "/home/andrew/adt-solver/many-branches-search/run/isaplanner_prop_16.smt2"
+
+  // let file = "/home/andrew/adt-solver/many-branches-search/run/test.smt2"
+  // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/TIP.not-only-nat-constructors/isaplanner_prop_16.smt2"
+  let defFuns, linTypes, defConstants, declFuns, asserts = approximation file
+
+  for v in linTypes do
+    printfn $"linType>>{origCommand2program v}"
+
+
+  printfn "defFuns>>>>"
+
+  for v in defFuns do
+    printfn $"defFun: {origCommand2program v}"
+
+  for v in defConstants do
+    printfn $"{v}"
+
+  let funDecls = List.map origCommand2program declFuns
+
+  for v in declFuns do
+    printfn $"{origCommand2program v}"
+
+  let asserts' = List.map origCommand2program asserts
+
+  let appNames =
+    funDecls
+    |> List.fold
+         (fun acc ->
+           function
+           | Decl (n, _) -> n :: acc
+           | _ -> acc)
+         []
+    |> List.rev
+
+  let asserts'' =
+    (List.map
+      (function
+      | Program.Assert x -> apply2app appNames x |> Assert)
+      asserts')
+
+  for v in asserts'' do
+    printfn $"{v}"
+
+
+  solver
+    (List.map origCommand2program defFuns)
+    defConstants
+    ((List.map origCommand2program linTypes))
+    funDecls
+    asserts''
+
+  ()
 
 
 let afds () =
