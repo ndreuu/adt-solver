@@ -13,7 +13,6 @@
         <Compile Include="Utils.fs" />
         <Compile Include="Z3Interpreter.fs" />
         <Compile Include="Approximation.fs" />
-        <Compile Include="Program.fs" />
         <Compile Include="Parser.fs" />
         <Compile Include="Process.fs" />
         <Compile Include="Redlog.fs" />
@@ -23,6 +22,7 @@
         <Compile Include="Solver.fs" />
         <Compile Include="Test.fs" />
         <Content Include="Tests\racer.horn.smt2" />
+        <Compile Include="Program.fs" />
     </ItemGroup>
 
     <ItemGroup>
