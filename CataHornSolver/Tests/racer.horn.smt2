@@ -9,7 +9,7 @@
 
 (assert (forall ((y list) (i Int)) (=> (length y i) (Inv y i i))))
 (assert (forall ((y list) (i Int) (j Int) (y1 list) (j1 Int) (tmp Int))
-  (=> (and (Inv y i j) (length y j) (= y (cons tmp y1)) (length y1 j1)) (Inv y1 (- i 1) j1))))
+  (=> (and (Inv y i j) (length y j) (= y (cons tmp y1)) (length y1 j1)) (Inv y1 (+ i (- 1)) j1))))
 (assert (forall ((y list) (i Int) (j Int))
   (=> (and (Inv y i j) (length y j) (< i 0)) false)))
 
