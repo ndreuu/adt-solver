@@ -22,6 +22,7 @@ let rec expr2redlogExpr =
     | Le (expr1, expr2) -> $"({expr2redlogExpr expr1} <= {expr2redlogExpr expr2})"
     | Ge (expr1, expr2) -> $"({expr2redlogExpr expr1} >= {expr2redlogExpr expr2})"
     | And exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
+    | Or exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
     | Not expr -> $"not {expr2redlogExpr expr}"
     | Implies (expr1, expr2) -> $"({expr2redlogExpr expr1}) impl ({expr2redlogExpr expr2})"
     | Var n -> n.ToString()
@@ -46,7 +47,7 @@ let rec expr2redlogExpr =
       $"all({{{args}}}, {expr2redlogExpr e})"
     | Ite (expr1, expr2, expr3) ->
       $"if ({expr2redlogExpr expr1}) then ({expr2redlogExpr expr2}) else ({expr2redlogExpr expr3})"
-
+    | otherwise  -> failwith $"{otherwise}" 
 let def2redlogProc =
   function
     | Def (name, args, body) ->

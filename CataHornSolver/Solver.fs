@@ -261,13 +261,14 @@ let emptyEnv argss =
 let proofTree hProof =
   let rec helper (HyperProof (_, hyperProofs, head)) =
     match hyperProofs with
-    | [] -> head |> smtExpr2expr |> fun x -> Node (x, [])
-      | _ -> Node (head |> smtExpr2expr, hyperProofs |> List.map helper)
+    | [] -> head |> smtExpr2expr |> (fun x -> Node (x, []))
+    | _ -> Node (head |> smtExpr2expr, hyperProofs |> List.map helper)
 
   helper hProof
 
 
-let random xs = xs |> List.item (Random().Next(xs.Length))
+let random xs =
+  xs |> List.item (Random().Next (xs.Length))
 
 let impliesAsserts clarify asserts name =
   asserts
@@ -676,8 +677,8 @@ let asdf () =
 let simplify (exprs: Expr list) : Expr list =
   List.map expr2smtExpr exprs
   // |> fun vs ->
-       // for v in vs do
-         // printfn $"{v}"
+  // for v in vs do
+  // printfn $"{v}"
 
   simplify' exprs
 // exprs
@@ -689,8 +690,9 @@ let resolvent =
     function
     | apps, expr when Map.empty <> apps ->
       let constraint = constraint expr
-      printfn $"expr:\n{expr}" 
-      printfn $"constraint:\n{constraint}" 
+      printfn $"expr:\n{expr}"
+      printfn $"constraint:\n{constraint}"
+
       let rec appArgs apps acc =
         function
         | Var _
@@ -715,7 +717,7 @@ let resolvent =
         | App (name, args) ->
           getApp name apps
           |> fun (args', apps') -> (acc @ (Array.map2 (fun x y -> Eq (x, y)) args args' |> Array.toList), apps')
-      
+
       printfn "------%O" <| appArgs apps constraint expr
       appArgs apps constraint expr |> fst
     | _ -> acc
@@ -754,6 +756,7 @@ let forAll expr =
 
 let clause mapTree =
   printfn $"{mapTree}"
+
   match resolvent mapTree with
   | And [||] -> failwith "<<<<<<!!!!!!!!!!!!!!!EMPTYCLAUSE"
   // | And [||] -> printfn "<<<<<<!!!!!!!!!!!!!!!EMPTYCLAUSE" ; Bool false
@@ -837,11 +840,13 @@ let decConst =
 
 let mapTreeOfLists f = Tree.fmap (List.map f)
 
+
+
 let rec assertsTreeNew asserts consts defs decs =
   function
   | Node (Apply (name, _), []) ->
     // printfn $">>>>>{asserts}"
-    name |> axiomAsserts id asserts |> fun x -> Node (x, [])
+    name |> axiomAsserts id asserts |> (fun x -> Node (x, []))
   | Node (Apply (name, _), ts) ->
     name
     |> impliesAsserts id asserts
@@ -850,11 +855,10 @@ let rec assertsTreeNew asserts consts defs decs =
   | _ -> failwith "123"
 
 let treeOfExprsNew =
-    mapTreeOfLists
-      (function
-        | Assert (ForAll (_, x)) -> x
-        | Assert (x) -> x
-        | _ -> failwith "Assert forall expected")
+  mapTreeOfLists (function
+    | Assert (ForAll (_, x)) -> x
+    | Assert (x) -> x
+    | _ -> failwith "Assert forall expected")
 
 
 
@@ -897,6 +901,7 @@ let appHeadNew =
 
 
 
+
 let uniqVarNames =
   let rec varNames acc =
     function
@@ -921,23 +926,22 @@ let uniqVarNames =
     | Apply (_, exprs) -> List.fold varNames acc exprs
     | Ite (expr1, expr2, expr3) -> List.fold varNames acc [ expr1; expr2; expr3 ]
 
-  let varNamesMany (exprs: Expr list) =
-    List.map (varNames Set.empty) exprs
-  
+  let varNamesMany (exprs: Expr list) = List.map (varNames Set.empty) exprs
+
   let rename i exprs =
     Set.fold (fun (acc, i) n -> (renameVar n $"x{i}" acc, i + 1)) (exprs, i)
 
   let renameMany idx (exprs: Expr list) (names: Set<Name> list) =
     let exprsNames = List.zip exprs names
-    
+
     List.foldBack
-      (fun (expr, names) (acc, i)  ->
+      (fun (expr, names) (acc, i) ->
         let expr', i' = (rename i expr names)
         (expr' :: acc), i')
       exprsNames
       ([], idx)
-      
-    
+
+
   let rec numLine i (line: Expr list tree list) =
     List.foldBack
       (fun (x: Expr list tree) (acc, i) ->
@@ -954,9 +958,10 @@ let uniqVarNames =
   function
   | Node (x, ts) ->
     let x', i = varNamesMany x |> renameMany 0 x
-    numLine i ts
-    // let ts' = numLine i ts |> fst
-    // Node (x', ts')
+    // numLine i ts
+    Node (x', numLine i ts |> fst)
+// let ts' = numLine i ts |> fst
+// Node (x', ts')
 
 
 let notAppRestrictions =
@@ -971,6 +976,7 @@ let notAppRestrictions =
     | Neg _
     | Mod _
     | Mul _
+    | Subtract _
     | Bool _ -> acc
     | Eq _
     | Lt _
@@ -985,51 +991,247 @@ let notAppRestrictions =
 
   helper []
 
-
-// let argsBind appName x y =
-  // match x, y with
-  // | Implies (), _ -> x
-  
-let resolventNew (tree: Expr list tree) =
-  let helper acc =
+let appRestrictions =
+  let rec helper acc =
     function
-      | Node ((xs: Expr list), ts) ->
-        let _ =
-          List.fold
-            (fun acc x ->
-              List.fold
-                (fun acc' x' -> acc')
-                acc
-                (List.map Tree.value ts))
-            []
-            xs
-        acc
-      | Node (xs, []) -> acc
-  helper []
-  
+    | Var _
+    | Int _
+    | Apply _
+    | Ite _
+    | Add _
+    | Neg _
+    | Mod _
+    | Mul _
+    | Subtract _
+    | Bool _ 
+    | Eq _
+    | Lt _
+    | Gt _
+    | Le _
+    | Ge _ -> acc
+    | App _ as app -> app :: acc
+    | And exprs -> Array.fold helper acc exprs
+    | Or exprs -> Array.fold helper acc exprs
+    | Not expr
+    | ForAll (_, expr)
+    | Implies (expr, _) -> helper acc expr
 
+  helper []
+
+let argsBind x ys =
+  let bind = List.map2 (fun x y -> Eq (x, y))
+
+  match x with
+  | App (name, args) when args |> Array.length > 0 ->
+    ys
+    |> List.fold
+         (fun acc y ->
+           match y with
+           | App (n, args') when n = name -> (bind (Array.toList args) (Array.toList args')) :: acc
+           | _ -> acc)
+         []
+    |> function
+      | [ x ] -> x
+      | xs ->
+        xs
+        |> List.rev
+        |> List.map (function
+          | [ x ] -> x
+          | xs -> And (xs |> List.toArray))
+        |> function
+          | xs when xs |> List.length > 1 -> [ Or (xs |> List.toArray) ]
+          | otherwise -> otherwise
+  | _ -> []
+
+let conclusion =
+  function
+  | Implies (_, expr) -> expr
+  | otherwise -> otherwise
+
+let collectApps (kids: Expr list list) =
+  let add k v map =
+    map
+    |> Map.change k (function
+      | Some vs -> Some (v :: vs)
+      | None -> Some [ v ])
+
+  kids
+  |> List.map (List.map conclusion)
+  |> List.fold
+       (fun acc heads ->
+         match heads with
+         | App (name, _) :: _ as apps -> acc |> add name apps
+         | _ -> acc)
+       Map.empty
+  |> Map.map (fun _ v -> List.rev v)
+
+let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
+  let get k map =
+    (map |> Map.find k |> List.head,
+     map
+     |> Map.change k (function
+       | Some [ _ ]
+       | Some []
+       | None -> None
+       | Some (_ :: vs) -> Some vs))
+
+  printfn $"-----------{kids.Length}"
+  for v in kids do
+    printfn $"--->{v}"
+  
+  appsOfSingleParent
+  |> List.fold
+       (fun (acc, apps as otherwise) x ->
+         match x with
+         | App (name, _) ->
+           let ys, apps' = apps |> get name
+           (acc @ (argsBind x ys), apps')
+         | _ -> otherwise)
+       ([], collectApps kids)
+  |> fst
+  |> function
+    | [ x ] -> x
+    | xs ->
+      xs  
+      |> List.toArray
+      |> And
+
+let argsBinds appsOfParents kids =
+  appsOfParents
+  |> List.fold
+       (fun acc parent ->
+          (singleArgsBinds parent kids) :: acc)
+       []
+  |> List.rev
+  |> function
+    | [ x ] -> x
+    | xs ->
+      xs 
+      |> List.toArray
+      |> Or
+
+
+
+
+let resolventNew =
+  let rec helper acc =
+    function
+    | Node (_, []) -> acc
+    | Node (xs: Expr list, ts) ->
+      let kids = List.map Tree.value ts
+      let notAppRestrictions = List.map notAppRestrictions xs |> List.fold (@) [] |> function | [] -> [] | [ x ] -> [ x ] | xs  -> [ xs |> List.toArray |> And ]
+      let appRestrictions = List.map appRestrictions xs
+      
+      // argsBinds appRestrictions kids :: notAppRestrictions :: acc
+      
+      ts |> List.fold (fun (acc: Expr list) (t: Expr list tree) -> helper acc t) (argsBinds appRestrictions kids :: notAppRestrictions @ acc) 
+      
+      // let _ =
+        // List.fold
+          // (fun acc x ->
+            // List.fold
+              // (fun acc' x' -> acc') acc (let a = List.map Tree.value ts in a)) [] xs
+
+      
+
+  helper [] >> List.rev
+
+Node ([Implies (App ("diseqInt", [|Var "x0"; Var "x0"|]), Bool false)], [])
+
+let recoveryFacts asserts tree =
+  let add k v map =
+    map
+    |> Map.change k (function
+      | Some vs -> Some (v :: vs)
+      | None -> Some [ v ])
+  
+  let get k map =
+    let v =
+      map |> Map.tryFind k
+      |> function Some xs -> xs |> List.head |> Some | None -> None  
+    (v,
+     map |> Map.change k (
+            match v with
+            | None -> fun _ -> None
+            | Some _ ->
+              function
+                | Some [ _ ]
+                | Some []
+                | None -> None
+                | Some (_ :: vs) -> Some vs))
+  
+  match tree with
+  | Node ([Implies (body, Bool false)], ts) ->
+    let apps = appRestrictions body |> List.fold (fun acc x -> match x with App (name, _) -> name::acc | _ -> acc) []
+    let kids = List.map Tree.value ts  
+    let map =
+      kids
+      |> List.map (List.map conclusion)
+      |> List.fold
+           (fun acc heads ->
+             match heads with
+             | App (name, _) :: _ as apps -> acc |> add name apps
+             | _ -> acc)
+           Map.empty
+      |> Map.map (fun _ v -> List.rev v)
+    
+    let lost = List.fold (fun (acc, map) name -> map |> get name |> function Some _, map' -> acc, map' | None, map' -> name::acc, map') ([], map) apps |> fst
+    let foundApps = lost |> List.map (fun name -> axiomAsserts id asserts name)
+    
+    
+    // let conclusionsOfKids =
+      // List.map (List.head >> conclusion) kids
+    
+    let recoveredKids =
+      foundApps
+      |> List.fold
+           (fun trees kid ->
+              let eKid = kid |> List.map (function Assert (ForAll (_, expr)) | Assert expr -> expr ) 
+              Node (eKid, []) :: trees)
+           ts
+    
+    Node ([Implies (body, Bool false)], recoveredKids)
+  | _ -> failwith "?????"
+  
+  
 let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
   printfn $"prooftree\n{proofTree hyperProof}"
+
   let treeOfExprs =
     proofTree hyperProof
     |> assertsTreeNew asserts defConsts defFuns decFuns
     |> treeOfExprsNew
-    |> fun x -> printfn $"{x}"; uniqVarNames x
+    |> recoveryFacts asserts
+    |> fun x ->
+      printfn $"{x}"
+      x
+    |> uniqVarNames
+    |> fun x ->
+         printfn $"TREE::\n\n"
+         printfn $"{x}"
+         x
+    |> resolventNew
+    |> fun vs ->
+      printfn "resolventNewresolventNew"
+      for v in vs do printfn $"{v}"
+      vs
+    |> List.toArray |> And 
   // let updatedVarNames = exprTree progTree |> updVars//??
 
   // let bodiesHeads = Tree.zip (appBodyNew treeOfExprs) (appHeadNew treeOfExprs)
-  
-  
-  
+
+
+
   // let bodiesHeads = Tree.zip (appBody progTree) (appHead progTree)
-  
-  
+
+
   printfn $"treeOfExprs::\n{treeOfExprs}"
+  treeOfExprs
   // printfn $"bodiesHeads::\n{bodiesHeads}"
+
+
   
-  
-  ()
-  
+
 
 
 let hyperProof2clause defConsts decFuns hyperProof asserts =
@@ -1037,13 +1239,13 @@ let hyperProof2clause defConsts decFuns hyperProof asserts =
   printfn $"prooftree\n{proofTree hyperProof}"
   let progTree = proofTree hyperProof |> assertsTree asserts defConsts defFuns decFuns
   printfn "<>%O" <| progTree
-  let updatedVarNames = exprTree progTree |> updVars//??
+  let updatedVarNames = exprTree progTree |> updVars //??
   let bodiesHeads = Tree.zip (appBody updatedVarNames) (appHead updatedVarNames)
   printfn $"bodiesHeads\n{bodiesHeads}"
   printfn $"mapAppsTree bodiesHeads\n{mapAppsTree bodiesHeads}"
   //here only one assert but should be many
   let mapTree = Tree.zip (mapAppsTree bodiesHeads) updatedVarNames
-  printfn "mapTree\n%O\n" <| mapTree 
+  printfn "mapTree\n%O\n" <| mapTree
   clause mapTree
 
 
@@ -1316,22 +1518,22 @@ let asdsdf () =
        // printfn "%O" y
 
        // for x in xs do
-         // printfn $"{x}"
+       // printfn $"{x}"
 
-  // branching shiza listDefFunsShiza
-  // |> fun (cs, xs, ys) ->
-  //     for c in cs do
-  //       printfn $"{c}"
-  //     for y in ys do
-  //       printfn $"{y}"
-  //     for x in xs do
-  //       printfn $"{x}"
-  //
+       // branching shiza listDefFunsShiza
+       // |> fun (cs, xs, ys) ->
+       //     for c in cs do
+       //       printfn $"{c}"
+       //     for y in ys do
+       //       printfn $"{y}"
+       //     for x in xs do
+       //       printfn $"{x}"
+       //
 
-  // addBranch shiza ((Array.ofList listDefFunsShiza)[1])
-  // |> fun (_, _, x) -> printfn "%O" x
+       // addBranch shiza ((Array.ofList listDefFunsShiza)[1])
+       // |> fun (_, _, x) -> printfn "%O" x
 
-  ()
+       ()
 
 // let ite expr =
 // expr
@@ -1377,41 +1579,42 @@ let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof
   match proof with
   | [ Command (Proof (hyperProof, _, _)) ] ->
     printfn "%O" hyperProof
-    let clause = hyperProof2clause constDefs funDecls hyperProof asserts
-
-    // printfn $"{clause}"
+    // let clause = hyperProof2clause constDefs funDecls hyperProof asserts
+    let clause = hyperProof2clauseNew constDefs funDecls hyperProof asserts |> fun x -> Implies (x, Bool false) |> forAll |>  function  ForAll ([||], And [||]) ->failwith "!" | sdf  -> sdf 
+    printfn $"{clause}"
+    
     printfn $"clause:: {expr2smtExpr clause}"
 
     // printfn "SOLVING"
 
     // File.AppendAllText (
-      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
-      // $"{Redlog.redlogQuery (def2decVars constrDefs) clause}\n\n"
+    // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+    // $"{Redlog.redlogQuery (def2decVars constrDefs) clause}\n\n"
     // )
 
     // File.AppendAllText (
-      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
-      // $"--------------------\n\n\n"
+    // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+    // $"--------------------\n\n\n"
     // )
 
     let redlogResult = redlog (def2decVars constrDefs) clause
 
     // File.AppendAllText (
-      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
-      // $"{program2originalCommand redlogResult}\n\n"
+    // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+    // $"{program2originalCommand redlogResult}\n\n"
     // )
 
     // File.AppendAllText (
-      // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
-      // $"--------------------\n\n\n"
+    // "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+    // $"--------------------\n\n\n"
     // )
 
     // for v in List.map program2originalCommand ((constDefs |> List.map decConst) @ pushed @ [ redlogResult ]) do
-      // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+    // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
 
     // File.AppendAllText (
-      // "/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2",
-      // $"--------------------\n\n\n"
+    // "/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2",
+    // $"--------------------\n\n\n"
     // )
 
     let pushed' = pushed @ [ redlogResult ]
@@ -1431,7 +1634,7 @@ let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof
       printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
 
       // for v in List.rev defConsts' do
-        // printfn $"{v}"
+      // printfn $"{v}"
 
 
       (env', defConsts', constrDefs, pushed', mode)
@@ -1462,7 +1665,7 @@ let rec learner (solver: Solver) env asserts constDefs constrDefs funDecls proof
     | UNSAT ((env, _)) ->
       // failwith "1234"
       // for v in List.map program2originalCommand constrDefs do
-        // printfn "constrDef:: %O" v
+      // printfn "constrDef:: %O" v
 
       // for v in List.map program2originalCommand funDefs do
       // printfn "funDef:: %O" v
@@ -1541,8 +1744,8 @@ let unsat env (solver: Solver) =
         // id
         (fun _ ->
           // File.AppendAllText (
-            // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
-            // $"{solver.Proof.ToString ()}\n\n"
+          // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+          // $"{solver.Proof.ToString ()}\n\n"
           // )
           printfn "%O" <| solver.Proof.ToString ()
           ())
@@ -1550,8 +1753,8 @@ let unsat env (solver: Solver) =
       // ("/home/andrew/adt-solver/many-branches-search/dbg/proof.smt2", $"{solver.Proof.ToString ()}\n\n\n") ))
       |> fun prettyProof ->
            // File.AppendAllText (
-             // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
-             // $"PRETTY:\n{prettyProof.ToString ()}\n\n"
+           // "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+           // $"PRETTY:\n{prettyProof.ToString ()}\n\n"
            // )
 
            // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/proof", $"--------------------\n\n\n")
@@ -1603,10 +1806,11 @@ let rec teacher funDefs solverLearner envLearner constDefs constrDefs funDecls (
     | UNSAT proof ->
       for v in List.map program2originalCommand constDefs do
         printfn $"{v}"
+
       let envLearner', defConsts', defConstrs', pushed', mode =
         learner solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed mode
-      
-      
+
+
       for v in List.map program2originalCommand defConstrs' do
         printfn $"{v}"
 
@@ -1646,7 +1850,7 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
   // Eq (Var "c_3", Int 1) |] ) ]
 
   // for v in List.map program2originalCommand startCmds do
-    // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+  // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
 
   // File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"--------------------\n\n\n")
 
@@ -1668,12 +1872,13 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
     | SAT (env'', defConsts') ->
       // printfn $"{defConsts'}"
       printfn "<<<>>>><<>>>%O" <| solverLearner.Assertions.Length
-      
+
       // for v in List.map program2originalCommand constrDefs do
-        // printfn "v111111 %O" v
+      // printfn "v111111 %O" v
       // teacher solverLearner env'' defConsts' funDefs funDecls asserts startCmds ZeroOne
-      solverLearner.Pop ()
-      teacher funDefs solverLearner envDecConsts constDefs constrDefs funDecls asserts startCmds ZeroOnes
+      // solverLearner.Pop ()
+      teacher funDefs solverLearner env'' defConsts' constrDefs funDecls asserts startCmds ZeroOnes
+      // teacher funDefs solverLearner envDecConsts constDefs constrDefs funDecls asserts startCmds ZeroOnes
     | UNSAT _ -> failwith "?"
 // teacher solverLearner envDecConsts constDefs funDefs funDecls asserts startCmds ZeroOnes
 
@@ -1771,56 +1976,126 @@ let cc () =
   // let defFuns, liaTypes, defConstants, declFuns, asserts = approximation file
   // let toPrograms = List.map origCommand2program
   let proof =
-    HyperProof
-      (Asserted (Hence (BoolConst false, BoolConst false)),
-       [HyperProof
-          (Asserted (Hence (BoolConst false, BoolConst false)),
-           [HyperProof
-              (Asserted (Hence (BoolConst false, BoolConst false)),
-               [],
-               smtExpr.Apply (UserDefinedOperation ("diseqInt", [IntSort; IntSort], BoolSort),
-                  [Number 1L; Number 0L]))],
-           smtExpr.Apply (UserDefinedOperation ("diseqInt", [IntSort; IntSort], BoolSort), [Number 1L; Number 1L]))],
-       BoolConst false)
+    HyperProof (
+      Asserted (Hence (BoolConst false, BoolConst false)),
+      [ HyperProof (
+          Asserted (Hence (BoolConst false, BoolConst false)),
+          [ HyperProof (
+              Asserted (Hence (BoolConst false, BoolConst false)),
+              [],
+              smtExpr.Apply (
+                UserDefinedOperation ("diseqInt", [ IntSort; IntSort ], BoolSort),
+                [ Number 1L; Number 0L ]
+              )
+            ) ],
+          smtExpr.Apply (UserDefinedOperation ("diseqInt", [ IntSort; IntSort ], BoolSort), [ Number 1L; Number 1L ])
+        ) ],
+      BoolConst false
+    )
 
-  
+
   let proofList =
-    HyperProof
-      (Asserted (Hence (BoolConst false, BoolConst false)),
-       [HyperProof
-          (Asserted (Hence (BoolConst false, BoolConst false)), [],
-           smtExpr.Apply
-             (UserDefinedOperation ("last", [IntSort; IntSort], BoolSort),
-              [Number 0L;
-               smtExpr.Apply (ElementaryOperation ("-", [IntSort], IntSort), [Number 2L])]));
-        HyperProof
-          (Asserted (Hence (BoolConst false, BoolConst false)), [],
-           smtExpr.Apply
-             (UserDefinedOperation ("app", [IntSort; IntSort; IntSort], BoolSort),
-              [Number 1L; Number 0L; Number 0L]));
-        HyperProof
-          (Asserted (Hence (BoolConst false, BoolConst false)),
-           [HyperProof
-              (Asserted (Hence (BoolConst false, BoolConst false)), [],
-               smtExpr.Apply
-                 (UserDefinedOperation ("last", [IntSort; IntSort], BoolSort),
-                  [smtExpr.Apply
-                     (ElementaryOperation ("-", [IntSort], IntSort), [Number 1L]);
-                   smtExpr.Apply
-                     (ElementaryOperation ("-", [IntSort], IntSort), [Number 3L])]))],
-           smtExpr.Apply
-             (UserDefinedOperation ("last", [IntSort; IntSort], BoolSort),
-              [Number 0L;
-               smtExpr.Apply (ElementaryOperation ("-", [IntSort], IntSort), [Number 3L])]))],
-       BoolConst false)
-    
+    HyperProof (
+      Asserted (Hence (BoolConst false, BoolConst false)),
+      [ HyperProof (
+          Asserted (Hence (BoolConst false, BoolConst false)),
+          [],
+          smtExpr.Apply (
+            UserDefinedOperation ("last", [ IntSort; IntSort ], BoolSort),
+            [ Number 0L
+              smtExpr.Apply (ElementaryOperation ("-", [ IntSort ], IntSort), [ Number 2L ]) ]
+          )
+        )
+        HyperProof (
+          Asserted (Hence (BoolConst false, BoolConst false)),
+          [],
+          smtExpr.Apply (
+            UserDefinedOperation ("app", [ IntSort; IntSort; IntSort ], BoolSort),
+            [ Number 1L; Number 0L; Number 0L ]
+          )
+        )
+        HyperProof (
+          Asserted (Hence (BoolConst false, BoolConst false)),
+          [ HyperProof (
+              Asserted (Hence (BoolConst false, BoolConst false)),
+              [],
+              smtExpr.Apply (
+                UserDefinedOperation ("last", [ IntSort; IntSort ], BoolSort),
+                [ smtExpr.Apply (ElementaryOperation ("-", [ IntSort ], IntSort), [ Number 1L ])
+                  smtExpr.Apply (ElementaryOperation ("-", [ IntSort ], IntSort), [ Number 3L ]) ]
+              )
+            ) ],
+          smtExpr.Apply (
+            UserDefinedOperation ("last", [ IntSort; IntSort ], BoolSort),
+            [ Number 0L
+              smtExpr.Apply (ElementaryOperation ("-", [ IntSort ], IntSort), [ Number 3L ]) ]
+          )
+        ) ],
+      BoolConst false
+    )
+
   printfn $"{proofList}"
   hyperProof2clauseNew dConsts dDeclFuns proof [dA2; dA1; dA3; dA4]
   // hyperProof2clauseNew listConst listDeclFuns proofList [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
 
+  // x1 = s x4 or x1 = Z
+
+  // let app = App ("diseqInt", [| Var "x1"; Var "x2" |])
+  //
+  // let apps =
+  //   [ App ("diseqInt", [| Apply ("S", [ Var "x4" ]); Apply ("Z", []) |])
+  //     App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x3" ]) |]) ]
+  //
+  // argsBind app apps |> printfn "%O"
+  //
+  // let map =
+  //   [ [ App ("diseqInt", [| Apply ("S", [ Var "x4" ]); Apply ("Z", []) |])
+  //       App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x3" ]) |]) ]
+  //     [ Implies (
+  //         And
+  //           [| Not (Eq (Var "x7", Apply ("nil", [])))
+  //              App ("last", [| Var "x7"; Var "x5" |]) |],
+  //         App ("last", [| Apply ("cons", [ Var "x6"; Var "x7" ]); Var "x5" |])
+  //       ) ] ]
+  //   |> collectApps
+  // // |> fun x -> x |> printfn "...\n%O"; x
+  //
+  // let get k map =
+  //   (map |> Map.find k |> List.head,
+  //    map
+  //    |> Map.change k (function
+  //      | Some [ _ ]
+  //      | Some []
+  //      | None -> None
+  //      | Some (_ :: vs) -> Some vs))
+  //
+  // let a = App ("diseqInt", [| Var "x1"; Var "x2" |])
+  //
+  // let v, map' = get "diseqInt" map
+  // argsBind a v |> printfn "%O"
+
+
+  
+  
+  // argsBinds
+  //   [ [ App ("app", [| Var "x1"; Var "x2"; Var "x3" |])
+  //       App ("app", [| Apply ("nil", []); Var "x4121"; Var "x5221" |]) ]
+  //
+  //     [ App ("app", [| Var "x6"; Var "x7"; Var "x8" |])
+  //       App ("app", [| Apply ("nil", []); Var "x9121"; Var "xu221" |]) ]
+  //
+  //     ]
+  //   [ [ App ("app", [| Apply ("nil", []); Var "x11"; Var "x21" |])
+  //       App ("app", [| Apply ("nil", []); Var "x9345"; Var "x229" |]) ]
+  //     [ App ("app", [| Apply ("nil", []); Var "x9"; Var "x9" |]) ] ]
+  // |> fun x -> printfn ";;;\n%O" x
+
+  
+  
+  
   ()
-  
-  
+
+
 let run file =
   let defFuns, liaTypes, defConstants, declFuns, asserts = approximation file
   // for v in  linTypes do
@@ -1861,31 +2136,27 @@ let run file =
 
   for v in asserts'' do
     printfn $"{v}"
-  
+
   let toPrograms = List.map origCommand2program
 
-  solver
-    (toPrograms defFuns)
-    defConstants
-    (toPrograms liaTypes)
-    funDecls
-    asserts''
+  solver (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
 
 
 let aa () =
-  let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/prod_prop_25.smt2"
+  let file =
+    "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/prod_prop_25.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/isaplanner_prop_16.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_regexp_deluxe_FromToConj_difficult.smt2"
   run file
-  
-  
+
+
   ()
 
 
 let afds () =
-  let file = "/home/andrew/adt-solver/many-branches-search/run/false_graph_d5.smt2"
+  // let file = "/home/andrew/adt-solver/many-branches-search/run/false_graph_d5.smt2"
 
-  // let file = "/home/andrew/adt-solver/many-branches-search/run/isaplanner_prop_16.smt2"
+  let file = "/home/andrew/adt-solver/many-branches-search/run/isaplanner_prop_16.smt2"
 
   // let file = "/home/andrew/adt-solver/many-branches-search/run/test.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/TIP.not-only-nat-constructors/isaplanner_prop_16.smt2"
@@ -2072,9 +2343,9 @@ let chck () =
 
     solver [] consts defFns decFns asserts
 
-  run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  // run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  // run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
+  // run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
+// run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
+  run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
 
 // solve listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
 // solve shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
