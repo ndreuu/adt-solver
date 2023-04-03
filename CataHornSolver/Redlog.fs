@@ -92,6 +92,7 @@ let runRedlog definitions formula =
     
   let result = execute "redcsl" $"-w- {file}"
   let r = Regex "sth := "
+  printfn $"rrrrrrrrrrr\n{redlogQuery definitions formula}"
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
   subStr
