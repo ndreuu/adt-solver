@@ -2535,6 +2535,47 @@ let aa () =
   ()
 
 
+module AssertsMinimization =
+  let bodyAppNames =
+    let rec helper acc = 
+      function
+        | Implies (expr1, _) -> helper acc expr1 
+        | App (name, _) -> name::acc
+        | ForAll (_, expr) | Not expr -> helper acc expr
+        | And args
+        | Or args -> Array.fold helper acc args
+        | _ -> acc
+
+    helper []
+    
+  let rec assertsMinimize (asserts: Program list) query =
+    let rec helper used queue acc =
+      List.fold
+        (fun (acc, used) n ->
+          let facts = axiomAsserts id asserts n
+          let implies = impliesAsserts id asserts n
+          let used' = used |> Set.add n
+          let q' =
+            List.fold
+              (fun acc impl ->
+                match impl with
+                | Assert x -> acc @ (List.filter (fun n -> Set.contains n used' |> not) (bodyAppNames x))
+                | _ -> acc)
+              []
+              implies
+          let acc', used'' = helper used' q' []
+          (acc @ acc' @ facts @ implies, used'')) 
+        (acc, used)
+        queue
+    match query with
+    | Assert x ->
+      let q = bodyAppNames x 
+      helper Set.empty q []
+    // | _ -> []    
+    
+  
+  
+
 let afds () =
   // let file = "/home/andrew/adt-solver/many-branches-search/run/false_graph_d5.smt2"
 
@@ -2728,8 +2769,12 @@ let chck () =
 
   // run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
   // run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
-
+  // run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
+  AssertsMinimization.assertsMinimize [ dA2; dA1; dA3; dA4 ] dA4
+  |> fun xs ->
+    for x in fst xs do
+      printfn $"{x}"             
+  
 // solve listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
 // solve shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
 // solve dConsts dDefFuns dDeclFuns [ dA2;dA1;     dA3; dA4 ] []
