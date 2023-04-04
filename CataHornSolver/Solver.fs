@@ -1344,7 +1344,7 @@ module Simplifier =
                 match arg with
                 | Or args' ->
                   Array.toList args'
-                  |> List.map (rmNestedAnds >> rmNestedOrs  )
+                  |> List.map (rmNestedAnds >> rmNestedOrs)
                   |> fun x -> x @ acc
                 | otherwise -> (rmNestedAnds >> rmNestedOrs <| otherwise)::acc)
              []
@@ -1376,7 +1376,13 @@ module Simplifier =
       | otherwise -> otherwise     
   
   let normalize = fun x -> printfn $"===\n{expr2smtExpr x}"; rmNestedAnds x |> rmEmpty
-    
+  
+  let rec rmEqs =
+    function
+      | And args -> Array.filter (function | Eq (x, y) when x = y -> false | _ -> true) args |> Array.map rmEqs |> And
+      | Or args -> Array.filter (function | Eq (x, y) when x = y -> false | _ -> true) args |> Array.map rmEqs |> Or
+      | otherwise -> otherwise
+      
   let private eqVarConditions  =
     let rec helper acc = 
       function
@@ -1447,8 +1453,16 @@ module Simplifier =
           printfn $">>>{xs}"
         vss
        |> substitute expr
+        |> fun x ->
+          normalize x |> expr2smtExpr |> printfn "<<==========%O"
+          x
+      |> rmEqs
       |> normalize
-  
+      |> fun x ->
+        printfn "========>>%O" <| expr2smtExpr x 
+        x
+        
+        
 let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
   printfn $"prooftree\n{proofTree hyperProof}"
   let treeOfExprs =
@@ -1469,7 +1483,7 @@ let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
   let clause =
     recoveredTree
     |> uniqVarNames
-    |> resolventNew |> List.toArray |> And |> Simplifier.simplify
+    |> resolventNew |> List.toArray |> And
 
   
   // let treeOfExprs =
