@@ -1483,7 +1483,7 @@ let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
   let clause =
     recoveredTree
     |> uniqVarNames
-    |> resolventNew |> List.toArray |> And
+    |> resolventNew |> List.toArray |> And |> Simplifier.normalize
 
   
   // let treeOfExprs =
