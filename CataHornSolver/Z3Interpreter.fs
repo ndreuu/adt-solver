@@ -4,6 +4,7 @@ open System
 open System.Collections.Generic
 open Microsoft.FSharp.Collections
 open Microsoft.Z3
+open NUnit.Framework
 open SMTLIB2.Prelude
 open IntOps
 
@@ -284,6 +285,7 @@ module Interpreter =
         env.ctxSlvr.MkApp (decFun, args)
       | Apply (n, [ x; y ]) when n = "distinct" -> eval_expr env (Not (Eq (x, y)))
       | Apply (n, vs) ->
+        printfn $"{n}"
         env.ctxFuns
         |> Map.find n
         |> fun (args, body) ->
@@ -382,12 +384,15 @@ module Interpreter =
     | SAT of 'a
     | UNSAT of 'b
   
-  type z3solve<'a> =
+  type z3solve<'a, 'b> =
     { env: Env
       solver: Solver
       unsat: Env -> Solver -> 'a
-      sat: Env -> Solver -> 'a
+      sat: Env -> Solver -> 'b
       cmds: Program list }
+  
+
+  
   
   let z3solve x =
     let env,  _ = evalCmds x.env x.solver (x.cmds)
@@ -408,45 +413,38 @@ module Interpreter =
 
 
   module MaxSat =
-    let hardConstants (env: Env) (gs: _ list list) =
-      let softNames = gs |> List.fold (fun acc g -> acc @ g) []
-        
-      env.ctxVars |> Map.filter (fun k _ -> softNames |> List.contains k |> not)
-  
-    let next (xs: Name list ) (gs: Name list list) =
-      let contains (xs: Name list) (g: Name list) = xs |> List.fold (fun acc x -> acc || List.contains x g) false 
-        
-      gs
-      |> List.fold
-           (fun (acc: _ list list) (g: _ list) ->
-             match g with
-             | _ when g |> contains xs -> List.tail g :: acc
-             | _ -> g :: acc)
-           []
-      |> List.rev
-  
-    let activeConstraints gs =
-      gs
-      |> List.fold (fun acc g -> match g with [] -> acc | _ -> List.head g :: acc) []
-      |> List.rev
+    type z3SoftSolve<'a> =
+      { env: Env
+        solver: Solver
+        unsat: Env -> Solver -> 'a
+        sat: Env -> Solver -> 'a
+        cmds: Program list
+        actives: Program list }
 
+    let hardConstants (env: Env) =
+      env.ctxVars |> Map.filter (fun k _ -> k.Contains "soft" |> not)
+ 
     let model' (env: Env) (solver: Solver) softGroups =
-      hardConstants env softGroups
+      hardConstants env 
+      |> fun xs ->
+        for x in xs do
+          printfn $"A:\n{x}"
+        xs
       |> Map.toList
       |> List.fold
           (fun acc (n, v) ->
-            printfn $"{n}"
+            printfn $">>>{n}"
             (n, solver.Model.Double (solver.Model.Eval (v, true)) |> int64) :: acc)
           []
       |> List.map (fun (n, i) -> Def (n, [], Int i))
     
-    let z3softSolver' x softNames =
+    let z3softSolver' (x: z3solve<_, _>) softNames =
       let env, _ = evalCmds x.env x.solver x.cmds
       let softExprs =
         softNames
          |> List.map
               (fun n ->
-                x.env.ctxVars
+                env.ctxVars
                 |> Map.find n)  
           |> List.toArray
       
@@ -454,73 +452,119 @@ module Interpreter =
       | Status.SATISFIABLE ->
         SAT <| x.sat env x.solver
       | Status.UNSATISFIABLE ->
-        printfn "!!!"
-        for v in x.solver.UnsatCore do
-          printfn $"{v.ToString()}"
         UNSAT <| x.unsat env x.solver
+
+    let rmElements elements xs = List.fold (fun acc e -> acc |> List.filter ((<>) e)) xs elements    
+
+    let decls = List.map (fun n -> DeclConst (n, Boolean))
+    let names = List.fold (fun acc x -> match x with | DeclConst (n, Boolean) -> n :: acc | _ -> acc) [] >> List.rev
     
-    let z3softSolver env (solver: Solver) cmds gs =
-      let decls = List.map (fun n -> DeclConst (n, Boolean))
-        
-      let names =
-        List.fold
-          (fun acc x -> match x with DeclConst (n, _) -> n :: acc | _ -> acc) []
-        >> List.rev
-      
-      let rec helper x gs = 
-        match activeConstraints gs |> z3softSolver' x with
-        | SAT vs -> SAT vs
-        | UNSAT [] -> UNSAT [] 
-        | UNSAT core -> next (names core) gs |> helper x
-      
-      helper
+    let rec z3softSolver env solver cmds (actives: Program list) =
+      z3softSolver'
         { env = env
           solver = solver
-          unsat = fun _ solver -> solver.UnsatCore |> Array.map (sprintf "%O") |> Array.toList |> decls
-          sat = fun env solver -> model' env solver gs
+          unsat = fun env solver ->
+            (env, solver.UnsatCore |> Array.toList |> List.map (fun x -> DeclConst (x.ToString(), Boolean)))
+          sat = fun env solver -> (env, actives, model' env solver (names actives))
           cmds = cmds }
-
-        gs
-      
-    
+        (names actives)
+      |> function
+        | SAT (env, core, model) ->
+          printfn $"SAT {core}"
+          printfn $"{model}"
+          SAT (env, core, model)
+        | UNSAT (env', []) ->
+          UNSAT (env', [])
+        | UNSAT (env', core) ->
+          let actives' = rmElements core actives
+          z3softSolver env' solver cmds actives'
+          
 let aaa () =
   let cmds =
       [ DeclConst ("soft1", Boolean)
         DeclConst ("soft2", Boolean)
-        DeclConst ("soft3", Boolean)
-        DeclConst ("soft4", Boolean)
         
         DeclConst ("x", Integer)
         DeclConst ("y", Integer)
         
         Assert (And [| Apply ("distinct", [ Var "x"; Int 0 ]); Apply ("distinct", [ Var "x"; Int 1 ]) |])
-        Assert (And [| Apply ("distinct", [ Var "y"; Int 0 ]); Apply ("distinct", [ Var "y"; Int 1 ]) |])
+        Assert (And [| Apply ("distinct", [ Var "y"; Int 0 ]); Apply ("distinct", [ Var "y"; Int 0 ]) |])
         
-        Assert (Implies (Var "soft1", Eq(Var "x", Int 0)))
-        Assert (Implies (Var "soft2", Eq(Var "x", Int 1)))
-        Assert (Implies (Var "soft3", Eq(Var "y", Int 0)))
-        Assert (Implies (Var "soft4", Eq(Var "y", Int 1))) ]
+        Assert (Implies (Var "soft1", Or [| Eq(Var "x", Int 0); Eq(Var "x", Int 1) |] ))
+        Assert (Implies (Var "soft2", Or [| Eq(Var "y", Int 0); Eq(Var "y", Int 1) |])) ]
   
   let emptyEnv = newEnv []
   let solver = emptyEnv.ctxSlvr.MkSolver "NIA"
   let softGroups =
-    [ ["soft1"; "soft2"]
-      ["soft3"; "soft4"] ]
+    [  "soft2" ]
     
-  let env, solver =
-    Interpreter.z3solve
-      { env = emptyEnv
+  Interpreter.MaxSat.z3softSolver'
+    { env = emptyEnv
+      solver = solver
+      unsat = fun env solver ->
+        (env, solver.UnsatCore |> Array.toList)
+      sat = fun env solver -> (env, [])
+      cmds = cmds }
+    softGroups
+  |> function
+    | Interpreter.UNSAT (_, core) -> printfn $"UNSAT {core}"
+    | Interpreter.SAT (_, core) -> printfn $"SAT> {core}"
+  
+  let rmElements elements xs =
+    List.fold (fun acc e -> acc |> List.filter ((<>) e)) xs elements
+  
+  printfn $"{rmElements [1;2;3] [1;2;3;4;5]}"
+  
+  let rec helper env solver cmds actives =
+    Interpreter.MaxSat.z3softSolver'
+      { env = env
         solver = solver
-        unsat = fun env solver -> (env, solver)
-        sat = fun env solver -> (env, solver)
+        unsat = fun env solver ->
+          (env, solver.UnsatCore |> Array.toList |> List.map (fun x -> x.ToString ()))
+        sat = fun env solver -> (env, actives)
         cmds = cmds }
-    |> function Interpreter.SAT v | Interpreter.UNSAT v -> v
+      actives
+    |> function
+      | Interpreter.SAT (_, core) ->
+        printfn $"SAT {core}"
+      | Interpreter.UNSAT (env', core) ->
+        let actives' = rmElements core actives
+        helper env' solver cmds actives'
+  
+  Interpreter.MaxSat.z3softSolver emptyEnv solver cmds [ DeclConst ("soft1", Boolean); DeclConst ("soft2", Boolean) ]
+  function | Interpreter.SAT (_,_,model) -> printfn $"{model}"
+  
     
-  Interpreter.MaxSat.z3softSolver env solver cmds softGroups
-  |> printfn "%O"
+  // let env, solver =
+  //   Interpreter.z3solve
+  // { env = emptyEnv
+  // solver = solver
+  // unsat = fun env solver -> (env, solver)
+  // sat = fun env solver -> (env, solver)
+  // cmds = cmds }
+  //   |> function Interpreter.SAT v | Interpreter.UNSAT v -> v
+  
+  // Interpreter.MaxSat.z3softSolver'
+  //   { env = emptyEnv
+  //     solver = solver
+  //     unsat = fun env solver ->
+  //       solver.UnsatCore |> fun vs -> for v in vs do printfn $"{v}"
+  //       (env, solver)
+  //     sat = fun env solver -> (env, solver)
+  //     cmds = cmds }
+  //   softGroups
+  //
+  printfn ""
+  
     
     
     
+  // Interpreter.MaxSat.z3softSolver emptyEnv solver cmds softGroups
+  // |> printfn "%O"
+    
+    
+  
+  
   // Interpreter.MaxSat.z3softSolver
   //   { env = emptyEnv
   //     solver = solver

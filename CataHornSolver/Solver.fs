@@ -21,6 +21,36 @@ let defFuns =
   [ Def ("Z", [], Apply ("c_0", []))
     Def ("S", [ "x" ], Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
 
+let collectConstants =
+  let rec helper acc =
+    function
+      | Apply (name, []) when name.Contains "c_" -> name :: acc
+      | Eq (expr1, expr2)  
+      | Lt (expr1, expr2) 
+      | Gt (expr1, expr2) 
+      | Le (expr1, expr2) 
+      | Ge (expr1, expr2) 
+      | Mod (expr1, expr2) 
+      | Add (expr1, expr2) 
+      | Subtract (expr1, expr2) 
+      | Mul (expr1, expr2)
+      | Implies (expr1, expr2) -> helper (helper acc expr1) expr2  
+      | Apply (_, exprs) -> List.fold helper acc exprs
+      | Neg expr  
+      | Not expr -> helper acc expr
+      | And exprs
+      | Or exprs -> Array.fold helper acc exprs
+      | Ite (expr1, expr2, expr3) -> List.fold helper acc [expr1; expr2; expr3]
+      | _ -> acc  
+  
+  function
+    | Def (_, _, expr) -> helper [] expr
+    | _ -> []
+
+let yuy () =
+  collectConstants defFuns.Tail.Head
+  |> fun vs -> for v in vs do printfn $"{v}"
+
 let declFuns = [ Decl ("diseqInt", 2) ]
 
 let assert1 =
@@ -1846,27 +1876,98 @@ let asdsdf () =
 
 let decConsts = List.map decConst
 
-let zeroOrOneValsOfVars =
+let zeroOrOneValsOfVars constants =
   decConsts
   >> List.fold
        (fun acc ->
          function
-         | DeclIntConst n -> Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |] :: acc
+         | DeclIntConst n ->
+           Assert(Implies(Var $"soft_zero_{n}", Eq(Var n, Int 0)))
+           :: Assert(Implies(Var $"soft_one_{n}", Eq(Var n, Int 1)))
+           :: acc
          | _ -> acc)
        []
-  >> List.map Assert
+   
+  // >> List.fold
+  //      (fun acc ->
+  //        function
+  //        | DeclIntConst n -> Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |] :: acc
+  //        | _ -> acc)
+  //      []
+  // >> List.map Assert
 
 
-let pushZeroOrOne (solver: Solver) env constDefs =
-  solver.Push ()
-  printfn $"{solver.NumScopes}"
+// type restriction =
+//   | Zero of Name
+//   | One of Name
+//   override x.ToString() =
+//     match x with
+//     | Zero v -> $"soft_zero_{v}"
+//     | One v -> $"soft_one_{v}"
+//   member x.value =
+//     match x with
+//     | Zero v | One v -> v
+//   member x.number =
+//     match x with
+//     | Zero _ -> 0 | One _ -> 1
+  
 
-  z3solve
-    { env = env
-      solver = solver
-      unsat = fun env _ -> (env, [])
-      sat = fun env solver -> (env, model env solver)
-      cmds = zeroOrOneValsOfVars constDefs }
+// let pushZeroOrOne (solver: Solver) env constrDefs =
+//   printfn $"{solver.NumScopes}"
+//   
+//   let restConsts =
+//     List.map
+//       (fun def ->
+//         def
+//         |> collectConstants
+//         |> List.fold
+//              (fun acc n ->
+//                 Zero n :: One n :: acc)
+//              []
+//         |> List.rev)
+//       constrDefs
+//     
+//   let softGroups =
+//     restConsts
+//     |> List.map (List.map toString)
+//   
+//   let decls =
+//       restConsts
+//       |> List.map
+//            (List.map
+//               (fun r ->
+//                 DeclConst (r.ToString (), Boolean) ))
+//       |> List.fold (@) []
+//   
+//   let asserts =
+//       restConsts
+//       |> List.map
+//            (List.map
+//               (fun r ->
+//                 Assert (Implies (Var (toString r), Eq (Var r.value, Int r.number)))))
+//       |> List.fold (@) []
+//   
+//   let cmds = decls @ asserts
+//   
+//   let env', solver' =
+//     z3solve
+//       { env = env
+//         solver = solver
+//         unsat = fun env solver -> (env, solver)
+//         sat = fun env solver -> (env, solver)
+//         cmds = cmds }
+//     |> function SAT vs | UNSAT vs -> vs
+//     
+//   for cmd in cmds do
+//     printfn $"{cmd}"
+//   
+//   
+//   
+//   MaxSat.z3softSolver env' solver' cmds softGroups 
+//   
+  
+  
+  
 
 type Mode =
   | ZeroOnes
@@ -1879,7 +1980,7 @@ type Mode =
 
 
 
-let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDecls proof pushed (mode: Mode) =
+let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDecls proof pushed (actives: Program list) =
   match proof with
   | [ Command (Proof (hyperProof, _, _)) ] ->
     printfn "%O" hyperProof
@@ -1935,98 +2036,99 @@ let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDec
     solver.Push ()
 
     match
-      z3solve
-        { env = env
-          solver = solver
-          unsat = (fun env _ -> (env, []))
-          sat = fun env solver -> (env, model env solver)
-          cmds = [ redlogResult ] }
+      MaxSat.z3softSolver env solver [ redlogResult ] actives
+      // z3solve
+        // { env = env
+          // solver = solver
+          // unsat = (fun env _ -> (env, []))
+          // sat = fun env solver -> (env, model env solver)
+          // cmds = [ redlogResult ] }
     with
-    | SAT ((env', defConsts')) ->
+    | SAT ((env', unsatCore, defConsts')) ->
       printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
 
       // for v in List.rev defConsts' do
       // printfn $"{v}"
+      printfn $"AAAAAAAAAAAAAAAAAAAAAAAAA\n{unsatCore}"
 
-
-      (env', defConsts', constrDefs, pushed', mode)
-    | UNSAT ((env', _)) when mode.isZeroOnes ->
-
-      printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
-
-      solver.Pop 2u // rm coflict assert & zeroOnes restriction
-      // printfn "<<<>>>><<>>>%O" <| solver.Check ()
-      // printfn "<<<>>>><<>>>%O" <| solver.Model
-      z3solve
-        { env = env
-          solver = solver
-          unsat = (fun env _ -> (env, []))
-          sat = fun env solver -> (env, model env solver)
-          cmds = [] }
-      |> function
-        | SAT (env, model) ->
-          // printfn "<<<>>>><<>>>%O" <| model
-          (env, model, constrDefs, pushed', Any)
-        | UNSAT (env, _) ->
-          // (env, constDefs, funDefs, pushed', Any)
-          failwith "?"
-
-
-    // learner solver env asserts constDefs funDefs funDecls proof pushed' Any
-
-    | UNSAT ((env, _)) ->
-      // failwith "1234"
-      // for v in List.map program2originalCommand constrDefs do
-      // printfn "constrDef:: %O" v
-
-      // for v in List.map program2originalCommand funDefs do
-      // printfn "funDef:: %O" v
-
-      let newConsts, constrDefs' = branching constDefs constrDefs
-      // printfn $"{constrDefs'}"
-
-      solver.Pop () // rm conflict assert
-      solver.Push ()
-
-      let envDecConsts =
-        z3solve
-          { env = env
-            solver = solver
-            unsat = fun env _ -> env
-            sat = fun env _ -> env
-            cmds = (decConsts newConsts) @ (notZeroFunConsts constrDefs') }
-        |> function
-          | SAT env'
-          | UNSAT env' -> env'
-
-      pushZeroOrOne solver envDecConsts newConsts
-      |> function
-        // | SAT (env'', defConsts') -> (env'', defConsts', constrDefs, pushed', ZeroOnes)
-        | SAT (env'', defConsts') -> (env'', defConsts', constrDefs', pushed', ZeroOnes)
-        | _ ->
-          failwith "?"
-          (env, constDefs, constrDefs, pushed', ZeroOnes)
-
-
-        // z3solve
-        // { env = env
-        // solver = solver
-        // sat = fun env solver -> (env, model env solver)
-        // unsat = fun env _ -> (env, [])
-        // cmds = (decConsts newConsts) @ (notZeroFunConsts funDefs')
-        // @ (newConsts |> zeroOrOne)
-        // }
-        // |> function
-        // | SAT (env', constDefs'') ->
-        // solver.Push ()
-        // for v in vs do printfn "%O" v
-        // let constDefs'' = vs |> Map.toList |> List.map (fun (n, i) -> Def (n, [], Int i))
-        // solver.Push ()
-
-        // (env', constDefs'', funDefs', pushed')
-        // learner solver env' asserts constDefs'' funDefs' funDecls proof pushed' ZeroOne
-        | _ -> failwith "1234"
-
+      (env', defConsts', constrDefs, pushed', unsatCore)
+    // | UNSAT ((env', _)) when mode.isZeroOnes ->
+    //
+    //   printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
+    //
+    //   solver.Pop 2u // rm coflict assert & zeroOnes restriction
+    //   // printfn "<<<>>>><<>>>%O" <| solver.Check ()
+    //   // printfn "<<<>>>><<>>>%O" <| solver.Model
+    //   z3solve
+    //     { env = env
+    //       solver = solver
+    //       unsat = (fun env _ -> (env, []))
+    //       sat = fun env solver -> (env, model env solver)
+    //       cmds = [] }
+    //   |> function
+    //     | SAT (env, model) ->
+    //       // printfn "<<<>>>><<>>>%O" <| model
+    //       (env, model, constrDefs, pushed', Any)
+    //     | UNSAT (env, _) ->
+    //       // (env, constDefs, funDefs, pushed', Any)
+    //       failwith "?"
+    //
+    //
+    // // learner solver env asserts constDefs funDefs funDecls proof pushed' Any
+    //
+    // | UNSAT ((env, _)) ->
+    //   // failwith "1234"
+    //   // for v in List.map program2originalCommand constrDefs do
+    //   // printfn "constrDef:: %O" v
+    //
+    //   // for v in List.map program2originalCommand funDefs do
+    //   // printfn "funDef:: %O" v
+    //
+    //   let newConsts, constrDefs' = branching constDefs constrDefs
+    //   // printfn $"{constrDefs'}"
+    //
+    //   solver.Pop () // rm conflict assert
+    //   solver.Push ()
+    //
+    //   let envDecConsts =
+    //     z3solve
+    //       { env = env
+    //         solver = solver
+    //         unsat = fun env _ -> env
+    //         sat = fun env _ -> env
+    //         cmds = (decConsts newConsts) @ (notZeroFunConsts constrDefs') }
+    //     |> function
+    //       | SAT env'
+    //       | UNSAT env' -> env'
+    //
+    //   pushZeroOrOne solver envDecConsts newConsts
+    //   |> function
+    //     // | SAT (env'', defConsts') -> (env'', defConsts', constrDefs, pushed', ZeroOnes)
+    //     | SAT (env'', defConsts') -> (env'', defConsts', constrDefs', pushed', ZeroOnes)
+    //     | _ ->
+    //       failwith "?"
+    //       (env, constDefs, constrDefs, pushed', ZeroOnes)
+    //
+    //
+    //     // z3solve
+    //     // { env = env
+    //     // solver = solver
+    //     // sat = fun env solver -> (env, model env solver)
+    //     // unsat = fun env _ -> (env, [])
+    //     // cmds = (decConsts newConsts) @ (notZeroFunConsts funDefs')
+    //     // @ (newConsts |> zeroOrOne)
+    //     // }
+    //     // |> function
+    //     // | SAT (env', constDefs'') ->
+    //     // solver.Push ()
+    //     // for v in vs do printfn "%O" v
+    //     // let constDefs'' = vs |> Map.toList |> List.map (fun (n, i) -> Def (n, [], Int i))
+    //     // solver.Push ()
+    //
+    //     // (env', constDefs'', funDefs', pushed')
+    //     // learner solver env' asserts constDefs'' funDefs' funDecls proof pushed' ZeroOne
+    //     | _ -> failwith "1234"
+    //
 
 
 
@@ -2094,13 +2196,19 @@ let unsat env (solver: Solver) =
 
 
 
-let rec teacher funDefs solverLearner envLearner constDefs constrDefs funDecls (asserts: Program list) pushed mode =
+let rec teacher funDefs solverLearner envLearner constDefs constrDefs funDecls (asserts: Program list) pushed (actives: Program list) =
   let envTeacher = emptyEnv [| ("proof", "true") |]
   let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
   teacherSolver.Set ("spacer.global", true)
 
   let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
-
+  
+  // for v in constrDefs do
+    // printfn $"constr\n{v}"
+  
+  // for v in cmds do
+    // printfn $"CMD: {v}"
+    
   for v in List.map program2originalCommand cmds do
     File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"{(v.ToString ())}\n\n")
 
@@ -2121,14 +2229,14 @@ let rec teacher funDefs solverLearner envLearner constDefs constrDefs funDecls (
       for v in List.map program2originalCommand constDefs do
         printfn $"{v}"
 
-      let envLearner', defConsts', defConstrs', pushed', mode =
-        learner funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed mode
+      let envLearner', defConsts', defConstrs', pushed', actives =
+        learner funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed actives
 
 
-      for v in List.map program2originalCommand defConstrs' do
-        printfn $"{v}"
+      // for v in List.map program2originalCommand defConstrs' do
+        // printfn $"{v}"
 
-      teacher funDefs solverLearner envLearner' defConsts' defConstrs' funDecls asserts pushed' mode
+      teacher funDefs solverLearner envLearner' defConsts' defConstrs' funDecls asserts pushed' actives
 
 
 let newLearner () =
@@ -2138,6 +2246,31 @@ let newLearner () =
 
 
 
+
+
+let zeroOneRestriction env solver constrDefs =
+  let decls, asserts =
+    constrDefs
+    |> List.map collectConstants
+    |> List.fold (@) []
+    |> List.fold
+         (fun acc n ->
+            (DeclConst ($"soft_{n}", Boolean),
+             Assert
+               (Implies
+                  (Var $"soft_{n}",
+                   Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |])))
+            :: acc)
+       []
+    |> List.rev
+    |> List.unzip
+  
+  let cmds' = decls @ asserts
+  
+  MaxSat.z3softSolver env solver cmds' decls
+
+  
+  
 
 let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
   let envLearner, solverLearner = newLearner ()
@@ -2181,20 +2314,36 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
 
   printfn "<<<>>>><<>>>%O" <| solverLearner.Assertions.Length
 
-  pushZeroOrOne solverLearner envDecConsts constDefs
+  
+  
+  zeroOneRestriction envDecConsts solverLearner constrDefs
   |> function
-    | SAT (env'', defConsts') ->
-      // printfn $"{defConsts'}"
-      printfn "<<<>>>><<>>>%O" <| solverLearner.Assertions.Length
+    | SAT (env, actives, model) ->
+      teacher funDefs solverLearner env model  constrDefs funDecls asserts startCmds actives
+      // teacher funDefs solverLearner env constDefs model funDecls asserts startCmds actives
+    | UNSAT _ -> failwith "!!!!"
+  
+  // teacher funDefs solverLearner envDecConsts constDefs constrDefs funDecls asserts startCmds ZeroOnes
+  
+  
+    
+    
+  // pushZeroOrOne solverLearner envDecConsts constrDefs
+  // |> function
+    // | SAT (env', defConsts') ->
+        // for c in defConsts' do printfn $"******{c}"
+        // teacher funDefs solverLearner env' defConsts' constrDefs funDecls asserts startCmds ZeroOnes
+    // | UNSAT _ -> failwith "???"
 
-      // for v in List.map program2originalCommand constrDefs do
-      // printfn "v111111 %O" v
-      // teacher solverLearner env'' defConsts' funDefs funDecls asserts startCmds ZeroOne
-      // solverLearner.Pop ()
-      teacher funDefs solverLearner env'' defConsts' constrDefs funDecls asserts startCmds ZeroOnes
-    // teacher funDefs solverLearner envDecConsts constDefs constrDefs funDecls asserts startCmds ZeroOnes
-    | UNSAT _ -> failwith "?"
-// teacher solverLearner envDecConsts constDefs funDefs funDecls asserts startCmds ZeroOnes
+
+  
+  
+  // pushZeroOrOne solverLearner envDecConsts constDefs
+  // |> function
+  //   | SAT (env'', defConsts') ->
+  //     printfn "<<<>>>><<>>>%O" <| solverLearner.Assertions.Length
+  //     teacher funDefs solverLearner env'' defConsts' constrDefs funDecls asserts startCmds ZeroOnes
+  //   | UNSAT _ -> failwith "?"
 
 
 let approximation file =
@@ -2767,13 +2916,13 @@ let chck () =
 
     solver [] consts defFns decFns asserts
 
-  // run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
+  run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
   // run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
   // run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
-  AssertsMinimization.assertsMinimize [ dA2; dA1; dA3; dA4 ] dA4
-  |> fun xs ->
-    for x in fst xs do
-      printfn $"{x}"             
+  // AssertsMinimization.assertsMinimize [ dA2; dA1; dA3; dA4 ] dA4
+  // |> fun xs ->
+    // for x in fst xs do
+      // printfn $"{x}"             
   
 // solve listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
 // solve shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] []
