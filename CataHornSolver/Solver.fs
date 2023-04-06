@@ -892,7 +892,7 @@ let redlog definitions formula =
 
 let decConst =
   function
-  | Def (n, _, _) -> DeclConst n
+  | Def (n, _, _) -> DeclIntConst n
   | otherwise -> otherwise
 
 
@@ -1851,7 +1851,7 @@ let zeroOrOneValsOfVars =
   >> List.fold
        (fun acc ->
          function
-         | DeclConst n -> Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |] :: acc
+         | DeclIntConst n -> Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |] :: acc
          | _ -> acc)
        []
   >> List.map Assert
@@ -2440,39 +2440,39 @@ let cc () =
 
   Simplifier.simplify
     (And
-   [| Or
-       [|And
-           [|Eq (Var "x1", Apply ("Z_24", []));
-             Eq
-               (Apply ("cons_6", [Var "x0"; Apply ("nil_6", [])]),
-                Apply ("nil_6", []))|];
-         And
-           [|Eq (Var "x1", Var "x2");
-             Eq
-               (Apply ("cons_6", [Var "x0"; Apply ("nil_6", [])]),
-                Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]))|]|];
-     Or
-       [|Or
-           [|And
-               [|Eq (Apply ("Z_24", []), Apply ("Z_24", []));
-                 Eq (Apply ("nil_6", []), Apply ("nil_6", []))|];
-             And
-               [|Eq (Apply ("Z_24", []), Var "x4");
-                 Eq
-                   (Apply ("nil_6", []),
-                    Apply ("cons_6", [Var "x4"; Apply ("nil_6", [])]))|]|];
-         Or
-           [|And
-               [|Eq (Var "x2", Apply ("Z_24", []));
-                 Eq
-                   (Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]),
-                    Apply ("nil_6", []))|];
-             And
-               [|Eq (Var "x2", Var "x4");
-                 Eq
-                   (Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]),
-                    Apply ("cons_6", [Var "x4"; Apply ("nil_6", [])]))|]|]|]|])
-
+        [| Or
+            [|And
+                [|Eq (Var "x1", Apply ("Z_24", []));
+                  Eq
+                    (Apply ("cons_6", [Var "x0"; Apply ("nil_6", [])]),
+                     Apply ("nil_6", []))|];
+              And
+                [|Eq (Var "x1", Var "x2");
+                  Eq
+                    (Apply ("cons_6", [Var "x0"; Apply ("nil_6", [])]),
+                     Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]))|]|];
+          Or
+            [|Or
+                [|And
+                    [|Eq (Apply ("Z_24", []), Apply ("Z_24", []));
+                      Eq (Apply ("nil_6", []), Apply ("nil_6", []))|];
+                  And
+                    [|Eq (Apply ("Z_24", []), Var "x4");
+                      Eq
+                        (Apply ("nil_6", []),
+                         Apply ("cons_6", [Var "x4"; Apply ("nil_6", [])]))|]|];
+              Or
+                [|And
+                    [|Eq (Var "x2", Apply ("Z_24", []));
+                      Eq
+                        (Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]),
+                         Apply ("nil_6", []))|];
+                  And
+                    [|Eq (Var "x2", Var "x4");
+                      Eq
+                        (Apply ("cons_6", [Var "x2"; Apply ("nil_6", [])]),
+                         Apply ("cons_6", [Var "x4"; Apply ("nil_6", [])]))|]|]|]|])
+    
   // |> expr2smtExpr |> printfn "%O"
 
   ()

@@ -318,7 +318,7 @@ module SolverDeprecated =
           if i < 0 then
             None
           else
-            Some (DeclConst (sprintf "c_%i" i), i - 1))
+            Some (DeclIntConst (sprintf "c_%i" i), i - 1))
 
       let rec subst =
         fun map ->
