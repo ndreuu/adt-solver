@@ -10,6 +10,7 @@ open SMTLIB2.Parser
 module IntOps =
   let mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
   let negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
+  let minusOp = ElementaryOperation ("-", [ IntSort; IntSort], IntSort)
   let addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
   let eqOp = ElementaryOperation ("=", [ IntSort; IntSort ], BoolSort)
   let grOp = ElementaryOperation (">", [ IntSort; IntSort ], BoolSort)

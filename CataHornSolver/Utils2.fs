@@ -105,8 +105,24 @@ let assertedPos str =
 
 let proof dbg str =
   dbg ()
-  assertedPos str |> fun str -> varsIdxs str |> substituteVars str |> clean
+  let x = assertedPos str |> fun str -> varsIdxs str |> substituteVars str |> clean
+  printfn $"{x}"
+  x
+let aaa () =
+  clean
+    """(proof mp ((_ hyper-res 0 0 0 1 0 2)
+             (asserted (=> false false))
+             ((_ hyper-res 0 0 0 1 0 2 0 3)
+             (asserted (=> false false))
+             ((_ hyper-res 0 0) (asserted (=> false false)) (length 0 0))
+             ((_ hyper-res 0 0) (asserted (=> false false)) (Inv 0 0 0))
+             ((_ hyper-res 0 0) (asserted (=> false false)) (length 0 0))
+             (Inv 0 (- 1) 0))
+             ((_ hyper-res 0 0) (asserted (=> false false)) (length 0 0))
+             false) (asserted (=> false false)) false)
 
+"""
+  |> printfn "%O"
 
 
 // let varsIdxs (str: string) =

@@ -36,7 +36,7 @@ module Program =
   let main args =
     match args with
     | [| path |] ->
-      run path
+      run path |> printfn "%O"
       0
     | _ ->
       1

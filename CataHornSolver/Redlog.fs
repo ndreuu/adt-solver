@@ -15,6 +15,8 @@ let rec expr2redlogExpr =
     | Bool false -> "false" 
     | Int v -> v.ToString()
     | Add (expr1, expr2) -> $"{expr2redlogExpr expr1} + {expr2redlogExpr expr2}"
+    | Subtract (expr1, expr2) -> $"{expr2redlogExpr expr1} - {expr2redlogExpr expr2}"
+    | Neg expr -> $"(- {expr2redlogExpr expr})"
     | Mul (expr1, expr2) -> $"{expr2redlogExpr expr1} * {expr2redlogExpr expr2}"
     | Eq (expr1, expr2) -> $"({expr2redlogExpr expr1} = {expr2redlogExpr expr2})"
     | Gt (expr1, expr2) -> $"({expr2redlogExpr expr1} > {expr2redlogExpr expr2})"
@@ -84,6 +86,9 @@ quit;"""
 
 let runRedlog definitions formula =
   let file = Path.GetTempPath() + ".red"
+  
+  printfn $"ffff|\n{formula}" 
+  
   File.WriteAllText(file, redlogQuery definitions formula)
   
   // File.AppendAllText("/home/andrew/adt-solver/many-branches-search/dbg/red-query.red",
@@ -139,4 +144,4 @@ let chck () =
       // withConsts usedOps ident exprs
     
   runRedlog defs expr |>
-  function Some v -> smtExpr2expr v |> printfn "%O"
+  function Some v -> v |> printfn "%O"
