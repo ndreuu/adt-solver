@@ -45,6 +45,7 @@ module AST =
     | Le (expr1, expr2) -> smtExpr.Apply (leqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Ge (expr1, expr2) -> smtExpr.Apply (geqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Add (expr1, expr2) -> smtExpr.Apply (addOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
+    | Subtract (expr1, expr2) -> smtExpr.Apply (minusOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Neg expr -> smtExpr.Apply (negOp, [ expr2smtExpr expr ])
     | Mod (expr1, expr2) -> smtExpr.Apply (modOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Mul (expr1, expr2) -> smtExpr.Apply (mulOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])

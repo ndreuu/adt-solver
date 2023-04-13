@@ -794,6 +794,7 @@ let forAll expr =
     | Le (expr1, expr2)
     | Ge (expr1, expr2)
     | Add (expr1, expr2)
+    | Subtract (expr1, expr2)
     | Mod (expr1, expr2)
     | Implies (expr1, expr2)
     | Mul (expr1, expr2) -> helper (helper acc expr1) expr2
@@ -973,6 +974,7 @@ let uniqVarNames =
     | Le (expr1, expr2)
     | Ge (expr1, expr2)
     | Add (expr1, expr2)
+    | Subtract (expr1, expr2)
     | Mul (expr1, expr2)
     | Mod (expr1, expr2)
     | Implies (expr1, expr2) -> varNames (varNames acc expr1) expr2

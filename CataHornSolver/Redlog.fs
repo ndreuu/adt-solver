@@ -15,6 +15,7 @@ let rec expr2redlogExpr =
     | Bool false -> "false" 
     | Int v -> v.ToString()
     | Add (expr1, expr2) -> $"{expr2redlogExpr expr1} + {expr2redlogExpr expr2}"
+    | Subtract (expr1, expr2) -> $"{expr2redlogExpr expr1} - {expr2redlogExpr expr2}"
     | Mul (expr1, expr2) -> $"{expr2redlogExpr expr1} * {expr2redlogExpr expr2}"
     | Eq (expr1, expr2) -> $"({expr2redlogExpr expr1} = {expr2redlogExpr expr2})"
     | Gt (expr1, expr2) -> $"({expr2redlogExpr expr1} > {expr2redlogExpr expr2})"
