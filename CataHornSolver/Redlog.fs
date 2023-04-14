@@ -23,8 +23,12 @@ let rec expr2redlogExpr =
     | Lt (expr1, expr2) -> $"({expr2redlogExpr expr1} < {expr2redlogExpr expr2})"
     | Le (expr1, expr2) -> $"({expr2redlogExpr expr1} <= {expr2redlogExpr expr2})"
     | Ge (expr1, expr2) -> $"({expr2redlogExpr expr1} >= {expr2redlogExpr expr2})"
-    | And exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
-    | Or exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
+    | And exprs ->
+      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
+      $"({s})"
+    | Or exprs ->
+      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
+      $"({s})"
     | Not expr -> $"not {expr2redlogExpr expr}"
     | Implies (expr1, expr2) -> $"({expr2redlogExpr expr1}) impl ({expr2redlogExpr expr2})"
     | Var n -> n.ToString()

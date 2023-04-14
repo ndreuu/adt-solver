@@ -233,7 +233,7 @@ let listAssert5 =
 
 
 let dConsts =
-  [ Def ("c_0", [], Int 1); Def ("c_1", [], Int 1); Def ("c_2", [], Int 1) ]
+  [ Def ("c_0", [], Int 0); Def ("c_1", [], Int 0); Def ("c_2", [], Int 1) ]
 
 let dDefFuns =
   [ Def ("Z", [], Apply ("c_0", []))
@@ -1118,7 +1118,7 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   // printfn $"kids\n{kids}"
   
   let get k map =
-    // printfn $"{k}"
+    printfn $"{k}"
     (map |> Map.find k |> List.head,
      map
      |> Map.change k (function
@@ -1575,10 +1575,12 @@ let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
     |> fun x ->
       printfn $"treeExpr\n{x}"
       x
-    |> FactRecover.recovering asserts
-    |> fun x ->
-      printfn $"treeRecovered\n{x}"
-      x
+    // |> FactRecover.recovering asserts
+    // |> fun x ->
+      // printfn $"treeRecovered\n{x}"
+      // x
+  
+  
     
   // printfn $"treeOfExprs\n{treeOfExprs}"
     
@@ -1672,12 +1674,13 @@ let notZeroFunConsts defs =
       | Ite (cond, ifExpr, elseExpr) -> helper acc cond |> flip helper elseExpr |> flip helper ifExpr
       | Eq (expr, _) -> helper acc expr
       | Add _ as add ->
-        (consts add |> List.map (fun n -> Not (Eq (Var n, Int 0))) |> List.toArray |> Or)
+        (consts add |> List.map (fun n -> Not (Eq (Var n, Int 0)))  |> List.toArray |>  Or)
         :: acc
       | _ -> acc
-
-    helper []
-
+    
+    helper [] 
+    >> fun x -> printfn $"NOT_Z{x}";  x
+    
   defs
   |> List.fold
        (fun acc def ->
@@ -1686,6 +1689,9 @@ let notZeroFunConsts defs =
          | _ -> acc)
        []
   |> List.map Assert
+  |> fun x ->
+    printfn $"AAAA::\n{x}"
+    x
 // |> List.toArray
 // |> And
 // |> Assert
@@ -2030,7 +2036,8 @@ let zeroOneRestriction env solver constrDefs softNumber =
         
         
         // Assert(Implies (Var $"soft_{softNumber}",  Or (List.toArray <| x @ [ And (List.toArray x)]) ))
-        Assert(Implies (Var $"soft_{softNumber}", Bool true ) )
+        // Assert(Implies (Var $"soft_{softNumber}", Bool true ) )
+        Assert(Bool true )
         // Assert(Implies (Var $"soft_{softNumber}", And (List.toArray x)) )
   
   let cmds' = [decl; assrt]
@@ -2057,7 +2064,11 @@ let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDec
              | sdf -> sdf
 
     // printfn $"{clause}"
+  
 
+    // let badConsts = model env solver |> List.map (function Def (n, [], x) -> Eq (Var n, x) | _ -> failwith "") |> List.toArray |> And |> fun x -> Implies (x, Bool false) |> Assert
+    // printfn $"BABAD\n{badConsts}"
+    
     printfn $"clause:: {expr2smtExpr clause}"
 
     // printfn "SOLVING"
@@ -2101,29 +2112,29 @@ let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDec
       // printfn $"SSSSS\n{v}"
 
     printfn $"rrrrrr\n{redlogResult}"
+    printfn $"rrrrrr\n{program2originalCommand redlogResult}"
     for x in solver.Assertions do printfn $">{x}"
     for x in env.ctxVars do printfn $"vv>{x}"
     match
-      // MaxSat.z3softSolverNew env solver [ redlogResult ] actives
+      // MaxSat.z3softSolverNew env solver [ redlogResult ] []
+      // MaxSat.z3softSolverNew env solver [ Assert clause ] []
       z3solve
         { env = env
           solver = solver
           unsat = (fun env _ -> (env, []))
           sat = fun env solver -> (env, solver, model env solver)
-          // cmds = [ redlogResult ] 
-          cmds = [ Assert clause ] }
+          cmds = [ redlogResult ] }
     with
     // | SAT ((env', actives', defConsts')) ->
     | SAT ((env', solver', defConsts')) ->
       // printfn "<<<>>>><<>>>%O" <| solver.Assertions.Length
 
-      // for v in List.rev defConsts' do
-      // printfn $"{v}"
+      for v in List.rev defConsts' do printfn $"llllLLLLll{v}"
       // printfn $"AAAAAAAAAAAAAAAAAAAAAAAAA\n"
       // for v in actives' do printfn $"{v}"
-
+            
       Ok (env', solver', defConsts', constrDefs, pushed', [], softNumber)
-      // Ok (env', defConsts', constrDefs, pushed', actives', softNumber)
+      // Ok (env', solver,defConsts', constrDefs, pushed', actives', softNumber)
     
         
     | UNSAT _ ->
@@ -2342,6 +2353,10 @@ let rec teacher funDefs (solverLearner: Solver) envLearner constDefs constrDefs 
   let envTeacher = emptyEnv [| ("proof", "true") |]
   let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
   teacherSolver.Set ("fp.spacer.global", true)
+  teacherSolver.Set("fp.xform.inline_eager", false)
+  teacherSolver.Set("fp.xform.inline_linear", false)
+  
+  
   // teacherSolver.Set ("spacer.global", true)
   // teacherSolver.Set ("AAA", true)
 
@@ -2367,13 +2382,13 @@ let rec teacher funDefs (solverLearner: Solver) envLearner constDefs constrDefs 
       sat = fun _ _ -> [] }
   |> function
     | SAT _ ->
-      // for x in constDefs do  printfn $"{x}"
+      for x in constDefs do  printfn $"{x}"
       "SAT"
     | UNSAT proof ->
       
 
       for v in List.map program2originalCommand constDefs do
-        printfn $".{v}"
+        printfn $".c.{v}"
         
       for v in List.map program2originalCommand constrDefs do
         printfn $"{v}"      
@@ -2384,7 +2399,7 @@ let rec teacher funDefs (solverLearner: Solver) envLearner constDefs constrDefs 
       
       match learner funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed actives softNumber with
       | Ok (envLearner', solverLearner', defConsts', defConstrs', pushed', actives, softNumber') ->
-        teacher funDefs solverLearner' envLearner' defConsts' defConstrs' funDecls asserts pushed' actives softNumber'
+        teacher funDefs solverLearner' envLearner' defConsts' defConstrs' funDecls asserts pushed' [] softNumber'
       | Error e -> e 
         
       // let envLearner', defConsts', defConstrs', pushed', actives, softNumber' =
@@ -2456,7 +2471,25 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
     // printfn $">>>A\n{a}"
   
   let startCmds =
-    funDefs @ decConsts @ notZeroFunConsts constrDefs @ [ Def ("nil", [], Var "c_0"); Def ("cons", ["x"; "y"], Add (Var "c_1", Add (Mul (Var "c_2", Var "x"), Mul (Var "c_3", Var "y")) ));]
+    funDefs @ decConsts
+              // @ [Assert ( Not (Eq (Var "c_3", Int 0)) ) ]
+              // @ [Assert ( Not (Eq (Var "c_0", Int 0)) ) ]
+              // @ [Assert ( (Eq (Var "c_1", Int 0)) ) ]
+              // @ [Assert ( (Eq (Var "c_2", Int 0)) ) ]
+              // @ [Assert ( (Eq (Var "c_0", Int 1)) ) ]
+              // @ [Assert ( (Eq (Var "c_3", Int 1)) ) ]
+              
+              // @ [Assert (  (Eq (Var "c_3", Int 1)) ) ]
+              // @ [Assert (Implies ((Eq (Var "c_2", Int 0)), Not (Eq (Var "c_3", Int 0)) )  )]
+              // @ [Assert (Implies ((Eq (Var "c_3", Int 0)), Not (Eq (Var "c_2", Int 0)) )  )]
+              // @
+              // [
+                // Assert (Or [| (((Eq (Var "c_1", Int 0))));  (Eq (Var "c_1", Int 1)) |])
+                // Assert (Or [| (Eq (Var "c_3", Int 1)); (((Eq (Var "c_3", Int 0))));   |])
+                // Assert (Or [| (((Eq (Var "c_2", Int 0))));  (Eq (Var "c_2", Int 1)) |])
+                // Assert (Or [|  ((Eq (Var "c_0", Int 0)));   (Eq (Var "c_0", Int 1)) |]) ]
+              @ (notZeroFunConsts constrDefs)
+                          // @ [ Def ("nil", [], Var "c_0"); Def ("cons", ["x"; "y"], Add (Var "c_1", Add (Mul (Var "c_2", Var "x"), Mul (Var "c_3", Var "y")) ));]
     
     // |> List.filter (function
       // | (Assert (Or [||])) -> false
@@ -2484,7 +2517,7 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
 
   for cmd in startCmds do printfn $"{cmd}"
   
-  solverLearner.Push ()
+  // solverLearner.Push ()
   let envDecConsts, solverrrrr, model =
     z3solve
       { env = envLearner
@@ -2504,10 +2537,11 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
   
   
   teacher funDefs solverrrrr envDecConsts model constrDefs funDecls asserts startCmds [] 0
+
   // zeroOneRestriction envDecConsts solverLearner constrDefs 0
   // |> function
-  //   | SAT (env', actives, model) ->
-  //     teacher funDefs solverLearner env' model constrDefs funDecls asserts startCmds actives 0
+  // | SAT (env', actives, model) ->
+    // teacher funDefs solverLearner env' model constrDefs funDecls asserts startCmds [] 0
   //   | UNSAT _ -> failwith "!!!!"
   
   // teacher funDefs solverLearner envDecConsts constDefs constrDefs funDecls asserts startCmds ZeroOnes
@@ -2888,10 +2922,10 @@ let aa () =
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_regexp_deluxe_star_plus_easy.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_productive_use_of_failure_rot_uhhhw2.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_productive_use_of_failure_drop_comm.smt2"
-  let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/isaplanner_prop_60.smt2"
+  // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/isaplanner_prop_60.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_productive_use_of_failure_len_bs.smt2"
   // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/false_productive_use_of_failure_rot_bogus.smt2"
-  // let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/tip2015_sort_nat_NStoogeSortSorts.smt2"
+  let file = "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/adt_lia/tip2015_sort_nat_NStoogeSortSorts.smt2"
   run file  |> printfn "%O"
 
 

@@ -266,7 +266,7 @@ module Interpreter =
       | Mod (expr1, expr2) -> env.ctxSlvr.MkMod (eval_expr env expr1 :?> IntExpr, eval_expr env expr2 :?> IntExpr)
       | Add (expr1, expr2) -> env.ctxSlvr.MkAdd (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
       | Subtract (expr1, expr2) -> env.ctxSlvr.MkSub (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Neg expr -> env.ctxSlvr.MkSub (env.ctxSlvr.MkInt 0, eval_expr env expr :?> ArithExpr)
+      | Neg expr -> env.ctxSlvr.MkSub (eval_expr env expr :?> ArithExpr)
       | Mul (expr1, expr2) -> env.ctxSlvr.MkMul (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
       | And exprs ->
         exprs
@@ -451,9 +451,9 @@ module Interpreter =
       
       match x.solver.Check softExprs with
       | Status.SATISFIABLE ->
-        SAT <| x.sat env x.solver
+        SAT <| x.sat env solver
       | Status.UNSATISFIABLE ->
-        UNSAT <| x.unsat env x.solver
+        UNSAT <| x.unsat env solver
 
     let rmElements elements xs = List.fold (fun acc e -> acc |> List.filter ((<>) e)) xs elements    
 
