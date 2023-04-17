@@ -925,7 +925,7 @@ let redlog definitions formula =
     | Some v ->
       // printfn $"..............\n{smtExpr2expr' v |> expr2smtExpr  }..............\n"
       Assert <| (smtExpr2expr' v)
-    | None -> Assert <| (Bool false)
+    | None -> Assert <| (Bool true)
 // failwith "redlog nothing"
 
 let decConst =
