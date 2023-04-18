@@ -1,3 +1,4 @@
+open System.IO
 open Microsoft.FSharp.Collections
 open Microsoft.FSharp.Core
 open ProofBased.Solver
@@ -35,8 +36,17 @@ module Program =
   [<EntryPoint>]
   let main args =
     match args with
-    | [| path |] ->
-      run path |> printfn "%O"
+    | [| path; dbgPath |] ->
+
+      if Directory.Exists dbgPath then Directory.Delete (dbgPath, true)
+      Directory.CreateDirectory dbgPath |> ignore
+          
+        
+      
+      run path dbgPath |> printfn "%O";
       0
-    | _ ->
+    | [| _ |] ->
+      printfn $"enter dbg dir"
+      1
+    | _ -> 
       1

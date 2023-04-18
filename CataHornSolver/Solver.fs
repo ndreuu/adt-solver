@@ -1,4 +1,5 @@
 module ProofBased.Solver
+let mutable dbgPath = ""
 
 open System
 open System.Collections.Generic
@@ -2024,37 +2025,41 @@ let rec learner funDefs (solver: Solver) env asserts constDefs constrDefs funDec
 
     // printfn "SOLVING"
 
+    
+    let redlogInputStr = "redlog-input.smt2"
     File.AppendAllText (
-    "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+    $"{Path.Join [| dbgPath; redlogInputStr |]}",
     $"{Redlog.redlogQuery (def2decVars constrDefs) clause}\n\n"
     )
 
     File.AppendAllText (
-    "/home/andrew/adt-solver/many-branches-search/dbg/redlog-input.smt2",
+    $"{Path.Join [| dbgPath; redlogInputStr |]}",
     $"--------------------\n\n\n"
     )
 
     let redlogResult = redlog (funDefs @ def2decVars constrDefs) clause
 
+    
+    let redlogOutStr = "redlog-output.smt2"
     File.AppendAllText (
-    "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+    $"{Path.Join [| dbgPath; redlogOutStr |]}",
     $"{program2originalCommand redlogResult}\n\n"
     )
 
     File.AppendAllText (
-    "/home/andrew/adt-solver/many-branches-search/dbg/redlog-output.smt2",
+    $"{Path.Join [| dbgPath; redlogOutStr |]}",
     $"--------------------\n\n\n"
     )
 
     for v in List.map program2originalCommand ((constDefs |> List.map decConst) @ pushed @ [ redlogResult ]) do
-      File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+      File.AppendAllText ($"{Path.Join [| dbgPath; redlogOutStr |]}", $"{(v.ToString ())}\n\n")
 
-    
+    let smtInputStr = "smt-input.smt2" 
     for v in List.map program2originalCommand ((constDefs |> List.map decConst) @ pushed @ [ redlogResult ]) do
-      File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+      File.AppendAllText ($"{Path.Join [| dbgPath; smtInputStr |]}", $"{(v.ToString ())}\n\n")
 
     File.AppendAllText (
-        "/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2",
+        $"{Path.Join [| dbgPath; smtInputStr |]}",
         $"--------------------\n\n\n"
         )
 
@@ -2106,13 +2111,15 @@ let unsat env (solver: Solver) =
     []
   | _ ->
     // printfn $">>>{solver.Proof.ToString ()}"
+
+    let proofStr = "proof.smt2"
     p.ParseLine (
       solver.Proof.ToString ()
       |> proof
         // id
         (fun _ ->
           File.AppendAllText (
-          "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+          $"{Path.Join [|dbgPath; proofStr   |]}",
           $"{solver.Proof.ToString ()}\n\n"
           )
           // printfn "Prooftxt%O" <| solver.Proof.ToString ()
@@ -2121,11 +2128,11 @@ let unsat env (solver: Solver) =
       // ("/home/andrew/adt-solver/many-branches-search/dbg/proof.smt2", $"{solver.Proof.ToString ()}\n\n\n") ))
       |> fun prettyProof ->
            File.AppendAllText (
-           "/home/andrew/adt-solver/many-branches-search/dbg/proof",
+           $"{Path.Join [|dbgPath; proofStr   |]}",
            $"PRETTY:\n{prettyProof.ToString ()}\n\n"
            )
 
-           File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/proof", $"--------------------\n\n\n")
+           File.AppendAllText ($"{Path.Join [|dbgPath; proofStr   |]}", $"--------------------\n\n\n")
            // printfn $"{prettyProof}"
            prettyProof |> sprintf "%s"
     )
@@ -2166,10 +2173,11 @@ let rec teacher funDefs (solverLearner: Solver) envLearner constDefs constrDefs 
   // for v in cmds do
     // printfn $"CMD: {v}"
     
+  let hornInputStr = "horn-input.smt2"
   for v in List.map program2originalCommand cmds do
-    File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"{(v.ToString ())}\n\n")
+    File.AppendAllText ($"{Path.Join [| dbgPath; hornInputStr |]}", $"{(v.ToString ())}\n\n")
 
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/horn-input.smt2", $"--------------------\n\n\n")
+  File.AppendAllText ($"{Path.Join [| dbgPath; hornInputStr |]}", $"--------------------\n\n\n")
 
 
   z3solve
@@ -2305,17 +2313,19 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
 
   let envLearner, solverLearner = SoftSolver.setSoftAsserts envLearner solverLearner constDefs
 
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"ACTIVES:\n")
+  
+  let smtInput = "smt-input.smt2"
+  File.AppendAllText ($"{Path.Join [| dbgPath; smtInput |]}", $"ACTIVES:\n")
   for v in envLearner.actives do
-    File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n")
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"\n")
+    File.AppendAllText ($"{Path.Join [| dbgPath; smtInput |]}", $"{(v.ToString ())}\n")
+  File.AppendAllText ($"{Path.Join [| dbgPath; smtInput |]}", $"\n")
 
   
   for v in List.map program2originalCommand startCmds do
-    File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"{(v.ToString ())}\n\n")
+    File.AppendAllText ($"{Path.Join [| dbgPath; smtInput |]}", $"{(v.ToString ())}\n\n")
 
   
-  File.AppendAllText ("/home/andrew/adt-solver/many-branches-search/dbg/smt-input.smt2", $"--------------------\n\n\n")
+  File.AppendAllText ($"{Path.Join [| dbgPath; smtInput |]}", $"--------------------\n\n\n")
 
   
   
@@ -2665,9 +2675,10 @@ let cc () =
   ()
 
 
-let run file =
+let run file dbg =
   // try 
- 
+    dbgPath <- dbg
+    
     let defFuns, liaTypes, defConstants, declFuns, asserts = approximation file
     // for v in  linTypes do
     // printfn $"linType>>{origCommand2program v}"
