@@ -7,6 +7,8 @@ open Microsoft.FSharp.Collections
 open SMTLIB2
 open SMTLIB2.Parser
 
+let inline join s (xs : string seq) = System.String.Join(s, xs)
+
 module IntOps =
   let mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
   let negOp = ElementaryOperation ("-", [ IntSort ], IntSort)

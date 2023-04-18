@@ -37,15 +37,15 @@ def main():
 
     for i in range(len(states)):
         state_path = os.path.join(directory, i.__str__()) 
-        with open(os.path.join(state_path, 'horn-input'), 'w') as f:
+        with open(os.path.join(state_path, 'horn-input.smt2'), 'w') as f:
             f.write(states[i][0])
-        with open(os.path.join(state_path, 'redlog-input'), 'w') as f:
+        with open(os.path.join(state_path, 'redlog-input.red'), 'w') as f:
             f.write(states[i][1])
-        with open(os.path.join(state_path, 'redlog-output'), 'w') as f:
+        with open(os.path.join(state_path, 'redlog-output.smt2'), 'w') as f:
             f.write(states[i][2])
-        with open(os.path.join(state_path, 'smt-input'), 'w') as f:
+        with open(os.path.join(state_path, 'smt-input.smt2'), 'w') as f:
             f.write(states[i][3])
-        with open(os.path.join(state_path, 'proof'), 'w') as f:
+        with open(os.path.join(state_path, 'proof.smt2'), 'w') as f:
             f.write(states[i][4])
 
     os.remove(horn_input_path)

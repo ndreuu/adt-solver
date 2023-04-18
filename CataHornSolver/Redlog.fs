@@ -61,9 +61,7 @@ let def2redlogProc =
         match args with
         | [] -> ""
         | [arg] -> arg
-        | arg::args ->  
-        args
-        |> List.fold (fun n acc -> $"{acc}, {n}") arg 
+        | args -> join ", " args
       $"procedure {name}0({args'}); {expr2redlogExpr body}$"
     | _ -> ""
 
