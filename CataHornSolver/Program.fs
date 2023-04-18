@@ -38,12 +38,13 @@ module Program =
     match args with
     | [| path; dbgPath |] ->
 
-      if Directory.Exists dbgPath then Directory.Delete (dbgPath, true)
-      Directory.CreateDirectory dbgPath |> ignore
+      let d = Path.Join [|dbgPath; "dbg" |]
+      if Directory.Exists d then Directory.Delete (d, true)
+      Directory.CreateDirectory d |> ignore
           
         
       
-      run path dbgPath |> printfn "%O";
+      run path d |> printfn "%O";
       0
     | [| _ |] ->
       printfn $"enter dbg dir"

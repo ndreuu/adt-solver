@@ -5,8 +5,7 @@ import shutil
 
 def main():
     args = sys.argv[1:]
-    directory = args[0]   
-
+    directory = os.path.join(args[0], "dbg")
     # if os.path.exists(directory):
         # shutil.rmtree(directory)
     # os.makedirs(directory)
