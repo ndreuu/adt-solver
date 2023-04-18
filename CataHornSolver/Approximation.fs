@@ -340,13 +340,15 @@ module SolverDeprecated =
         { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
           ctxVars = Map.empty
           ctxFuns = Map.empty
-          ctxDecfuns = Map.empty }
+          ctxDecfuns = Map.empty
+          actives = [] }
 
       let env_const =
         { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
           ctxVars = Map.empty
           ctxFuns = Map.empty
-          ctxDecfuns = Map.empty }
+          ctxDecfuns = Map.empty
+          actives = [] }
 
       let cnsts_cnt =
         List.fold
@@ -367,13 +369,15 @@ module SolverDeprecated =
             { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
               ctxVars = Map.empty
               ctxFuns = Map.empty
-              ctxDecfuns = Map.empty }
+              ctxDecfuns = Map.empty
+              actives = [] }
 
           let env_consts =
             { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
               ctxVars = Map.empty
               ctxFuns = Map.empty
-              ctxDecfuns = Map.empty }
+              ctxDecfuns = Map.empty
+              actives = [] }
 
           let solver_vars =
             env_vars.ctxSlvr.MkSolver "LIA"
@@ -421,7 +425,8 @@ module SolverDeprecated =
                 { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
                   ctxVars = Map.empty
                   ctxFuns = Map.empty
-                  ctxDecfuns = Map.empty }
+                  ctxDecfuns = Map.empty
+                  actives = [] }
 
 
               let solver = env.ctxSlvr.MkSolver "LIA"
