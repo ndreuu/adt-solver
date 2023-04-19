@@ -7,14 +7,9 @@
 (assert (forall ((x Int) (xs list) (n Int))
   (=> (length xs n) (length (cons x xs) (+ n 1)))))
 
-(assert (Inv nil 0 0))
-(assert (forall ((x Int) (xs list) (n Int))
-  (=> (and (length xs n) (length (cons x xs) (+ n 1))) (Inv (cons x xs) (+ n 1) (+ n 1)))))
-
-;(assert (forall ((y list) (i Int)) (=> (length y i) (Inv y i i))))
+(assert (forall ((y list) (i Int)) (=> (length y i) (Inv y i i))))
 (assert (forall ((y list) (i Int) (j Int) (y1 list) (j1 Int) (tmp Int))
   (=> (and (Inv y i j) (length y j) (= y (cons tmp y1)) (length y1 j1)) (Inv y1 (- i 1) j1))))
-
 (assert (forall ((y list) (i Int) (j Int))
   (=> (and (Inv y i j) (length y j) (< i 0)) false)))
 

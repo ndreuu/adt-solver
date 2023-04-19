@@ -106,7 +106,7 @@ let runRedlog definitions formula =
   |> balancedBracket
   |> function
     | Some s -> translateToSmt s |> Some 
-    | _ -> None
+    | otherwise -> printfn $"O!{otherwise}"; None
   
 
 
