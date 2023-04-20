@@ -16,14 +16,19 @@ let rec expr2redlogExpr =
     | Int v -> v.ToString()
     | Add (expr1, expr2) -> $"{expr2redlogExpr expr1} + {expr2redlogExpr expr2}"
     | Subtract (expr1, expr2) -> $"{expr2redlogExpr expr1} - {expr2redlogExpr expr2}"
+    | Neg expr -> $"(- {expr2redlogExpr expr})"
     | Mul (expr1, expr2) -> $"{expr2redlogExpr expr1} * {expr2redlogExpr expr2}"
     | Eq (expr1, expr2) -> $"({expr2redlogExpr expr1} = {expr2redlogExpr expr2})"
     | Gt (expr1, expr2) -> $"({expr2redlogExpr expr1} > {expr2redlogExpr expr2})"
     | Lt (expr1, expr2) -> $"({expr2redlogExpr expr1} < {expr2redlogExpr expr2})"
     | Le (expr1, expr2) -> $"({expr2redlogExpr expr1} <= {expr2redlogExpr expr2})"
     | Ge (expr1, expr2) -> $"({expr2redlogExpr expr1} >= {expr2redlogExpr expr2})"
-    | And exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
-    | Or exprs -> Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
+    | And exprs ->
+      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
+      $"({s})"
+    | Or exprs ->
+      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
+      $"({s})"
     | Not expr -> $"not {expr2redlogExpr expr}"
     | Implies (expr1, expr2) -> $"({expr2redlogExpr expr1}) impl ({expr2redlogExpr expr2})"
     | Var n -> n.ToString()
@@ -56,9 +61,7 @@ let def2redlogProc =
         match args with
         | [] -> ""
         | [arg] -> arg
-        | arg::args ->  
-        args
-        |> List.fold (fun n acc -> $"{acc}, {n}") arg 
+        | args -> join ", " args
       $"procedure {name}0({args'}); {expr2redlogExpr body}$"
     | _ -> ""
 
@@ -85,59 +88,16 @@ quit;"""
 
 let runRedlog definitions formula =
   let file = Path.GetTempPath() + ".red"
-  File.WriteAllText(file, redlogQuery definitions formula)
   
-  // File.AppendAllText("/home/andrew/adt-solver/many-branches-search/dbg/red-query.red",
-                    // $"{redlogQuery definitions formula}\n\n\n\n\n")
-
+  File.WriteAllText(file, redlogQuery definitions formula)
     
   let result = execute "redcsl" $"-w- {file}"
   let r = Regex "sth := "
-  printfn $"rrrrrrrrrrr\n{redlogQuery definitions formula}"
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
   subStr
   |> balancedBracket
   |> function
-    | Some s -> translateToSmt s |> Some 
-    | _ -> None
+    | Some s -> translateToSmt s |> Ok 
+    | _ -> Error result
   
-
-
-
-let chck () =
-  let expr =     (ForAll ([|"x0"; "x1"; "x10"; "x2"; "x3"; "x4"; "x5"; "x6"; "x7"; "x8"; "x9"|],
-             Implies (
-                    And
-                      [|
-                         Not (Eq(Var "x1", Var "x0"))
-                         Not (Eq(Var "x3", Apply ("nil", [])))
-                         Eq(Var "x2", Apply ("nil", []))
-                         Eq(Var "x3", Var "x9")
-                         Eq(Var "x4", Var "x9")
-                         Eq(Var "x3", Apply ("cons", [Var "x10"; Apply ("nil", [])]))
-                         Eq(Var "x1", Var "x10")
-                         Eq(Var "x4", Apply ("cons", [Var "x6"; Var "x7"]))
-                         Eq(Var "x0", Var "x5")
-                         Not (Eq(Var "x7", Apply ("nil", [])))
-                         Eq(Var "x7", Apply ("cons", [Var "x8"; Apply ("nil", [])]))
-                         Eq(Var "x5", Var "x8")
-                         |], Bool false) ) )
-  
-  let defs =
-    [
-      Def ("nil", [], Apply ("c0", []))
-      Def (
-      "cons",
-      [ "x"; "y" ],
-      Add (Apply ("c1", []), Add (Mul (Apply ("c2", []), Var "x"), Mul (Apply ("c3", []), Var "y")))
-    ) ]
-    
-  // let f usedOps (ident: Name) exprs =
-    // if usedOps |> List.contains ident then
-      // withFuns usedOps ident exprs
-    // else
-      // withConsts usedOps ident exprs
-    
-  runRedlog defs expr |>
-  function Some v -> smtExpr2expr v |> printfn "%O"

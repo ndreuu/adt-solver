@@ -15,8 +15,13 @@ module Tree =
 
   let rec fold f x =
     function
-    | Node (v, ts) -> f (List.fold (fun a y -> fold f a y) x ts) v
-  
-  let value = function Node (v, _) -> v
-  
-  let isLastLvl = function Node (_, []) -> true | _ -> false
+    | Node (v, ts) -> f (List.fold (fold f) x ts) v
+
+  let value =
+    function
+    | Node (v, _) -> v
+
+  let isLastLvl =
+    function
+    | Node (_, []) -> true
+    | _ -> false

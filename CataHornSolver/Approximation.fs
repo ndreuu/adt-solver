@@ -5,6 +5,7 @@ open Microsoft.Z3
 open SMTLIB2.Parser
 open SMTLIB2.Prelude
 open Operation
+open SMTLIB2
 
 
 module Linearization =
@@ -49,7 +50,6 @@ module Linearization =
           plus,
           [ Apply (UserDefinedOperation (sprintf "c_%s" <| pdng.ToString (), [], IntSort), [])
             List.fold (fun acc x ->
-                       // printfn ">>>>>>%O" x
                        Apply (plus, [ x; acc ])) t ts ]
         )
 
@@ -187,24 +187,6 @@ module Linearization =
     let defFunctions =
       commands |> List.filter (function | Definition (DefineFun _) -> true | _ -> false)
     
-    // dataTypes
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    //
-    // functions
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    //
-    // asserts
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    //
-    // defConstants
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    //
-    // decConstants
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-    //
-    // skAsserts
-    // |> List.iter (fun x -> printfn "%s\n" <| x.ToString())
-
     (defFunctions, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
 
 
@@ -286,7 +268,7 @@ module SolverDeprecated =
           | And es -> es |> Array.map (fun e -> to_var e) |> And
           | Not e -> to_var e |> Not
           | Implies (e1, e2) -> Implies (to_var e1, to_var e2)
-
+          | _ -> __unreachable__ ()
         List.map (function
           | Def (n, args, e) -> Def (n, args, e |> to_var)
           | otherwise -> otherwise)
@@ -307,7 +289,7 @@ module SolverDeprecated =
               | Implies (e1, e2) -> helper (helper acc e2) e1
               | And es -> es |> Array.fold helper acc
               | Not e -> helper acc e
-
+              | _ -> __unreachable__ ()
           helper Set.empty expr
 
       let declares =
@@ -334,19 +316,21 @@ module SolverDeprecated =
           | Implies (e1, e2) -> Implies (subst map e1, subst map e2)
           | Var n -> map |> Map.find n |> Int
           | Apply (n, es) -> Apply (n, es |> List.map (fun e -> subst map e))
-
+          | _ -> __unreachable__ ()
 
       let env_var =
         { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
           ctxVars = Map.empty
           ctxFuns = Map.empty
-          ctxDecfuns = Map.empty }
+          ctxDecfuns = Map.empty
+          actives = [] }
 
       let env_const =
         { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
           ctxVars = Map.empty
           ctxFuns = Map.empty
-          ctxDecfuns = Map.empty }
+          ctxDecfuns = Map.empty
+          actives = [] }
 
       let cnsts_cnt =
         List.fold
@@ -367,13 +351,15 @@ module SolverDeprecated =
             { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
               ctxVars = Map.empty
               ctxFuns = Map.empty
-              ctxDecfuns = Map.empty }
+              ctxDecfuns = Map.empty
+              actives = [] }
 
           let env_consts =
             { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
               ctxVars = Map.empty
               ctxFuns = Map.empty
-              ctxDecfuns = Map.empty }
+              ctxDecfuns = Map.empty
+              actives = [] }
 
           let solver_vars =
             env_vars.ctxSlvr.MkSolver "LIA"
@@ -421,7 +407,8 @@ module SolverDeprecated =
                 { ctxSlvr = new Context ([| ("model", "true") |] |> dict |> Dictionary)
                   ctxVars = Map.empty
                   ctxFuns = Map.empty
-                  ctxDecfuns = Map.empty }
+                  ctxDecfuns = Map.empty
+                  actives = [] }
 
 
               let solver = env.ctxSlvr.MkSolver "LIA"
@@ -453,11 +440,12 @@ module SolverDeprecated =
 
       open Linearization
 
-      let assrt = function originalCommand.Assert (smtExpr.Not e) -> smtExpr2expr e
+      let assrt = function originalCommand.Assert (smtExpr.Not e) -> smtExpr2expr e | _ -> __unreachable__ ()
+
 
       let defs =
         let args = List.map fst
-        List.map (function | Definition (DefineFun (symbol, args', _, smtExpr)) -> Def (symbol, args args', smtExpr2expr smtExpr))
+        List.map (function | Definition (DefineFun (symbol, args', _, smtExpr)) -> Def (symbol, args args', smtExpr2expr smtExpr) | _ -> __unreachable__ ())
 
       let run =
         fun path ->

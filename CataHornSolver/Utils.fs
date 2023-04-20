@@ -7,9 +7,12 @@ open Microsoft.FSharp.Collections
 open SMTLIB2
 open SMTLIB2.Parser
 
+let inline join s (xs: string seq) = String.Join (s, xs)
+
 module IntOps =
   let mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
   let negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
+  let minusOp = ElementaryOperation ("-", [ IntSort; IntSort ], IntSort)
   let addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
   let minusOp = ElementaryOperation ("-", [ IntSort; IntSort ], IntSort)
   let eqOp = ElementaryOperation ("=", [ IntSort; IntSort ], BoolSort)
@@ -203,52 +206,54 @@ module RmNats =
       | Some _ -> true
       | None -> false
 
-  
-  
+
+
 
   let blockedAsserts fName bool smts =
     let isEqBlockAsserts =
-      (smts |> List.filter (isBlockedAssert blockedAssert1 fName bool) |> List.length > 0) &&
-      (smts |> List.filter (isBlockedAssert blockedAssert2 fName bool) |> List.length > 0) &&
-      (smts |> List.filter (isBlockedAssert blockedAssert3 fName bool) |> List.length > 0) &&
-      (smts |> List.filter (isBlockedAssert blockedAssert4 fName bool) |> List.length > 0) 
-    
-    
-    if isEqBlockAsserts then       
+      (smts |> List.filter (isBlockedAssert blockedAssert1 fName bool) |> List.length > 0)
+      && (smts |> List.filter (isBlockedAssert blockedAssert2 fName bool) |> List.length > 0)
+      && (smts |> List.filter (isBlockedAssert blockedAssert3 fName bool) |> List.length > 0)
+      && (smts |> List.filter (isBlockedAssert blockedAssert4 fName bool) |> List.length > 0)
+
+
+    if isEqBlockAsserts then
       List.filter
         (fun stmt ->
-           (isBlockedAssert blockedAssert1 fName bool stmt
+          (isBlockedAssert blockedAssert1 fName bool stmt
            || isBlockedAssert blockedAssert2 fName bool stmt
            || isBlockedAssert blockedAssert3 fName bool stmt
            || isBlockedAssert blockedAssert4 fName bool stmt))
         smts
-    else []
-      
+    else
+      []
+
 
   let rmBlockedAsserts (blockedAsserts: _ list) (stmts: originalCommand list) =
     stmts
-    |> List.filter
-         (fun x ->
-            match x with
-            | _ when blockedAsserts |> List.contains x -> false
-            | _ -> true)
+    |> List.filter (fun x ->
+      match x with
+      | _ when blockedAsserts |> List.contains x -> false
+      | _ -> true)
 
   let substitute after values =
     List.fold
       (fun acc stmt ->
         match stmt with
-        | x when x = after -> values @ x::acc 
-        | x -> x::acc )
+        | x when x = after -> values @ x :: acc
+        | x -> x :: acc)
       []
     >> List.rev
 
   let eqDecs =
-    List.filter
-      (function
-        | Command (command.DeclareFun (_, _,  [ ADTSort boolName; IntSort; IntSort ], BoolSort)) when boolName.Contains "Bool" -> true
-        | _ -> false)
-  
-  
+    List.filter (function
+      | Command (command.DeclareFun (_, _, [ ADTSort boolName; IntSort; IntSort ], BoolSort)) when
+        boolName.Contains "Bool"
+        ->
+        true
+      | _ -> false)
+
+
 
 
   let eqFunDecl acc =
@@ -257,10 +262,10 @@ module RmNats =
       (n, boolName) :: acc
     | _ -> acc
 
-  let transformEqAsserts f falseFun trueFun  =
+  let transformEqAsserts f falseFun trueFun =
     [ Assert (
         QuantifierApplication (
-          [ ForallQuantifier ([ ("x", IntSort); ("y", IntSort) ]) ],
+          [ ForallQuantifier [ ("x", IntSort); ("y", IntSort) ] ],
           Hence (
             Apply (
               ElementaryOperation ("=", [ IntSort; IntSort ], IntSort),
@@ -272,7 +277,7 @@ module RmNats =
       )
       Assert (
         QuantifierApplication (
-          [ ForallQuantifier ([ ("x", IntSort); ("y", IntSort) ]) ],
+          [ ForallQuantifier [ ("x", IntSort); ("y", IntSort) ] ],
           Hence (
             Apply (
               ElementaryOperation ("distinct", [ IntSort; IntSort ], IntSort),
@@ -282,44 +287,25 @@ module RmNats =
           )
         )
       ) ]
-    
-  
+
+
 
   let boolOps boolName =
     List.fold
       (fun acc stmt ->
-          match stmt with 
-          | Command (DeclareDatatypes [(boolName1,
-          [(ElementaryOperation (name1, [], _), _, []);
-           (ElementaryOperation (name2, [], _), _, [])])])
-          | Command (DeclareDatatypes [(boolName1,
-          [(ElementaryOperation (name2, [], _), _, []);
-           (ElementaryOperation (name1, [], _), _, [])])])
-            when boolName1 = boolName && name1.Contains "false" && name2.Contains "true" ->
-              Some (name1, name2)
-          | _ when Option.isSome acc -> acc
-          | _ -> None ) None
-
-
-  // UserDefinedOperation (fName, [], BoolSort)
-  // (assert (forall ((x Int) (y Int)) (=> (= x y) (x_55355 true_342 x y))))
-  // (assert (forall ((x Int) (y Int)) (=> (distinct x y) (x_55355 false_342 x y))))
-
-
-
-  // when bool1 = bool2 = bool3 = bool4
-
-
-  // let assertsBlackList f bool nat =
-  //   let helper acc =
-  //     function
-  //       | Assert
-  //           (QuantifierApplication
-  //             ([ForallQuantifier [(x1, b); (x2, n1); (x3, n2)] ],
-  //              Hence(f', x1', x3', x2') )) as x
-  //         when b = bool && n1 = nat && n2 = nat -> x :: acc
-  //   helper []
-
+        match stmt with
+        | Command (DeclareDatatypes [ (boolName1,
+                                       [ (ElementaryOperation (name1, [], _), _, [])
+                                         (ElementaryOperation (name2, [], _), _, []) ]) ])
+        | Command (DeclareDatatypes [ (boolName1,
+                                       [ (ElementaryOperation (name2, [], _), _, [])
+                                         (ElementaryOperation (name1, [], _), _, []) ]) ]) when
+          boolName1 = boolName && name1.Contains "false" && name2.Contains "true"
+          ->
+          Some (name1, name2)
+        | _ when Option.isSome acc -> acc
+        | _ -> None)
+      None
 
   let filter cmds nat_names =
     List.fold
@@ -332,9 +318,9 @@ module RmNats =
              | name, _ when nat_names |> List.contains name -> false
              | _ -> true))
            |> fun defs ->
-                match List.length defs with
-                | 0 -> acc
-                | _ -> Command (command.DeclareDatatypes defs) :: acc)
+               match List.length defs with
+               | 0 -> acc
+               | _ -> Command (command.DeclareDatatypes defs) :: acc)
         | Command (DeclareFun (n, _, _)) when n.Contains "diseqNat" -> acc
         | Assert (QuantifierApplication (_, Hence (_, Apply (ElementaryOperation (ident, _, _), _))))
         | Assert (QuantifierApplication (_, Hence (_, Apply (UserDefinedOperation (ident, _, _), _))))
@@ -416,8 +402,8 @@ module RmNats =
     | Apply _ as expr -> expr
     | otherwise -> failwith $"{otherwise}"
 
-  let (|Proof|_|) _ = __notImplemented__()
-  
+  // let (|Proof|_|) _ = __notImplemented__()
+
   let replace (natNames: string list) =
     function
     | Definition def ->
@@ -435,16 +421,6 @@ module RmNats =
         |> Definition
     | Command cmd ->
       match cmd with
-      | CheckSat
-      | GetModel
-      | Exit
-      | GetInfo _
-      | GetProof
-      | SetInfo _
-      | SetLogic _
-      | SetOption _
-      | DeclareSort _
-      | Proof _ -> cmd |> Command
       | DeclareDatatype def -> command.DeclareDatatype (elimNatInDataTypeDef natNames def) |> Command
       | DeclareDatatypes defs ->
         command.DeclareDatatypes (List.map (fun def -> elimNatInDataTypeDef natNames def) defs)
@@ -453,39 +429,25 @@ module RmNats =
         DeclareFun (n, List.map (eliminateNat natNames) sorts, eliminateNat natNames sort)
         |> Command
       | DeclareConst (n, sort) -> DeclareConst (n, eliminateNat natNames sort) |> Command
+      | _ -> cmd |> Command
+
     | Assert expr -> elimNatInExpr natNames expr |> Assert
 
 
   let replace_nat cmds =
     let nat_names = nat_names cmds
-    // for v in nat_names do
-    // printfn "%O" v
+
     nat_names
-    |> filter cmds // HERE SMTHING
+    |> filter cmds
     |> fun xs ->
-
-         // for x in xs do
-         // printfn $"{x}"
-
-         // |> List.map (sprintf "%O")
-         // |> fun xs ->
-         // for x in xs do
-         // printfn $">>{x}"
-
-         // xs
-         let ca = List.map (replace nat_names) xs
-         ca |> List.map (sprintf "%O")
-
-    |> fun xs ->
-         // for x in xs do
-         // printfn $"<<{x}"
-         xs
-         |> function
-           | x :: xs ->
-             x :: (nat_constructors cmds |> constructors_to_fns |> List.map (sprintf "%O"))
-             @ xs
-           | otherwise -> otherwise
-         |> List.fold (fun acc cmd -> sprintf "%s\n%s" acc cmd) ""
+        let ca = List.map (replace nat_names) xs
+        ca |> List.map (sprintf "%O")
+    |> function
+      | x :: xs ->
+        x :: (nat_constructors cmds |> constructors_to_fns |> List.map (sprintf "%O"))
+        @ xs
+      | otherwise -> otherwise
+    |> List.fold (fun acc cmd -> sprintf "%s\n%s" acc cmd) ""
 
   let constructors_cnt =
     let add acc =
@@ -517,28 +479,21 @@ module RmNats =
 
     let haveRec acc =
       function
-      | Command (DeclareDatatype (adtName, xs)) -> failwith "!!"
-      | Command (DeclareDatatypes defs) as c ->
-        // printfn $"{c}";
+      | Command (DeclareDatatype _) -> failwith "!!"
+      | Command (DeclareDatatypes defs) ->
         defs
         |> List.fold
-             (fun acc (adtName, defs) ->
-               // printfn $"{adtName}"
-               defs
-               |> List.fold
-                    (fun acc (constr, _, _) ->
-                      match constr with
-                      | ElementaryOperation (n, args, _)
-                      | UserDefinedOperation (n, args, _) when (adtName.Contains "Nat" |> not) ->
-                        // for arg in args do
-                        // match arg with
-                        // | ADTSort n -> printfn $"{arg}"
-                        // | otherwise -> failwith $"{otherwise}"
-                        // printfn $"{n} -- {args} -- {argsHaveSort (ADTSort adtName) args} -- {argsHaveSort (FreeSort adtName) args}"
-                        acc || argsHaveSort (ADTSort adtName) args
-                      | _ -> acc)
-                    acc)
-             acc
+          (fun acc (adtName, defs) ->
+            defs
+            |> List.fold
+              (fun acc (constr, _, _) ->
+                match constr with
+                | ElementaryOperation (_, args, _)
+                | UserDefinedOperation (_, args, _) when (adtName.Contains "Nat" |> not) ->
+                  acc || argsHaveSort (ADTSort adtName) args
+                | _ -> acc)
+              acc)
+          acc
       | _ -> acc
 
     List.fold (fun acc cmd -> haveRec acc cmd) false cmds
@@ -551,58 +506,52 @@ module RmNats =
   let change (file: string) =
     let p = Parser false
     let cmds = p.ParseFile file
-    
-    // for cmd in cmds do
-      // printfn $"{cmd}"
-    
-    
-    
-    let cmds' cmds = 
+
+    let cmds' cmds =
       eqDecs cmds
       |> fun xs ->
-           // printfn $"xsxsx>>>>{xs}"
-           // for x in xs do
-             // printfn $"{x}"
-           xs
-           |> List.fold
-              (fun acc decl ->
-                 match decl with
-                   | Command (DeclareFun (fName, [ADTSort boolName; _; _], _)) ->
-                     let bool = ADTSort boolName 
-                     let blockedAsserts = blockedAsserts fName bool acc
-                     // printfn $"--->{blockedAsserts}"
-                     let cmds' = rmBlockedAsserts blockedAsserts acc
-                     let falseOpName, trueOpName = boolOps boolName acc |> function Some (x, y) -> x, y | _ -> failwith "!!!!"
-                     let falseOp = ElementaryOperation (falseOpName, [], ADTSort boolName)
-                     let trueOp = ElementaryOperation (trueOpName, [], ADTSort boolName)
-                     let f = UserDefinedOperation (fName, [], BoolSort)
-                     let trueFun = Apply (trueOp, [])
-                     let falseFun = Apply (falseOp, [])
-                     
-                     match blockedAsserts with
-                     | [] -> acc
-                     | _ ->
-                        let newAsserts = transformEqAsserts f falseFun trueFun
-                        substitute decl newAsserts cmds'
-                   | _ -> acc
-                 )
-            cmds
+        xs
+        |> List.fold
+          (fun acc decl ->
+            match decl with
+            | Command (DeclareFun (fName, [ ADTSort boolName; _; _ ], _)) ->
+              let bool = ADTSort boolName
+              let blockedAsserts = blockedAsserts fName bool acc
+              let cmds' = rmBlockedAsserts blockedAsserts acc
 
-    
+              let falseOpName, trueOpName =
+                boolOps boolName acc
+                |> function
+                  | Some (x, y) -> x, y
+                  | _ -> failwith "!!!!"
+
+              let falseOp = ElementaryOperation (falseOpName, [], ADTSort boolName)
+              let trueOp = ElementaryOperation (trueOpName, [], ADTSort boolName)
+              let f = UserDefinedOperation (fName, [], BoolSort)
+              let trueFun = Apply (trueOp, [])
+              let falseFun = Apply (falseOp, [])
+
+              match blockedAsserts with
+              | [] -> acc
+              | _ ->
+                let newAsserts = transformEqAsserts f falseFun trueFun
+                substitute decl newAsserts cmds'
+            | _ -> acc)
+          cmds
+
+
 
     { natOlny = only_nat cmds
       haveRec = haveRecTypes cmds
-      value = replace_nat cmds |>
-              fun str ->
-                let p = Parser false
-                let tmpFile = System.IO.Path.GetTempFileName ()
-                File.WriteAllText (tmpFile, str)
-                let cmds'' = p.ParseFile (tmpFile)
-                
-                // for str in strs do
-                  // p.ParseLine str
-                  
-                cmds' cmds'' |> List.fold (fun acc x -> $"{acc}{x}\n") ""}
+      value =
+        replace_nat cmds
+        |> fun str ->
+          let p = Parser false
+          let tmpFile = Path.GetTempFileName ()
+          File.WriteAllText (tmpFile, str)
+          let cmds'' = p.ParseFile tmpFile
+
+          cmds' cmds'' |> List.fold (fun acc x -> $"{acc}{x}\n") "" }
 
   let changeFromFolder input outPut =
     let natOut = $"{outPut}/TIP.only-nat-constructors"
@@ -626,86 +575,13 @@ module RmNats =
 
     let changed =
       Array.map (fun (file: string) -> (Path.GetFileNameWithoutExtension file, change file)) files
-    // |> Array.filter (fun (_, x) -> x.haveRec)
 
     for n, v in changed do
       match v with
       | _ when (not v.haveRec) -> File.WriteAllText ($"{noRecOut}/{n}", v.value)
       | _ when v.haveRec && v.natOlny -> File.WriteAllText ($"{natOut}/{n}", v.value)
       | _ when v.haveRec && (not v.natOlny) -> File.WriteAllText ($"{outPut}/{n}", v.value)
-// | _ when (not v.haveRec) && (v.natOlny) -> File.WriteAllText($"{noRecOut}/{n}", v.value)
-// | _ when (not v.haveRec) && (not v.natOlny) -> File.WriteAllText($"{noRecOut}/{n}", v.value)
-// if v.natOlny then
-// File.WriteAllText($"{natOut}/{n}", v.value)
-// else
-// File.WriteAllText($"{outPut}/{n}", v.value)
+      | _ -> __unreachable__ ()
 
-
-
-let chck () =
-  // RmNats.change "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/repo/TIP-no-NAT/TIP.Original.Linear/prod_prop_47.smt2" 
-  // |> printfn "%O"
-  // printfn "%O" <| "diseqNat_567".Contains "diseqNat"
-  // RmNats.change "/home/andrew/Downloads/CAV2022Orig(13)/benchmarks/TIP.Original.Linear/prod_prop_25.smt2"
-
-  // let dir =
-  // "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rm-diseq-in-head/TIP.Original.Linear"
-
-  // let files = Directory.GetFiles(dir, @"*.smt2")
-
-  // let file =
-  //   "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rm-no-rec-types/TIP.not-only-nat-constructors/prod_prop_38"
-  //
-  // let p = Parser false
-  // let cmds = p.ParseFile file
-  //
-  // for cmd in cmds do
-  //   printfn $"{cmd}"
-  //
-  //
-  // RmNats.eqDecs cmds
-  // |> List.fold
-  //      (fun _ decl ->
-  //         match decl with
-  //           | Command (DeclareFun (fName, [ADTSort boolName; _; _], _)) ->
-  //             let bool = ADTSort boolName 
-  //             let blockedAsserts = RmNats.blockedAsserts fName bool cmds
-  //             let cmds' = RmNats.rmBlockedAsserts blockedAsserts cmds
-  //             let falseOpName, trueOpName = RmNats.boolOps boolName cmds |> function Some (x, y) -> x, y | _ -> failwith "!!!!"
-  //             let falseOp = ElementaryOperation (falseOpName, [], ADTSort boolName)
-  //             let trueOp = ElementaryOperation (trueOpName, [], ADTSort boolName)
-  //             let f = UserDefinedOperation (fName, [], BoolSort)
-  //             let trueFun = Apply (trueOp, [])
-  //             let falseFun = Apply (falseOp, [])
-  //             let newAsserts = RmNats.transformEqAsserts f falseFun trueFun
-  //             RmNats.substitute decl newAsserts cmds'
-  //           | otherwise -> failwith $"><><><><><\nn\n\\n{otherwise}"
-  //         )
-  //    []
-  // |> fun cmds ->
-  //   for cmd in cmds do printfn $"{cmd}"
-    
-    
-    
-  // let eqDecs = List.fold (fun acc x -> RmNats.eqFunDecl acc x) [] cmds
-
-  // for v in eqDecs do
-    // printfn $"{v}"
-
-  // RmNats.replace_nat cmds
-
-
-  // printfn $"{RmNats.haveRecTypes cmds}"
-
-
-  // for file in files do
-  // let p = Parser false
-  // let cmds = p.ParseFile file
-  // printfn $"{Path.GetFileName file} :::: {RmNats.haveRecTypes cmds}"
-
-  // RmNats.change "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rewrite-diseq-asserts/TIP.Original.Linear/isaplanner_prop_10.smt2"
-  // |> printfn "%O"
-  RmNats.changeFromFolder
-    "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rewrite-diseq-asserts/TIP.Original.Linear"
-    "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rewrite-diseq-asserts/TIP.not-only-nat-constructors"
-  ()
+let go pathOrig pathLia =
+  RmNats.changeFromFolder pathOrig pathLia
