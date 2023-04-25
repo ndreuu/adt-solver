@@ -29,7 +29,7 @@ let execute processName processArgs =
 
 let runWithTimeout (timeout: int) (action: unit -> 'a) : 'a option =
   let work = Task.Run (fun () -> Some (action ()))
-  let delay = Task.Delay(timeout).ContinueWith (fun t -> None)
+  let delay = Task.Delay(timeout).ContinueWith (fun _ -> None)
   Task.WhenAny(work, delay).Result.Result
 
 let foreachFleTimeout timeout dir f g =
@@ -37,4 +37,3 @@ let foreachFleTimeout timeout dir f g =
 
   for file in files do
     runWithTimeout timeout f |> g file
-

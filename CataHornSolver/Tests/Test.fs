@@ -28,24 +28,24 @@ type TestClass () =
     let dDeclFuns = [ Decl ("diseqInt", 2) ]
     
     let dA1 =
-      Assert (ForAll ([| "x1" |], App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x1" ]) |])))
+      Assert (ForAll ([| "x1" |], App ("diseqInt", [ Apply ("Z", []); Apply ("S", [ Var "x1" ]) ])))
     
     let dA2 =
-      Assert (ForAll ([| "x2" |], App ("diseqInt", [| Apply ("S", [ Var "x2" ]); Apply ("Z", []) |])))
+      Assert (ForAll ([| "x2" |], App ("diseqInt", [ Apply ("S", [ Var "x2" ]); Apply ("Z", []) ])))
     
     let dA3 =
       Assert (
         ForAll (
           [| "x3"; "y3" |],
           Implies (
-            App ("diseqInt", [| Var "x3"; Var "y3" |]),
-            App ("diseqInt", [| Apply ("S", [ Var "x3" ]); Apply ("S", [ Var "y3" ]) |])
+            App ("diseqInt", [ Var "x3"; Var "y3" ]),
+            App ("diseqInt", [ Apply ("S", [ Var "x3" ]); Apply ("S", [ Var "y3" ]) ])
           )
         )
       )
     
     let dA4 =
-      Assert (ForAll ([| "x4" |], Implies (App ("diseqInt", [| Var "x4"; Var "x4" |]), Bool false)))
+      Assert (ForAll ([| "x4" |], Implies (App ("diseqInt", [ Var "x4"; Var "x4" ]), Bool false)))
     runWithoutFuns dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ] |> printfn "%O"
     Assert.True(runWithoutFuns dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ] = "SAT")
 
@@ -68,25 +68,25 @@ type TestClass () =
     let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
     
     let listAssert1 =
-      Assert (ForAll ([| "ys1" |], App ("app", [| Apply ("nil", []); Var "ys1"; Var "ys1" |])))
+      Assert (ForAll ([| "ys1" |], App ("app", [ Apply ("nil", []); Var "ys1"; Var "ys1" ])))
     
     let listAssert2 =
       Assert (
         ForAll (
           [| "x2"; "xs2"; "ys2"; "zs2" |],
           Implies (
-            App ("app", [| Var "xs2"; Var "ys2"; Var "zs2" |]),
+            App ("app", [ Var "xs2"; Var "ys2"; Var "zs2" ]),
             App (
               "app",
-              [| Apply ("cons", [ Var "x2"; Var "xs2" ])
-                 Var "ys2"
-                 Apply ("cons", [ Var "x2"; Var "zs2" ]) |]
+              [ Apply ("cons", [ Var "x2"; Var "xs2" ]);
+                 Var "ys2";
+                 Apply ("cons", [ Var "x2"; Var "zs2" ]) ]
             )
           )
         )
       )
     let listAssert3 =
-      Assert (ForAll ([| "x3" |], App ("last", [| Apply ("cons", [ Var "x3"; Apply ("nil", []) ]); Var "x3" |])))
+      Assert (ForAll ([| "x3" |], App ("last", [ Apply ("cons", [ Var "x3"; Apply ("nil", []) ]); Var "x3" ])))
     
     let listAssert4 =
       Assert (
@@ -95,8 +95,8 @@ type TestClass () =
           Implies (
             And
               [| Not (Eq (Var "xs4", Apply ("nil", [])))
-                 App ("last", [| Var "xs4"; Var "n4" |]) |],
-            App ("last", [| Apply ("cons", [ Var "x4"; Var "xs4" ]); Var "n4" |])
+                 App ("last", [ Var "xs4"; Var "n4" ]) |],
+            App ("last", [ Apply ("cons", [ Var "x4"; Var "xs4" ]); Var "n4" ])
           )
         )
       )
@@ -107,9 +107,9 @@ type TestClass () =
           [| "ys5"; "zs5"; "m5"; "xs5"; "n5" |],
           Implies (
             And
-              [| App ("app", [| Var "xs5"; Var "ys5"; Var "zs5" |])
-                 App ("last", [| Var "ys5"; Var "n5" |])
-                 App ("last", [| Var "zs5"; Var "m5" |])
+              [| App ("app", [ Var "xs5"; Var "ys5"; Var "zs5" ])
+                 App ("last", [ Var "ys5"; Var "n5" ])
+                 App ("last", [ Var "zs5"; Var "m5" ])
                  Not (Eq (Var "ys5", Apply ("nil", [])))
                  Not (Eq (Var "n5", Var "m5")) |],
             Bool false

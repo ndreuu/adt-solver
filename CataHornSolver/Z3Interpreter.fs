@@ -33,7 +33,7 @@ module AST =
     | Var of Name
     | Apply of Name * Expr list
     | ForAll of Name array * Expr
-    | App of Name * Expr array
+    | App of Name * Expr list
     | Ite of Expr * Expr * Expr
 
   let rec expr2smtExpr =
@@ -49,14 +49,13 @@ module AST =
     | Subtract (expr1, expr2) -> smtExpr.Apply (minusOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Neg expr -> neg (expr2smtExpr expr)
     | Mod (expr1, expr2) -> smtExpr.Apply (modOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Mul (expr1, expr2) -> mult(expr2smtExpr expr1) (expr2smtExpr expr2)
+    | Mul (expr1, expr2) -> mult (expr2smtExpr expr1) (expr2smtExpr expr2)
     | And exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.And
     | Or exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.Or
     | Not expr -> expr2smtExpr expr |> smtExpr.Not
     | Implies (expr1, expr2) -> Hence (expr2smtExpr expr1, expr2smtExpr expr2)
     | Var n -> Ident (n, IntSort)
-    | App (n, exprs) ->
-      smtExpr.Apply (UserDefinedOperation (n, [], IntSort), Array.map expr2smtExpr exprs |> Array.toList)
+    | App (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
     | Apply (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
     | ForAll (names, e) ->
       QuantifierApplication (
@@ -239,7 +238,7 @@ module AST =
       | Not expr -> Not (helper' expr)
       | Apply (n, exprs) -> Apply (n, exprs |> List.map helper')
       | ForAll (ns, expr) -> ForAll (ns, helper' expr)
-      | App (n, exprs) -> App (n, exprs |> Array.map helper')
+      | App (n, exprs) -> App (n, exprs |> List.map helper')
       | Ite (expr1, expr2, expr3) -> Ite (helper' expr1, helper' expr2, helper' expr3)
       | Int _
       | Bool _
@@ -292,8 +291,8 @@ module Interpreter =
       | Var x -> env.ctxVars |> Map.find x
       | App (name, expr) ->
         let decFun = env.ctxDecfuns |> Map.find name in
-        let args: Microsoft.Z3.Expr[] = Array.map (evalExpr env) expr
-        env.ctxSlvr.MkApp (decFun, args)
+        let args = List.map (evalExpr env) expr
+        env.ctxSlvr.MkApp (decFun, Array.ofList args)
       | Apply (n, [ x; y ]) when n = "distinct" -> evalExpr env (Not (Eq (x, y)))
       | Apply (n, vs) ->
         env.ctxFuns

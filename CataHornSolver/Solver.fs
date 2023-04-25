@@ -105,7 +105,7 @@ let renameVar =
     | Not expr -> Not (this expr)
     | Apply (name, exprs) -> Apply (name, exprs |> List.map this)
     | ForAll (names, expr) -> ForAll (names |> Array.map (fun x -> if x = oldName then newName else x), this expr)
-    | App (name, exprs) -> App ((if name = oldName then newName else name), exprs |> Array.map this)
+    | App (name, exprs) -> App ((if name = oldName then newName else name), exprs |> List.map this)
     | Ite (expr1, expr2, expr3) -> Ite (this expr1, this expr2, this expr3)
     | expr -> expr
 
@@ -129,7 +129,7 @@ let vars =
     | Neg expr
     | Not expr -> helper acc expr
     | Ite (expr1, expr2, expr3) -> helper (helper (helper acc expr1) expr2) expr3
-    | App (_, exprs)
+    | App (_, exprs) -> List.fold helper acc exprs
     | And exprs
     | Or exprs -> Array.fold helper acc exprs
     | Apply (_, exprs) -> List.fold helper acc exprs
@@ -152,7 +152,7 @@ let getApp name (apps: apps) =
 
       match exprs with
       | App (_, args) :: tl -> (args, apps' tl)
-      | _ -> ([||], apps)
+      | _ -> ([], apps)
 
 let forAll expr =
   let rec helper acc =
@@ -169,7 +169,7 @@ let forAll expr =
     | Mod (expr1, expr2)
     | Implies (expr1, expr2)
     | Mul (expr1, expr2) -> helper (helper acc expr1) expr2
-    | App (_, exprs)
+    | App (_, exprs) -> List.fold helper acc exprs
     | And exprs
     | Or exprs -> Array.fold helper acc exprs
     | ForAll (_, expr)
@@ -249,7 +249,7 @@ let uniqVarNames =
     | ForAll (_, expr)
     | Neg expr
     | Not expr -> varNames acc expr
-    | App (_, exprs)
+    | App (_, exprs) -> List.fold varNames acc exprs
     | And exprs
     | Or exprs -> Array.fold varNames acc exprs
     | Apply (_, exprs) -> List.fold varNames acc exprs
@@ -292,12 +292,12 @@ let argsBind x ys =
   let bind = List.map2 (fun x y -> Eq (x, y))
 
   match x with
-  | App (name, args) when args |> Array.length > 0 ->
+  | App (name, args) when not <| List.isEmpty args ->
     ys
     |> List.fold
       (fun acc y ->
         match y with
-        | App (n, args') when n = name -> (bind (Array.toList args) (Array.toList args')) :: acc
+        | App (n, args') when n = name -> (bind args args') :: acc
         | _ -> acc)
       []
     |> function
@@ -892,18 +892,18 @@ module HenceNormalization =
   let normalize name arguments srcArguments =
     function
     | Assert (App (_, args)) ->
-      bindArgs (Array.toList srcArguments) (Array.toList args) (App (name, arguments))
+      bindArgs srcArguments args (App (name, arguments))
       |> Assert
     | Assert (ForAll (names, App (_, args))) ->
-      ForAll (names, bindArgs (Array.toList srcArguments) (Array.toList args) (App (name, arguments)))
+      ForAll (names, bindArgs srcArguments args (App (name, arguments)))
       |> Assert
     | Assert (Implies (body, (App (_, args) as head))) ->
-      bindArgs (Array.toList srcArguments) (Array.toList args) (Implies (And [| body; head |], App (name, arguments)))
+      bindArgs srcArguments args (Implies (And [| body; head |], App (name, arguments)))
       |> Assert
     | Assert (ForAll (names, Implies (body, (App (_, args) as head)))) ->
       bindArgs
-        (Array.toList srcArguments)
-        (Array.toList args)
+        srcArguments
+        args
         (ForAll (names, Implies (And [| body; head |], App (name, arguments))))
       |> Assert
     | _ -> Assert (Bool true)
@@ -1051,7 +1051,7 @@ let apply2app appNames =
     | Or exprs -> Or (Array.map helper exprs)
     | Not expr -> Not (helper expr)
     | Implies (expr1, expr2) -> Implies (helper expr1, helper expr2)
-    | Apply (name, exprs) when appNames |> List.contains name -> App (name, List.map helper exprs |> List.toArray)
+    | Apply (name, exprs) when appNames |> List.contains name -> App (name, List.map helper exprs)
     | Apply (name, exprs) -> Apply (name, List.map helper exprs)
     | ForAll (names, expr) -> ForAll (names, helper expr)
     | Ite (expr1, expr2, expr3) -> Ite (helper expr1, helper expr2, helper expr3)
@@ -1089,6 +1089,3 @@ let run file dbg =
   let toPrograms = List.map origCommand2program
 
   solver (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
-
-
-

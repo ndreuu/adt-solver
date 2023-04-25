@@ -1,15 +1,12 @@
 open System.IO
-open Microsoft.FSharp.Core
 open ProofBased.Solver
 
 module Program =
 
   [<EntryPoint>]
-  let main args =
-    match args with
+  let main = function
     | [| path; dbgPath |] ->
-
-      let d = Path.Join [|dbgPath; "dbg" |]
+      let d = Path.Join [| dbgPath; "dbg" |]
       if Directory.Exists d then Directory.Delete (d, true)
       Directory.CreateDirectory d |> ignore
       

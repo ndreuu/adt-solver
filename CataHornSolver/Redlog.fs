@@ -23,33 +23,13 @@ let rec expr2redlogExpr =
     | Lt (expr1, expr2) -> $"({expr2redlogExpr expr1} < {expr2redlogExpr expr2})"
     | Le (expr1, expr2) -> $"({expr2redlogExpr expr1} <= {expr2redlogExpr expr2})"
     | Ge (expr1, expr2) -> $"({expr2redlogExpr expr1} >= {expr2redlogExpr expr2})"
-    | And exprs ->
-      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} and {e}") (expr2redlogExpr exprs[0])
-      $"({s})"
-    | Or exprs ->
-      let s = Array.map expr2redlogExpr exprs[1..] |> Array.fold (fun acc e -> $"{acc} or {e}") (expr2redlogExpr exprs[0])
-      $"({s})"
+    | And exprs -> exprs |> Seq.map expr2redlogExpr |> join " and " |> sprintf "(%s)"
+    | Or exprs -> exprs |> Seq.map expr2redlogExpr |> join " or " |> sprintf "(%s)"
     | Not expr -> $"not {expr2redlogExpr expr}"
     | Implies (expr1, expr2) -> $"({expr2redlogExpr expr1}) impl ({expr2redlogExpr expr2})"
     | Var n -> n.ToString()
-    | App (name, [||]) -> $"{name}0()"
-    | App (name, [|expr|]) -> $"{name}0({expr2redlogExpr expr})"
-    | App (name, exprs) ->
-      let args =
-        match Array.map expr2redlogExpr exprs with
-        | [||] -> ""
-        | [| arg |] -> arg
-        | args -> join ", " args
-      $"{name}0({args})"
-    | Apply (name, []) -> $"{name}0()"
-    | Apply (name, [expr]) -> $"{name}0({expr2redlogExpr expr})"
-    | Apply (name, exprs) ->
-      let args =
-        match List.map expr2redlogExpr exprs with
-        | [] -> ""
-        | [ arg ] -> arg
-        | args -> join ", " args
-      $"{name}0({args})"
+    | App (name, exprs)
+    | Apply (name, exprs) -> $"""{name}0({join ", " (Seq.map expr2redlogExpr exprs)})"""
     | ForAll (names, e) ->
       let args =
         match names with
