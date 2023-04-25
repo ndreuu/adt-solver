@@ -16,52 +16,14 @@ module Linearization =
     let plus = Expr.makeBinary "+" IntSort IntSort IntSort
     let mul = Expr.makeBinary "*" IntSort IntSort IntSort
 
-    let constants pdng (xs: _ list) =
-      let _, cnsts =
-        List.fold
-          (fun (i, acc) _ ->
-            (i - 1,
-             $"c_{(i + pdng + 1)}"
-             :: acc))
-          (xs.Length - 1, [])
-          xs
-
-      cnsts
-
     let terms pdng args =
-<<<<<<< HEAD
-      List.map2
-        (fun c (x, _) ->
-          Apply (
-            mul,
-            [ Apply (UserDefinedOperation ($"{c}" , [], IntSort), [])
-              Ident (x, IntSort) ]
-          ))
-        (constants pdng args)
-        args
-
-    let sum pdng =
-      function
-      | [] -> Apply (UserDefinedOperation ($"c_{pdng}", [], IntSort), [])
-      | t :: ts ->
-        Apply (
-          plus,
-          [ Apply (UserDefinedOperation ($"c_{pdng}", [], IntSort), [])
-            List.fold (fun acc x ->
-                       Apply (plus, [ x; acc ])) t ts ]
-        )
-=======
-      List.map2 (fun c (x, _) -> mul (Expr.makeConst c IntSort) (Ident(x, IntSort)))
-        (constants pdng args)
-        args
+      List.mapi (fun i x -> mul (Expr.makeConst $"c_{(i + pdng + 1)}" IntSort) (Ident(x, IntSort))) args
 
     let sum pdng ts =
-      let c = Apply(UserDefinedOperation($"c_{pdng}", [], IntSort), [])
+      let c = Expr.makeConst $"c_{pdng}" IntSort
       List.fold plus c ts
->>>>>>> fixes
 
-    let pdng_defs =
-      fun cs pdng ->
+    let pdng_defs cs pdng =
         cs
         |> List.fold
              (fun (pd, acc) (name, _, (args: operation list)) ->
@@ -72,7 +34,7 @@ module Linearization =
                     List.map (fun arg -> (arg.ToString (), IntSort)) args,
                     IntSort,
                     sum pd
-                    <| List.rev (terms pd (List.map (fun x -> (opName x, ())) args))
+                    <| terms pd (List.map opName args)
                   )
                 )
                 :: acc))
@@ -109,7 +71,7 @@ module Linearization =
                      (sorts.Length - 1, [])
 
               (pdng + args.Length + 1,
-               Definition (DefineFun (name.ToString (), args, IntSort, sum pdng <| List.rev (terms pdng args)))
+               Definition(DefineFun(name, args, IntSort, sum pdng <| terms pdng (List.map fst args)))
                :: acc)
             | _ -> r)
           (padding, [])
@@ -121,71 +83,36 @@ module Linearization =
       let quantiInt =
         List.map (fun (name, _) -> name, IntSort)
 
-      let geq_op typ =
-        Operation.makeElementaryRelationFromSorts ">=" [ typ; typ ]
-
-      let eq_op typ =
-        Operation.makeElementaryRelationFromSorts "=" [ typ; typ ]
+      let eq_op typ = Operation.makeElementaryRelationFromSorts "=" [ typ; typ ]
 
       let rec helper smt =
         match smt with
         | Apply (UserDefinedOperation _, _) as app -> Apply (eq_op IntSort, [ app; Number 0 ])
-        | And smtExprs -> And (smtExprs |> List.map (fun x -> helper x))
-        | Or smtExprs -> Or (smtExprs |> List.map (fun x -> helper x))
+        | And smtExprs -> And (smtExprs |> List.map helper)
+        | Or smtExprs -> Or (smtExprs |> List.map helper)
         | Not smtExpr -> Not (helper smtExpr)
         | Hence (smtExpr1, smtExpr2) -> Hence (helper smtExpr1, helper smtExpr2)
         | QuantifierApplication (quantifier, smtExpr) ->
-          QuantifierApplication (
-            quantifier
-            |> List.map (function
-              | ForallQuantifier vars -> ForallQuantifier (quantiInt vars)
-              | ExistsQuantifier vars -> ExistsQuantifier (quantiInt vars)
-              | StableForallQuantifier vars -> StableForallQuantifier (quantiInt vars)),
-            helper smtExpr
-          )
+          QuantifierApplication (Quantifiers.mapVars quantiInt quantifier, helper smtExpr)
         | _ -> smt
 
       commands
       |> List.choose (function Assert expr -> Some (Assert (helper expr)) | _ -> None)
 
-    let asserts' =
-      fun f ->
-        asserts
-        |> List.map (fun asrt ->
-          match asrt with
+    let asserts' f =
+      List.map (function
           | Assert (QuantifierApplication (quantifiers, smtExpr)) ->
-            (quantifiers
-             |> List.fold
-                  (fun acc x ->
-                    match x with
-                    | ForallQuantifier vars
-                    | ExistsQuantifier vars
-                    | StableForallQuantifier vars ->
-                      acc
-                      @ (vars
-                         |> List.map (fun x -> Command (DeclareConst x))))
-                  [],
-             Assert (f smtExpr))
-          | Assert expr -> ([], Assert (f expr))
-          | _ -> ([], asrt))
+            quantifiers |> Quantifiers.getVars |> List.map (Command << DeclareConst), Assert (f smtExpr)
+          | Assert expr -> [], Assert (f expr)
+          | asrt -> [], asrt)
 
-    let skAsserts = asserts' Not
+    let skAsserts = asserts' Not asserts
+    let notSkAsserts = asserts' id asserts
 
-    let notSkAsserts = asserts' id
-
-    let defConstants =
-      (padding - 1)
-      |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
-      |> List.map (fun i -> Definition (DefineFun ($"c_{i}", [], IntSort, Number 0)))
-      |> List.rev
-
-    let decConstants =
-      (padding - 1)
-      |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
-      |> List.map (fun i -> Command (DeclareConst ($"c_{i}", IntSort)))
-      |> List.rev
+    let defConstants = List.init padding (fun i -> Definition (DefineFun ($"c_{i}", [], IntSort, Number 0)))
+    let decConstants = List.init padding (fun i -> Command (DeclareConst ($"c_{i}", IntSort)))
 
     let defFunctions =
-      commands |> List.filter (function | Definition (DefineFun _) -> true | _ -> false)
+      commands |> List.filter (function Definition (DefineFun _) -> true | _ -> false)
     
     (defFunctions, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
