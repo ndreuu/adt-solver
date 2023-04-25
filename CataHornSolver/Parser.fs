@@ -4,9 +4,9 @@ open System
 open Antlr4.Runtime
 open Antlr4.Runtime.Tree
 open Microsoft.FSharp.Core
+open ProofBased
 open SMTLIB2
-open IntOps
-
+open Utils.IntOps
 
 let parseNumber (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int64.Parse
 
@@ -25,6 +25,7 @@ let parsePower (power: RedTraceParser.PowerContext) =
 
     power app (number.NUM().GetText () |> Int32.Parse)
   | _ -> __unreachable__ ()
+  
 let rec simplifyMul =
   function
     | Apply (op, [ y; x ]) 
@@ -137,21 +138,18 @@ let rec parseBody (body: RedTraceParser.BodyContext) =
       |> List.fold (fun acc v -> Apply (addOp, [ acc; v ])) acc
     | _ -> __unreachable__ ()
 
-
-
-
 let rec exprs (expr: RedTraceParser.ExprContext) i n =
   let rec helper acc i n =
     match acc with
     | _ when i < n ->
       match expr.GetChild i with
-      | :? RedTraceParser.ExprContext as e -> helper (parseExpr' e :: acc) (i + 1) n
+      | :? RedTraceParser.ExprContext as e -> helper (parseExpr e :: acc) (i + 1) n
       | _ -> helper acc (i + 1) n
     | _ -> acc
 
   helper [] i n |> List.rev
 
-and parseExpr' (expr: RedTraceParser.ExprContext) =
+and parseExpr (expr: RedTraceParser.ExprContext) =
   match expr.GetChild 1 with
   | :? RedTraceParser.AndContext -> And <| exprs expr 2 expr.ChildCount
   | :? RedTraceParser.OrContext -> Or <| exprs expr 2 expr.ChildCount
@@ -246,12 +244,12 @@ and parseExpr' (expr: RedTraceParser.ExprContext) =
   | :? RedTraceParser.BallContext ->
     let head =
       match expr.GetChild 3 with
-      | :? RedTraceParser.ExprContext as e -> parseExpr' e
+      | :? RedTraceParser.ExprContext as e -> parseExpr e
       | _ -> __unreachable__ ()
 
     let body =
       match expr.GetChild 4 with
-      | :? RedTraceParser.ExprContext as e -> parseExpr' e
+      | :? RedTraceParser.ExprContext as e -> parseExpr e
       | _ -> __unreachable__ ()
 
     let id = 
@@ -262,15 +260,6 @@ and parseExpr' (expr: RedTraceParser.ExprContext) =
     QuantifierApplication ([ForallQuantifier [(id, IntSort)]], Hence(body, head))
   | _ -> __unreachable__ ()
 
-
-
-let rec varFromForallHence =
-  function
-    | QuantifierApplication ([ForallQuantifier [var] ], _) -> var
-    | _ -> failwith "VAR"
-    
-
-  
 let rec substituteVar oldName newName =
   function
     | Number _
@@ -322,63 +311,6 @@ let rec uniqVarsInQuantifier usedNames =
       And (exprs' |> List.rev), usedNames'
     | expr -> expr, usedNames 
       
-      
-      
-let uniqVars exprs =
-  List.foldBack
-    (fun expr (acc, usedNames) ->
-
-        match expr with
-        | QuantifierApplication _ as q ->
-          let q', usedVars' = uniqVarsInQuantifier usedNames q
-          (q'::acc, usedVars')
-        | _ -> (expr::acc, usedNames))
-    exprs
-    ([], [])
-  |> fst
-  
-let andUniqVars =
-  function
-    | And exprs -> And (uniqVars exprs)
-    | _ -> failwith "!>?!??!?!?!?"
-  
-  // function
-    // | And exprs ->
-      // List.map
-        // (fun acc expr )
-      // exprs
-    
-            
-          
-// let replaceVarInQuantifier =
-
-//   
-//   function
-//     | And exprs ->
-//       List.fold 
-  
-  // let rec helper usedNames k =
-    // function
-      // | QuantifierApplication ([ForallQuantifier [(n, sort)]], body) as expr when not (usedNames |> List.contains n) ->
-          // (n::usedNames, expr)
-      // | expr -> (usedNames, expr)
-      
-  // let helper' usedNames =
-    // function
-      // | QuantifierApplication _ as expr -> helper usedNames expr 
-      
-  // 1
-      
-let clauseBody =
-  let rec helper acc =
-    function
-      | And exprs | Or exprs -> List.fold helper acc exprs
-      | Not expr -> helper acc expr
-      | QuantifierApplication ([ForallQuantifier _], Hence(b, _)) -> b :: acc 
-      | _ -> acc
-      
-  helper [] >> List.rev
-    
 let rec clauseHead =
   function
     | And exprs -> And (List.map clauseHead exprs)
@@ -386,18 +318,6 @@ let rec clauseHead =
     | Not expr -> Not (clauseHead expr)
     | QuantifierApplication ([ForallQuantifier _], Hence(_, head)) -> clauseHead head
     | expr -> expr
-
-let clauseVars =
-  let rec helper (acc: _ Set ) = 
-    function
-      | And exprs | Or exprs -> List.fold helper acc exprs
-      | Not expr -> helper acc expr
-      | QuantifierApplication ([ForallQuantifier [var] ], body) -> helper (acc |> Set.add var) body   
-      | Hence (expr1, expr2) -> helper (helper acc expr2) expr1
-      | _ -> acc
-  
-  helper Set.empty
-
 
 let translateToSmt line =
   let lexer = RedTraceLexer (CharStreams.fromString line)
@@ -407,5 +327,5 @@ let translateToSmt line =
 
   match tree.GetChild 1 with
   | :? RedTraceParser.ExprContext as expr ->
-      parseExpr' expr 
+      parseExpr expr 
   | _ -> __unreachable__ ()

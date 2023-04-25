@@ -13,15 +13,6 @@ open Z3Interpreter.Interpreter
 open Z3Interpreter.AST
 open Approximation
 
-let defConstants =
-  [ Def ("c_0", [], Int 0); Def ("c_1", [], Int 0); Def ("c_2", [], Int 0) ]
-
-let defFuns =
-  [ Def ("Z", [], Apply ("c_0", []))
-    Def ("S", [ "x" ], Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
-
-let declFuns = [ Decl ("diseqInt", 2) ]
-
 let assert1 =
   [ Assert (ForAll ([| "x1" |], App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x1" ]) |]))) ]
 
@@ -87,7 +78,7 @@ let listDefFuns =
     ) ]
 
 let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
-//
+
 let listAssert1 =
   Assert (ForAll ([| "ys1" |], App ("app", [| Apply ("nil", []); Var "ys1"; Var "ys1" |])))
 
@@ -137,34 +128,6 @@ let listAssert5 =
     )
   )
 
-let dConsts =
-  [ Def ("c_0", [], Int 0); Def ("c_1", [], Int 0); Def ("c_2", [], Int 1) ]
-
-let dDefFuns =
-  [ Def ("Z", [], Apply ("c_0", []))
-    Def ("S", [ "x" ], Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
-
-let dDeclFuns = [ Decl ("diseqInt", 2) ]
-
-let dA1 =
-  Assert (ForAll ([| "x1" |], App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x1" ]) |])))
-
-let dA2 =
-  Assert (ForAll ([| "x2" |], App ("diseqInt", [| Apply ("S", [ Var "x2" ]); Apply ("Z", []) |])))
-
-let dA3 =
-  Assert (
-    ForAll (
-      [| "x3"; "y3" |],
-      Implies (
-        App ("diseqInt", [| Var "x3"; Var "y3" |]),
-        App ("diseqInt", [| Apply ("S", [ Var "x3" ]); Apply ("S", [ Var "y3" ]) |])
-      )
-    )
-  )
-
-let dA4 =
-  Assert (ForAll ([| "x4" |], Implies (App ("diseqInt", [| Var "x4"; Var "x4" |]), Bool false)))
 
 let emptyEnv argss =
   { ctxSlvr = new Context (argss |> dict |> Dictionary)
@@ -364,23 +327,23 @@ let decConst =
 
 let mapTreeOfLists f = Tree.fmap (List.map f)
 
-let rec assertsTreeNew asserts consts defs decs =
+let rec assertsTreeNew asserts consts decs =
   function
   | Node (Apply (name, _), []) ->
     name |> axiomAsserts id asserts |> (fun x -> Node (x, []))
   | Node (Apply (name, _), ts) ->
     name
     |> impliesAsserts id asserts
-    |> fun x -> Node (x, ts |> List.map (assertsTreeNew asserts consts defs decs))
+    |> fun x -> Node (x, ts |> List.map (assertsTreeNew asserts consts decs))
   | Node (Bool false, ts) ->
-    Node (queryAssert (List.head >> fun x -> [ x ]) asserts, ts |> List.map (assertsTreeNew asserts consts defs decs))
-  | _ -> failwith "123"
-
-let treeOfExprsNew =
+    Node (queryAssert (List.head >> fun x -> [ x ]) asserts, ts |> List.map (assertsTreeNew asserts consts decs))
+  | _ -> __unreachable__ ()
+  
+let treeOfExprs =
   mapTreeOfLists (function
     | Assert (ForAll (_, x)) -> x
     | Assert x -> x
-    | _ -> failwith "Assert forall expected")
+    | _ -> __unreachable__ ())
 
 let uniqVarNames =
   let rec varNames acc =
@@ -729,11 +692,11 @@ module Simplifier =
     | otherwise -> otherwise
 
 
-let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
+let hyperProof2clauseNew defConsts constrDefs decFuns hyperProof asserts =
   let treeOfExprs =
     proofTree hyperProof
-    |> assertsTreeNew asserts defConsts defFuns decFuns
-    |> treeOfExprsNew
+    |> assertsTreeNew asserts defConsts decFuns
+    |> treeOfExprs
 
   let clause =
     treeOfExprs
@@ -903,13 +866,10 @@ let rec learner
   match proof with
   | [ Command (Proof (hyperProof, _, _)) ] ->
     let clause =
-      hyperProof2clauseNew constDefs funDecls hyperProof asserts
+      hyperProof2clauseNew constDefs constrDefs funDecls hyperProof asserts
       |> fun x ->
         Implies (x, Bool false)
         |> forAll
-        |> function
-          | ForAll ([||], And [||]) -> failwith "!"
-          | otherwise -> otherwise
     
     writeDbg "redlog-input.smt2" $"{Redlog.redlogQuery (def2decVars constrDefs) clause}" iteration
     
@@ -936,19 +896,14 @@ let unsat env (solver: Solver) iteration =
   for d in env.ctxDecfuns.Values do
     p.ParseLine <| d.ToString () |> ignore
 
-  match solver.Proof with
-  | null ->
-    failwith "OOO"
-    []
-  | _ ->
-    p.ParseLine (
-      solver.Proof.ToString ()
-      |> proof
-        (fun _ -> ())
-      |> fun prettyProof ->
-          writeDbg "proof.smt2" $"{solver.Proof}\nPRETTY:\n{prettyProof}" iteration
-          prettyProof |> sprintf "%s"
-    )
+  p.ParseLine (
+    solver.Proof.ToString ()
+    |> proof
+      (fun _ -> ())
+    |> fun prettyProof ->
+        writeDbg "proof.smt2" $"{solver.Proof}\nPRETTY:\n{prettyProof}" iteration
+        prettyProof |> sprintf "%s"
+  )
 
 let rec teacher
   funDefs
@@ -979,8 +934,9 @@ let rec teacher
       sat = fun _ _ -> () }
   |> function
     | SAT _ ->
-      let model = List.map (program2originalCommand >> toString) constDefs |> join "\n"
-      $"SAT\n{model}"
+      // let model = List.map (program2originalCommand >> toString) constDefs |> join "\n"
+      // printfn $"{model}"
+      "SAT"
     | UNSAT proof ->
       match
         learner funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed (iteration + 1)
@@ -1132,7 +1088,7 @@ let solver funDefs constDefs constrDefs funDecls (asserts: Program list) =
 
   match SoftSolver.evalModel envLearner solverLearner constDefs with
   | SAT (env, solver, model) -> teacher funDefs solver env model constrDefs funDecls asserts (setCmds @ setSofts) 0
-  | _ ->  "UNKNOWN (branching zero step)"
+  | _ -> "UNKNOWN"
 
 let approximation file =
   let _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
@@ -1151,9 +1107,9 @@ let approximation file =
       | Let _ -> acc
       | smtExpr.Apply (ElementaryOperation (ident, _, _), _)
       | smtExpr.Apply (UserDefinedOperation (ident, _, _), _) when ident.Contains "c_" -> ident :: acc
-      | smtExpr.Apply (_, exprs) -> List.fold (fun acc x -> helper acc x) acc exprs
-      | smtExpr.And exprs -> List.fold (fun acc x -> helper acc x) acc exprs
-      | smtExpr.Or exprs -> List.fold (fun acc x -> helper acc x) acc exprs
+      | smtExpr.Apply (_, exprs) -> List.fold helper acc exprs
+      | smtExpr.And exprs -> List.fold helper acc exprs
+      | smtExpr.Or exprs -> List.fold helper acc exprs
       | smtExpr.Not expr -> helper acc expr
       | smtExpr.Hence (expr1, expr2) -> helper (helper acc expr2) expr1
       | smtExpr.QuantifierApplication (_, expr) -> helper acc expr
@@ -1253,12 +1209,15 @@ let run file dbg =
 
   solver (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
 
-let chck () =
-  let run consts defFns decFns asserts =
-    solver [] consts defFns decFns asserts
+let ads () =
+  run "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rewrite-diseq-asserts/rep/TIP-no-NAT-main(1)/TIP-no-NAT-main/chc/tip2015_bin_nat_plus_assoc.smt2" (None)
+  |> printfn "%O"
+// let chck () =
+  // let run consts defFns decFns asserts =
+  //   solver [] consts defFns decFns asserts
 
-  run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
+  // run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
   // run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
   // run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
-  |> printfn "%O"
+  // |> printfn "%O"
 

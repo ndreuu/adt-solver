@@ -3,7 +3,7 @@ module Redlog
 open System.IO
 open System.Text.RegularExpressions
 open RedlogParser.RedTrace.Parser
-open SMTLIB2.FSharpExtensions
+open SMTLIB2
 open Z3Interpreter.AST
 open Process.Process
 open ProofBased.Utils
@@ -99,5 +99,7 @@ let runRedlog definitions formula =
   |> balancedBracket
   |> function
     | Some s -> translateToSmt s |> Ok 
+    | _ when result.StdOut.Contains "true" -> Ok (smtExpr.BoolConst true)
+    | _ when result.StdOut.Contains "false" -> Ok (smtExpr.BoolConst false)
     | _ -> Error result
   

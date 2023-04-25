@@ -1,7 +1,6 @@
 module Tests.ProofBased.Test
 
 open System.Text.RegularExpressions
-open Approximation.SolverDeprecated.Evaluation
 open NUnit.Framework
 open ProofBased
 open RedlogParser.RedTrace
@@ -12,7 +11,42 @@ open Z3Interpreter.AST
 type TestClass () =
 
   [<Test>]
-  member this.TestMethodPassing () = Assert.True (true)
+  member this.TestMethodPassing () =
+    let run consts defFns decFns asserts =
+      Solver.solver [] consts defFns decFns asserts
+    
+    
+    let dConsts =
+      [ Def ("c_0", [], Int 0); Def ("c_1", [], Int 0); Def ("c_2", [], Int 1) ]
+    
+    let dDefFuns =
+      [ Def ("Z", [], Apply ("c_0", []))
+        Def ("S", [ "x" ], Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
+    
+    let dDeclFuns = [ Decl ("diseqInt", 2) ]
+    
+    let dA1 =
+      Assert (ForAll ([| "x1" |], App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x1" ]) |])))
+    
+    let dA2 =
+      Assert (ForAll ([| "x2" |], App ("diseqInt", [| Apply ("S", [ Var "x2" ]); Apply ("Z", []) |])))
+    
+    let dA3 =
+      Assert (
+        ForAll (
+          [| "x3"; "y3" |],
+          Implies (
+            App ("diseqInt", [| Var "x3"; Var "y3" |]),
+            App ("diseqInt", [| Apply ("S", [ Var "x3" ]); Apply ("S", [ Var "y3" ]) |])
+          )
+        )
+      )
+    
+    let dA4 =
+      Assert (ForAll ([| "x4" |], Implies (App ("diseqInt", [| Var "x4"; Var "x4" |]), Bool false)))
+    run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ] |> printfn "%O"
+    Assert.True(run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ] = "SAT")
+    // Assert.True
 
 
   [<Test>]

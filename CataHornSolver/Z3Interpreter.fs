@@ -3,8 +3,10 @@ module Z3Interpreter
 open System.Collections.Generic
 open Microsoft.FSharp.Collections
 open Microsoft.Z3
+open ProofBased
 open SMTLIB2.Prelude
-open IntOps
+open SMTLIB2
+open Utils.IntOps
 
 module AST =
   type Name = string
@@ -147,7 +149,7 @@ module AST =
     | Hence (e1, e2) -> Implies (smtExpr2expr e1, smtExpr2expr e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
       ForAll (List.map fst args |> List.toArray, smtExpr2expr expr)
-    | otherwise -> failwith $"{otherwise.ToString ()}"
+    | _ -> __notImplemented__()
 
   let rec smtExpr2expr' =
     function
@@ -174,14 +176,14 @@ module AST =
     | Hence (e1, e2) -> Implies (smtExpr2expr' e1, smtExpr2expr' e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
       ForAll (List.map fst args |> List.toArray, smtExpr2expr' expr)
-    | otherwise -> failwith $"{otherwise.ToString ()}"
+    | _ -> __notImplemented__()
 
   let rec origCommand2program =
     function
     | Definition (DefineFun (name, args, _, body)) -> Def (name, List.map (fun (n, _) -> n) args, smtExpr2expr body)
     | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
     | originalCommand.Assert expr -> Assert (smtExpr2expr expr)
-    | _ -> failwith "!"
+    | _ -> __notImplemented__()
 
 
 
@@ -202,8 +204,8 @@ module AST =
       | Neg e -> Neg (toVar e)
       | Mod (e1, e2) -> Mod (toVar e1, toVar e2)
       | Mul (e1, e2) -> Mul (toVar e1, toVar e2)
-      | And es -> es |> Array.map (fun e -> toVar e) |> And
-      | Or es -> es |> Array.map (fun e -> toVar e) |> Or
+      | And es -> es |> Array.map toVar |> And
+      | Or es -> es |> Array.map toVar |> Or
       | Not e -> toVar e |> Not
       | Implies (e1, e2) -> Implies (toVar e1, toVar e2)
       | Ite (e1, e2, e3) -> Ite (toVar e1, toVar e2, toVar e3)
@@ -260,39 +262,39 @@ module Interpreter =
   let declConsts = List.map DeclIntConst
 
 
-  let rec eval_expr: Env -> Expr -> Microsoft.Z3.Expr =
+  let rec evalExpr: Env -> Expr -> Microsoft.Z3.Expr =
     fun env ->
       function
       | Int x -> env.ctxSlvr.MkInt x
       | Bool x -> env.ctxSlvr.MkBool x
-      | Eq (expr1, expr2) -> env.ctxSlvr.MkEq (eval_expr env expr1, eval_expr env expr2)
-      | Lt (expr1, expr2) -> env.ctxSlvr.MkLt (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Gt (expr1, expr2) -> env.ctxSlvr.MkGt (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Le (expr1, expr2) -> env.ctxSlvr.MkLe (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Ge (expr1, expr2) -> env.ctxSlvr.MkGe (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Mod (expr1, expr2) -> env.ctxSlvr.MkMod (eval_expr env expr1 :?> IntExpr, eval_expr env expr2 :?> IntExpr)
-      | Add (expr1, expr2) -> env.ctxSlvr.MkAdd (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
+      | Eq (expr1, expr2) -> env.ctxSlvr.MkEq (evalExpr env expr1, evalExpr env expr2)
+      | Lt (expr1, expr2) -> env.ctxSlvr.MkLt (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
+      | Gt (expr1, expr2) -> env.ctxSlvr.MkGt (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
+      | Le (expr1, expr2) -> env.ctxSlvr.MkLe (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
+      | Ge (expr1, expr2) -> env.ctxSlvr.MkGe (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
+      | Mod (expr1, expr2) -> env.ctxSlvr.MkMod (evalExpr env expr1 :?> IntExpr, evalExpr env expr2 :?> IntExpr)
+      | Add (expr1, expr2) -> env.ctxSlvr.MkAdd (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
       | Subtract (expr1, expr2) ->
-        env.ctxSlvr.MkSub (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
-      | Neg expr -> env.ctxSlvr.MkSub (env.ctxSlvr.MkInt 0, eval_expr env expr :?> ArithExpr)
-      | Mul (expr1, expr2) -> env.ctxSlvr.MkMul (eval_expr env expr1 :?> ArithExpr, eval_expr env expr2 :?> ArithExpr)
+        env.ctxSlvr.MkSub (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
+      | Neg expr -> env.ctxSlvr.MkSub (env.ctxSlvr.MkInt 0, evalExpr env expr :?> ArithExpr)
+      | Mul (expr1, expr2) -> env.ctxSlvr.MkMul (evalExpr env expr1 :?> ArithExpr, evalExpr env expr2 :?> ArithExpr)
       | And exprs ->
         exprs
-        |> Array.map (fun x -> eval_expr env x :?> BoolExpr)
+        |> Array.map (fun x -> evalExpr env x :?> BoolExpr)
         |> fun x -> env.ctxSlvr.MkAnd x
       | Or exprs ->
         exprs
-        |> Array.map (fun x -> eval_expr env x :?> BoolExpr)
+        |> Array.map (fun x -> evalExpr env x :?> BoolExpr)
         |> fun x -> env.ctxSlvr.MkOr x
-      | Not expr -> env.ctxSlvr.MkNot (eval_expr env expr :?> BoolExpr)
+      | Not expr -> env.ctxSlvr.MkNot (evalExpr env expr :?> BoolExpr)
       | Implies (expr1, expr2) ->
-        env.ctxSlvr.MkImplies (eval_expr env expr1 :?> BoolExpr, eval_expr env expr2 :?> BoolExpr)
+        env.ctxSlvr.MkImplies (evalExpr env expr1 :?> BoolExpr, evalExpr env expr2 :?> BoolExpr)
       | Var x -> env.ctxVars |> Map.find x
       | App (name, expr) ->
         let decFun = env.ctxDecfuns |> Map.find name in
-        let args: Microsoft.Z3.Expr[] = Array.map (eval_expr env) expr
+        let args: Microsoft.Z3.Expr[] = Array.map (evalExpr env) expr
         env.ctxSlvr.MkApp (decFun, args)
-      | Apply (n, [ x; y ]) when n = "distinct" -> eval_expr env (Not (Eq (x, y)))
+      | Apply (n, [ x; y ]) when n = "distinct" -> evalExpr env (Not (Eq (x, y)))
       | Apply (n, vs) ->
         env.ctxFuns
         |> Map.find n
@@ -301,74 +303,24 @@ module Interpreter =
 
             let ctx_vars =
               bindings
-              |> List.fold (fun acc (arg, v) -> acc |> update arg (eval_expr env v)) env.ctxVars
+              |> List.fold (fun acc (arg, v) -> acc |> update arg (evalExpr env v)) env.ctxVars
 
-            eval_expr { env with ctxVars = ctx_vars } body
-      | ForAll ([||], expr) -> eval_expr env expr
+            evalExpr { env with ctxVars = ctx_vars } body
+      | ForAll ([||], expr) -> evalExpr env expr
       | ForAll (names, expr) ->
         let vars: Microsoft.Z3.Expr[] =
           names
           |> Array.map (fun name ->
-            // for n in names do
-            // printfn $"{n}"
             env.ctxSlvr.MkIntConst name) in
 
         let ctxVars =
           Array.zip names vars
           |> Array.fold (fun acc (name, value) -> acc |> Map.add name value) env.ctxVars in
 
-        env.ctxSlvr.MkForall (vars, eval_expr { env with ctxVars = ctxVars } expr)
+        env.ctxSlvr.MkForall (vars, evalExpr { env with ctxVars = ctxVars } expr)
       | Ite (exprIf, exprThen, exprElse) ->
-        env.ctxSlvr.MkITE (eval_expr env exprIf :?> BoolExpr, eval_expr env exprThen, eval_expr env exprElse)
+        env.ctxSlvr.MkITE (evalExpr env exprIf :?> BoolExpr, evalExpr env exprThen, evalExpr env exprElse)
 
-  let eval_cmds =
-    fun env ->
-      List.fold
-        (fun (env, varMap, expr) cmd ->
-          match cmd with
-          | DeclConst (n, t) ->
-            match t with
-            | Integer ->
-              let intConst = env.ctxSlvr.MkIntConst n
-
-              ({ env with
-                  ctxVars = env.ctxVars |> Map.add n intConst },
-               varMap,
-               expr)
-            | Boolean ->
-              let boolConst = env.ctxSlvr.MkBoolConst n
-
-              ({ env with
-                  ctxVars = env.ctxVars |> Map.add n boolConst },
-               varMap,
-               expr)
-
-          | DeclIntConst n ->
-            let intConst = env.ctxSlvr.MkIntConst n
-
-            ({ env with
-                ctxVars = env.ctxVars |> Map.add n intConst },
-             (n, intConst) :: varMap,
-             expr)
-          | Assert e -> (env, varMap, eval_expr env e)
-          | Def d -> ({ env with ctxFuns = define env d }, varMap, expr)
-          | Decl (name, n) ->
-            let intsNum: Sort[] =
-              n
-              |> Array.unfold (fun state ->
-                if state = 0 then
-                  None
-                else
-                  Some (env.ctxSlvr.IntSort, state - 1))
-
-            let declFun =
-              env.ctxSlvr.MkFuncDecl (env.ctxSlvr.MkSymbol name, intsNum, env.ctxSlvr.MkBoolSort ())
-
-            ({ env with
-                ctxDecfuns = env.ctxDecfuns |> Map.add name declFun },
-             varMap,
-             expr))
-        (env, [], env.ctxSlvr.MkInt 0)
 
   let evalCmds =
     fun env (solver: Solver) ->
@@ -400,9 +352,9 @@ module Interpreter =
              expr)
           | Assert e ->
 
-            let assrt = eval_expr env e in
+            let assrt = evalExpr env e in
             solver.Add [| assrt :?> BoolExpr |]
-            (env, solver, eval_expr env e)
+            (env, solver, evalExpr env e)
           | Def d -> ({ env with ctxFuns = define env d }, solver, expr)
           | Decl (name, n) ->
             let intsNum: Sort[] =
@@ -432,8 +384,6 @@ module Interpreter =
       unsat: Env -> Solver -> 'a
       sat: Env -> Solver -> 'b
       cmds: Program list }
-
-
 
 
   let z3solve x =
@@ -484,7 +434,7 @@ module Interpreter =
       let intersection = Set env.actives |> Set.intersect unsatCoreNames
 
       if intersection.IsEmpty then
-        failwith "soft (branching)"
+        failwith "UNKNOWN"
       else
         ({ env with
             actives = env.actives |> List.tail },
