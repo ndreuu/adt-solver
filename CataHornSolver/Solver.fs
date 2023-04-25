@@ -13,122 +13,6 @@ open Z3Interpreter.Interpreter
 open Z3Interpreter.AST
 open Approximation
 
-let assert1 =
-  [ Assert (ForAll ([| "x1" |], App ("diseqInt", [| Apply ("Z", []); Apply ("S", [ Var "x1" ]) |]))) ]
-
-let assert2 =
-  [ Assert (ForAll ([| "x2" |], App ("diseqInt", [| Apply ("S", [ Var "x2" ]); Apply ("Z", []) |]))) ]
-
-let assert3 =
-  [ Assert (
-      ForAll (
-        [| "x3"; "y3" |],
-        Implies (
-          App ("diseqInt", [| Var "x3"; Var "y3" |]),
-          App ("diseqInt", [| Apply ("S", [ Var "x3" ]); Apply ("S", [ Var "y3" ]) |])
-        )
-      )
-    ) ]
-
-let assert4 =
-  [
-    Assert (ForAll ([| "x4" |], Implies (App ("diseqInt", [| Var "x4"; Var "x4" |]), Bool false))) ]
-
-let assert5 = [ Assert (Eq (Int 1, Int 2)) ]
-
-let listConst =
-  [ Def ("c_0", [], Int 0)
-    Def ("c_1", [], Int 1)
-    Def ("c_2", [], Int 1)
-    Def ("c_3", [], Int 1) ]
-
-
-let shiza =
-  [ Def ("c_0", [], Int 1)
-    Def ("c_1", [], Int 1)
-    Def ("c_2", [], Int 1)
-    Def ("c_3", [], Int 1)
-    Def ("c_4", [], Int 1)
-    Def ("c_5", [], Int 1)
-    Def ("c_6", [], Int 1)
-    Def ("c_7", [], Int 1)
-    Def ("c_8", [], Int 1)
-    Def ("c_9", [], Int 1) ]
-
-
-let listDefFunsShiza =
-  [ Def ("nil", [], Apply ("c_0", []))
-    Def (
-      "cons",
-      [ "x"; "y" ],
-      Ite (
-        Eq (Add (Apply ("c_4", []), Add (Mul (Apply ("c_5", []), Var "x"), Mul (Apply ("c_6", []), Var "y"))), Int 0),
-        Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y"))),
-        Add (Apply ("c_7", []), Add (Mul (Apply ("c_8", []), Var "x"), Mul (Apply ("c_9", []), Var "y")))
-      )
-    ) ]
-
-
-let listDefFuns =
-  [ Def ("nil", [], Apply ("c_0", []))
-    Def (
-      "cons",
-      [ "x"; "y" ],
-      Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y")))
-    ) ]
-
-let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
-
-let listAssert1 =
-  Assert (ForAll ([| "ys1" |], App ("app", [| Apply ("nil", []); Var "ys1"; Var "ys1" |])))
-
-let listAssert2 =
-  Assert (
-    ForAll (
-      [| "x2"; "xs2"; "ys2"; "zs2" |],
-      Implies (
-        App ("app", [| Var "xs2"; Var "ys2"; Var "zs2" |]),
-        App (
-          "app",
-          [| Apply ("cons", [ Var "x2"; Var "xs2" ])
-             Var "ys2"
-             Apply ("cons", [ Var "x2"; Var "zs2" ]) |]
-        )
-      )
-    )
-  )
-let listAssert3 =
-  Assert (ForAll ([| "x3" |], App ("last", [| Apply ("cons", [ Var "x3"; Apply ("nil", []) ]); Var "x3" |])))
-let listAssert4 =
-  Assert (
-    ForAll (
-      [| "xs4"; "n4"; "x4" |],
-      Implies (
-        And
-          [| Not (Eq (Var "xs4", Apply ("nil", [])))
-             App ("last", [| Var "xs4"; Var "n4" |]) |],
-        App ("last", [| Apply ("cons", [ Var "x4"; Var "xs4" ]); Var "n4" |])
-      )
-    )
-  )
-
-let listAssert5 =
-  Assert (
-    ForAll (
-      [| "ys5"; "zs5"; "m5"; "xs5"; "n5" |],
-      Implies (
-        And
-          [| App ("app", [| Var "xs5"; Var "ys5"; Var "zs5" |])
-             App ("last", [| Var "ys5"; Var "n5" |])
-             App ("last", [| Var "zs5"; Var "m5" |])
-             Not (Eq (Var "ys5", Apply ("nil", [])))
-             Not (Eq (Var "n5", Var "m5")) |],
-        Bool false
-      )
-    )
-  )
-
-
 let emptyEnv argss =
   { ctxSlvr = new Context (argss |> dict |> Dictionary)
     ctxVars = Map.empty
@@ -449,7 +333,7 @@ let collectApps (kids: Expr list list) =
       | App (name, _) :: _ as apps -> acc |> add name apps
       | _ -> acc)
     Map.empty
-  |> Map.map (fun _ v -> List.rev v)
+  |> Map.map (fun _ -> List.rev)
 
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   let get k map =
@@ -705,7 +589,7 @@ let hyperProof2clauseNew defConsts constrDefs decFuns hyperProof asserts =
     |> List.toArray
     |> And
     |> Simplifier.normalize
-
+    
   clause
 
 let terms =
@@ -933,10 +817,7 @@ let rec teacher
       cmds = cmds
       sat = fun _ _ -> () }
   |> function
-    | SAT _ ->
-      // let model = List.map (program2originalCommand >> toString) constDefs |> join "\n"
-      // printfn $"{model}"
-      "SAT"
+    | SAT _ -> "SAT"
     | UNSAT proof ->
       match
         learner funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed (iteration + 1)
@@ -1209,15 +1090,5 @@ let run file dbg =
 
   solver (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
 
-let ads () =
-  run "/home/andrew/adt-solver/many-branches-search/benchmarks-search/CAV2022Orig(13)/rewrite-diseq-asserts/rep/TIP-no-NAT-main(1)/TIP-no-NAT-main/chc/tip2015_bin_nat_plus_assoc.smt2" (None)
-  |> printfn "%O"
-// let chck () =
-  // let run consts defFns decFns asserts =
-  //   solver [] consts defFns decFns asserts
 
-  // run listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  // run shiza listDefFunsShiza listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ]
-  // run dConsts dDefFuns dDeclFuns [ dA2; dA1; dA3; dA4 ]
-  // |> printfn "%O"
 
