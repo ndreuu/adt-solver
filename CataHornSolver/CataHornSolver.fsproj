@@ -18,8 +18,10 @@
         <Compile Include="Redlog.fs" />
         <Compile Include="Tree.fs" />
         <Compile Include="Solver.fs" />
-        <Compile Include="Test.fs" />
-        <Content Include="Tests\racer.horn.smt2" />
+        <Compile Include="Tests\Test.fs" />
+        <Content Include="Tests\Source\racer.horn.smt2">
+          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
         <Compile Include="Program.fs" />
     </ItemGroup>
 

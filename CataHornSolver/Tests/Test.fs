@@ -1,5 +1,6 @@
 module Tests.ProofBased.Test
 
+open System.IO
 open NUnit.Framework
 open ProofBased
 open Z3Interpreter.AST
@@ -8,6 +9,13 @@ open Z3Interpreter.AST
 type TestClass () =
   let runWithoutFuns consts defFns decFns asserts =
       Solver.solver [] consts defFns decFns asserts
+  
+  [<Test>]
+  member this.Aaa () =
+    let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
+    printfn $"{file}"
+    Assert.True((Solver.run file None) = "SAT")
+    
   
   [<Test>]
   member this.TestDiseqInt () =
