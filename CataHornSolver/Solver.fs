@@ -786,7 +786,7 @@ let unsat env (solver: Solver) iteration =
       (fun _ -> ())
     |> fun prettyProof ->
         writeDbg "proof.smt2" $"{solver.Proof}\nPRETTY:\n{prettyProof}" iteration
-        prettyProof |> sprintf "%s"
+        $"{prettyProof}" 
   )
 
 let rec teacher

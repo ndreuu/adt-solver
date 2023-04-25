@@ -24,7 +24,7 @@ module Linearization =
         List.fold
           (fun (i, acc) _ ->
             (i - 1,
-             (sprintf "c_%s" <| (i + pdng + 1).ToString ())
+             $"c_{(i + pdng + 1)}"
              :: acc))
           (xs.Length - 1, [])
           xs
@@ -36,7 +36,7 @@ module Linearization =
         (fun c (x, _) ->
           Apply (
             mul,
-            [ Apply (UserDefinedOperation (sprintf "%s" c, [], IntSort), [])
+            [ Apply (UserDefinedOperation ($"{c}" , [], IntSort), [])
               Ident (x, IntSort) ]
           ))
         (constants pdng args)
@@ -44,11 +44,11 @@ module Linearization =
 
     let sum pdng =
       function
-      | [] -> Apply (UserDefinedOperation (sprintf "c_%s" <| pdng.ToString (), [], IntSort), [])
+      | [] -> Apply (UserDefinedOperation ($"c_{pdng}", [], IntSort), [])
       | t :: ts ->
         Apply (
           plus,
-          [ Apply (UserDefinedOperation (sprintf "c_%s" <| pdng.ToString (), [], IntSort), [])
+          [ Apply (UserDefinedOperation ($"c_{pdng}", [], IntSort), [])
             List.fold (fun acc x ->
                        Apply (plus, [ x; acc ])) t ts ]
         )
@@ -98,7 +98,7 @@ module Linearization =
               let _, args =
                 sorts
                 |> List.fold
-                     (fun (i, acc) _ -> (i - 1, (sprintf "x_%s" <| i.ToString (), IntSort) :: acc))
+                     (fun (i, acc) _ -> (i - 1, ($"x_{i}", IntSort) :: acc))
                      (sorts.Length - 1, [])
 
               (pdng + args.Length + 1,
@@ -175,13 +175,13 @@ module Linearization =
     let defConstants =
       (padding - 1)
       |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
-      |> List.map (fun i -> Definition (DefineFun (sprintf "c_%s" <| i.ToString (), [], IntSort, Number 0)))
+      |> List.map (fun i -> Definition (DefineFun ($"c_{i}", [], IntSort, Number 0)))
       |> List.rev
 
     let decConstants =
       (padding - 1)
       |> List.unfold (fun i -> if i >= 0 then Some (i, i - 1) else None)
-      |> List.map (fun i -> Command (DeclareConst (sprintf "c_%s" <| i.ToString (), IntSort)))
+      |> List.map (fun i -> Command (DeclareConst ($"c_{i}", IntSort)))
       |> List.rev
 
     let defFunctions =

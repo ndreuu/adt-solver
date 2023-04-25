@@ -42,8 +42,8 @@ let balancedBracket (str: string) =
   |> helper 1 []
   |> function
     | Some cs ->
-      List.fold (fun acc c -> sprintf "%c%s" c acc) "" cs
-      |> (fun str -> sprintf "(%s" str)
+      List.fold (fun acc c -> $"{c}{acc}") "" cs
+      |> (fun str -> $"({str}" )
       |> Some
     | None -> None
 

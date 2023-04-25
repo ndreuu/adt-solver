@@ -13,10 +13,10 @@ module Program =
       if Directory.Exists d then Directory.Delete (d, true)
       Directory.CreateDirectory d |> ignore
       
-      run path (Some d) |> printfn "%O"
+      printfn $"{run path (Some d)}"
       0
     | [| path |] ->
-      run path None |> printfn "%O"
+      printfn $"{run path None}"
       0
     | _ -> 
       1
