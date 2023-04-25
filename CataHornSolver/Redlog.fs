@@ -36,20 +36,26 @@ let rec expr2redlogExpr =
     | App (name, [|expr|]) -> $"{name}0({expr2redlogExpr expr})"
     | App (name, exprs) ->
       let args =
-        Array.map expr2redlogExpr exprs[1..]
-        |> Array.fold (fun acc e -> $"{acc}, {e}") (expr2redlogExpr exprs[0])
+        match Array.map expr2redlogExpr exprs with
+        | [||] -> ""
+        | [| arg |] -> arg
+        | args -> join ", " args
       $"{name}0({args})"
     | Apply (name, []) -> $"{name}0()"
     | Apply (name, [expr]) -> $"{name}0({expr2redlogExpr expr})"
-    | Apply (name, e::exprs) ->
+    | Apply (name, exprs) ->
       let args =
-        List.map expr2redlogExpr exprs
-        |> List.fold (fun acc e -> $"{acc}, {e}") (expr2redlogExpr e)
+        match List.map expr2redlogExpr exprs with
+        | [] -> ""
+        | [ arg ] -> arg
+        | args -> join ", " args
       $"{name}0({args})"
     | ForAll (names, e) ->
       let args =
-        names[1..]
-        |> Array.fold (fun acc e -> $"{acc}, {e}") names[0]
+        match names with
+        | [||] -> ""
+        | [| arg |] -> arg
+        | args -> join ", " args
       $"all({{{args}}}, {expr2redlogExpr e})"
     | Ite (expr1, expr2, expr3) ->
       $"if ({expr2redlogExpr expr1}) then ({expr2redlogExpr expr2}) else ({expr2redlogExpr expr3})"
