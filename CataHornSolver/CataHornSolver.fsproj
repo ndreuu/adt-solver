@@ -10,7 +10,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <Compile Include="Utils2.fs" />
+        <Compile Include="Utils.fs" />
         <Compile Include="Z3Interpreter.fs" />
         <Compile Include="Approximation.fs" />
         <Compile Include="Parser.fs" />
