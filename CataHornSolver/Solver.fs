@@ -278,45 +278,16 @@ let argsBinds appsOfParents kids =
   |> List.map (fun parent -> singleArgsBinds parent kids)
   |> Expr.Or
 
-let resolvent =
-  let rec helper acc =
-    function
-    | Node (_, []) -> acc
-    | Node (xs: Expr list, ts) ->
-      let kids = List.map Tree.value ts
-
-      let notAppRestrictions =
-        List.map notAppRestrictions xs
-        |> List.fold (@) []
-        |> function
-          | [] -> []
-          | [ x ] -> [ x ]
-          | xs -> [ xs |> List.toArray |> And ]
-
-      let appRestrictions = List.map appRestrictions xs
-
-      ts
-      |> List.fold
-        (fun (acc: Expr list) (t: Expr list tree) -> helper acc t)
-        ((argsBinds appRestrictions kids :: notAppRestrictions) @ acc)
-
-  helper [] >> List.rev
-
-
+let rec resolvent = function
+  | Node (_, []) -> []
+  | Node (xs, ts) ->
+    let kids = List.map Tree.value ts
+    let notAppRestrictions = List.collect notAppRestrictions xs |> Expr.And
+    let appRestrictions = List.map appRestrictions xs
+    argsBinds appRestrictions kids :: notAppRestrictions :: List.collect resolvent ts
 
 
 module Simplifier =
-  let emptyFilter =
-    Array.filter (function
-      | And [||]
-      | Or [||] -> false
-      | _ -> true)
-
-  let rec rmEmpty =
-    function
-    | And args -> args |> emptyFilter |> Array.map rmEmpty |> And
-    | Or args -> args |> emptyFilter |> Array.map rmEmpty |> Or
-    | otherwise -> otherwise
 
   let rec private rmNestedOrs =
     function
@@ -360,45 +331,14 @@ module Simplifier =
     | Or _ as orExpr -> rmNestedOrs orExpr
     | otherwise -> otherwise
 
-  let normalize =
-    rmNestedAnds >> rmEmpty
-
-  let rec rmEqs =
-    function
-    | And args ->
-      And (
-        args
-        |> Array.filter (function
-          | Eq (x, y) when x = y -> false
-          | _ -> true)
-        |> Array.map rmEqs
-      )
-    | Or args ->
-      Or (
-        args
-        |> Array.filter (function
-          | Eq (x, y) when x = y -> false
-          | _ -> true)
-        |> Array.map rmEqs
-      )
-    | otherwise -> otherwise
-
 
 let hyperProof2clauseNew defConsts constrDefs decFuns hyperProof asserts =
-  let treeOfExprs =
-    proofTree hyperProof
-    |> assertsTreeNew asserts defConsts decFuns
-    |> treeOfExprs
-
-  let clause =
-    treeOfExprs
-    |> uniqVarNames
-    |> resolvent
-    |> List.toArray
-    |> And
-    |> Simplifier.normalize
-    
-  clause
+  proofTree hyperProof
+  |> assertsTreeNew asserts defConsts decFuns
+  |> treeOfExprs
+  |> uniqVarNames
+  |> resolvent
+  |> Expr.And
 
 let terms =
   let rec helper acc =

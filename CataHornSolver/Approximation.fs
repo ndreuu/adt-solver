@@ -1,11 +1,11 @@
 module Approximation
 
 open Microsoft.FSharp.Collections
-open Microsoft.Z3
 open SMTLIB2.Parser
 open SMTLIB2.Prelude
 open Operation
 open SMTLIB2
+open ProofBased.Utils.IntOps
 
 
 module Linearization =
@@ -13,15 +13,10 @@ module Linearization =
     let p = Parser(false)
     let commands = p.ParseFile file
 
-    let plus = Expr.makeBinary "+" IntSort IntSort IntSort
-    let mul = Expr.makeBinary "*" IntSort IntSort IntSort
-
     let terms pdng args =
-      List.mapi (fun i x -> mul (Expr.makeConst $"c_{(i + pdng + 1)}" IntSort) (Ident(x, IntSort))) args
+      List.mapi (fun i x -> mult (Expr.makeConst $"c_{(i + pdng + 1)}" IntSort) (Ident(x, IntSort))) args
 
-    let sum pdng ts =
-      let c = Expr.makeConst $"c_{pdng}" IntSort
-      List.fold plus c ts
+    let sum pdng ts = List.fold add (Expr.makeConst $"c_{pdng}" IntSort) ts
 
     let pdng_defs cs pdng =
         cs
