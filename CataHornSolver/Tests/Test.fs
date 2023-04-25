@@ -11,9 +11,8 @@ type TestClass () =
       Solver.solver [] consts defFns decFns asserts
   
   [<Test>]
-  member this.Aaa () =
+  member this.ListLenInv () =
     let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
-    printfn $"{file}"
     Assert.True((Solver.run file None) = "SAT")
     
   
