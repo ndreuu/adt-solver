@@ -51,7 +51,7 @@ let def2redlogProc =
       $"procedure {name}0({args'}); {expr2redlogExpr body}$"
     | _ -> ""
 
-let defs2redLogProcs = def2decVars >> List.fold (fun acc def -> $"{acc}{def2redlogProc def}\n") ""
+let defs2redLogProcs = def2decVars >> List.map (fun def -> $"{def2redlogProc def}") >> join "\n"
 
 
 let redlogQuery definitions formula =

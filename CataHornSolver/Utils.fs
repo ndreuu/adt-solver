@@ -13,6 +13,7 @@ let inline join s (xs: string seq) = String.Join (s, xs)
 module IntOps =
   let private mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
   let private negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
+  let private addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
   let neg = Expr.makeUnaryOp negOp
   let mult x y =
     match x, y with
@@ -21,8 +22,8 @@ module IntOps =
     | Number -1L, _ -> neg y
     | _, Number -1L -> neg x
     | _ -> Expr.makeBinaryOp mulOp x y
+  let add x y = Expr.makeBinaryOp addOp x y
   let minusOp = ElementaryOperation ("-", [ IntSort; IntSort ], IntSort)
-  let addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
   let eqOp = ElementaryOperation ("=", [ IntSort; IntSort ], BoolSort)
   let grOp = ElementaryOperation (">", [ IntSort; IntSort ], BoolSort)
   let lsOp = ElementaryOperation ("<", [ IntSort; IntSort ], BoolSort)

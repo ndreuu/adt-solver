@@ -111,49 +111,6 @@ let renameVar =
 
   helper
 
-let vars =
-  let rec helper acc =
-    function
-    | Var _ as v -> v :: acc
-    | Eq (expr1, expr2)
-    | Lt (expr1, expr2)
-    | Gt (expr1, expr2)
-    | Le (expr1, expr2)
-    | Ge (expr1, expr2)
-    | Add (expr1, expr2)
-    | Mul (expr1, expr2)
-    | Mod (expr1, expr2)
-    | Subtract (expr1, expr2)
-    | Implies (expr1, expr2) -> helper (helper acc expr1) expr2
-    | ForAll (_, expr)
-    | Neg expr
-    | Not expr -> helper acc expr
-    | Ite (expr1, expr2, expr3) -> helper (helper (helper acc expr1) expr2) expr3
-    | App (_, exprs) -> List.fold helper acc exprs
-    | And exprs
-    | Or exprs -> Array.fold helper acc exprs
-    | Apply (_, exprs) -> List.fold helper acc exprs
-    | Int _
-    | Bool _ -> acc
-
-  helper []
-
-type apps = Map<Name, Expr list>
-
-let getApp name (apps: apps) =
-  apps
-  |> Map.find name
-  |> fun exprs ->
-      let apps' value =
-        apps
-        |> Map.change name (function
-          | None -> None
-          | _ -> Some value)
-
-      match exprs with
-      | App (_, args) :: tl -> (args, apps' tl)
-      | _ -> ([], apps)
-
 let forAll expr =
   let rec helper acc =
     function
@@ -179,30 +136,12 @@ let forAll expr =
     | Apply (_, exprs) -> List.fold helper acc exprs
     | Ite (expr1, expr2, expr3) -> List.fold helper acc [ expr1; expr2; expr3 ]
 
-  helper Set.empty expr |> Set.toArray |> (fun ns -> ForAll (ns, expr))
-
-let defFunBody args i =
-  List.zip args [ i + 1 .. i + 1 + args.Length - 1 ]
-  |> List.map (fun (n, i) -> Mul (Apply ($"c_{i}", []), Var n))
-  |> List.fold (fun (acc, i) arg -> (Add (acc, arg), i + 1)) ((Apply ($"c_{i}", [])), i)
-
-let branch i =
-  function
-  | Def (n, args, body) when args.Length > 0 ->
-    let cond, i' = defFunBody args i |> fun (e, i) -> (Eq (e, Int 0), i)
-
-    let elseBody, _ = defFunBody args (i' + 1)
-
-    Def (n, args, Ite (cond, body, elseBody))
-  | otherwise -> otherwise
+  ForAll(helper Set.empty expr |> Set.toArray, expr)
 
 let redlog definitions formula =
-  Redlog.runRedlog definitions formula
-  |> function
-    | Ok v ->
-      Assert <| (smtExpr2expr' v)
-    | Error e ->
-      failwith $"redlog-output: {e}"
+  match Redlog.runRedlog definitions formula with
+  | Ok v -> Assert(smtExpr2expr' v)
+  | Error e -> failwith $"redlog-output: {e}"
 
 let decConst =
   function
@@ -220,7 +159,7 @@ let rec assertsTreeNew asserts consts decs =
     |> impliesAsserts id asserts
     |> fun x -> Node (x, ts |> List.map (assertsTreeNew asserts consts decs))
   | Node (Bool false, ts) ->
-    Node (queryAssert (List.head >> fun x -> [ x ]) asserts, ts |> List.map (assertsTreeNew asserts consts decs))
+    Node (queryAssert (List.head >> List.singleton) asserts, ts |> List.map (assertsTreeNew asserts consts decs))
   | _ -> __unreachable__ ()
   
 let treeOfExprs =
@@ -290,27 +229,12 @@ let uniqVarNames =
 
 let argsBind x ys =
   let bind = List.map2 (fun x y -> Eq (x, y))
-
   match x with
   | App (name, args) when not <| List.isEmpty args ->
     ys
-    |> List.fold
-      (fun acc y ->
-        match y with
-        | App (n, args') when n = name -> (bind args args') :: acc
-        | _ -> acc)
-      []
-    |> function
-      | [ x ] -> x
-      | xs ->
-        xs
-        |> List.rev
-        |> List.map (function
-          | [ x ] -> x
-          | xs -> And (xs |> List.toArray))
-        |> function
-          | xs when xs |> List.length > 1 -> [ Or (xs |> List.toArray) ]
-          | otherwise -> otherwise
+    |> List.choose (function App (n, args') when n = name -> Some(bind args args') | _ -> None)
+    |> List.map Expr.And
+    |> Expr.Or |> List.singleton
   | _ -> []
 
 let conclusion =
@@ -328,44 +252,31 @@ let collectApps (kids: Expr list list) =
   kids
   |> List.map (List.map conclusion)
   |> List.fold
-    (fun acc heads ->
-      match heads with
-      | App (name, _) :: _ as apps -> acc |> add name apps
-      | _ -> acc)
+    (fun acc -> function App (name, _) :: _ as apps -> add name apps acc | _ -> acc)
     Map.empty
   |> Map.map (fun _ -> List.rev)
 
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   let get k map =
     (map |> Map.find k |> List.head,
-     map
-     |> Map.change k (function
-       | Some [ _ ]
-       | Some []
-       | None -> None
-       | Some (_ :: vs) -> Some vs))
+     map |> Map.change k (function Some (_ :: vs) -> Some vs | _ -> None))
 
   appsOfSingleParent
   |> List.fold
-    (fun (acc, apps as otherwise) x ->
-      match x with
-      | App (name, _) ->
-        let ys, apps' = apps |> get name
+    (fun (acc, apps as otherwise) ->
+      function
+      | App (name, _) as x ->
+        let ys, apps' = get name apps
         (acc @ (argsBind x ys), apps')
       | _ -> otherwise)
     ([], collectApps kids)
   |> fst
-  |> function
-    | [ x ] -> x
-    | xs -> xs |> List.toArray |> And
+  |> Expr.And
 
 let argsBinds appsOfParents kids =
   appsOfParents
-  |> List.fold (fun acc parent -> (singleArgsBinds parent kids) :: acc) []
-  |> List.rev
-  |> function
-    | [ x ] -> x
-    | xs -> xs |> List.toArray |> Or
+  |> List.map (fun parent -> singleArgsBinds parent kids)
+  |> Expr.Or
 
 let resolvent =
   let rec helper acc =
@@ -391,33 +302,6 @@ let resolvent =
 
   helper [] >> List.rev
 
-module Storage =
-  let addPush k v map =
-    map
-    |> Map.change k (function
-      | Some vs -> Some (v :: vs)
-      | None -> Some [ v ])
-
-  let getPop k map =
-    let v =
-      map
-      |> Map.tryFind k
-      |> function
-        | Some xs -> xs |> List.head |> Some
-        | None -> None
-
-    (v,
-     map
-     |> Map.change
-       k
-       (match v with
-        | None -> fun _ -> None
-        | Some _ ->
-          function
-          | Some [ _ ]
-          | Some []
-          | None -> None
-          | Some (_ :: vs) -> Some vs))
 
 
 
@@ -478,82 +362,6 @@ module Simplifier =
 
   let normalize =
     rmNestedAnds >> rmEmpty
-
-
-  let private eqVarConditions =
-    let rec helper acc =
-      function
-      | And args -> args |> Array.toList |> List.fold helper acc
-      | Eq (Var _, _)
-      | Eq (_, Var _) as eq -> eq :: acc
-      | Or _
-      | _ -> acc
-
-    helper []
-
-  let add (k: Expr) (v: Expr) used (t: Expr list list) =
-    let kv =
-      match k with
-      | _ when used |> List.contains k -> Some (k, v)
-      | _ when used |> List.contains v -> Some (v, k)
-      | _ -> None
-
-
-    match kv with
-    | Some (k, v) when used |> List.contains k && used |> List.contains v -> (t, used)
-    | Some (k, v) ->
-      let t' =
-        t
-        |> List.map (function
-          | xs when xs |> List.contains k -> v :: xs
-          | xs -> xs)
-
-      (t', v :: used)
-    | None -> ([ k; v ] :: t, k :: v :: used)
-
-
-  let map vs =
-    let applyTester =
-      function
-      | Apply _ -> true
-      | _ -> false
-
-    let applies = List.filter applyTester
-    let vars = List.filter (not << applyTester)
-
-    let helper vs =
-      List.fold
-        (fun (acc, used) eq ->
-          match eq with
-          | Eq (x, y) -> add x y used acc
-          | _ -> (acc, used))
-        ([], [])
-        vs
-
-    helper vs
-    |> fst
-    |> List.map (fun xs ->
-      xs
-      |> applies
-      |> function
-        | [] -> (xs, List.head xs)
-        | vs -> (vars xs, List.head vs))
-
-
-  let substitute v (map: (Expr list * Expr) list) =
-    map
-    |> List.fold (fun acc (vars, v) -> List.fold (fun acc var -> substituteVar var v acc) acc vars) v
-
-  let substituteNew =
-    let rec helper m =
-      function
-      | Or args -> Or (Array.map (helper []) args)
-      | And args as andExpr ->
-        let m' = andExpr |> eqVarConditions |> map
-        And (Array.map (helper m') args)
-      | expr -> substitute expr m
-
-    helper []
 
   let rec rmEqs =
     function
@@ -638,92 +446,6 @@ let notZeroFunConsts defs =
       | _ -> acc)
     []
   |> List.map Assert
-
-let constNumber (str: String) = $"%s{str[2..]}" |> Int64.Parse
-
-let maxConstIndex =
-  List.map (function
-    | Def (n, _, _) -> constNumber n
-    | _ -> Int64.MinValue)
-  >> List.fold max Int64.MinValue
-
-let newConstNames from n =
-  if from > n then
-    []
-  else
-    List.unfold
-      (fun state ->
-        if state = n then
-          None
-        else
-          Some ($"c_{state}", state + 1L))
-      from
-
-let constNames startIdx =
-  function
-  | Some expr ->
-    expr
-    |> terms
-    |> List.length
-    |> int64
-    |> (fun d -> newConstNames startIdx (startIdx + d))
-  | None -> []
-
-
-let addition term =
-  function
-  | t :: ts -> List.fold (fun acc x -> Add (acc, x)) t ts |> fun add -> Add (term, add)
-  | [] -> term
-
-let addBranch consts def =
-  let expr =
-    match def with
-    | Def (_, _, Ite (_, _, expr)) -> Some expr
-    | Def (_, _, expr) -> Some expr
-    | _ -> None
-
-  let xExpr constNames (args: Name list) =
-    constNames
-    |> List.tail
-    |> List.zip args
-    |> List.map (fun (n, c) -> Mul (Apply (c, []), Var n))
-    |> addition (List.head constNames |> fun x -> Apply (x, []))
-
-  let condition constNames args = Eq (xExpr constNames args, Int 0)
-
-  match def with
-  | Def (x, args, body) ->
-    let fstNewIdx = maxConstIndex consts + 1L
-    let condConstNames = fstNewIdx |> flip constNames expr
-
-    let elseConstNames =
-      condConstNames |> List.length |> int64 |> (+) fstNewIdx |> flip constNames expr
-
-    let ite = Ite (condition condConstNames args, body, xExpr elseConstNames args)
-
-    let constDefs = List.map (fun n -> Def (n, [], Int 0))
-    let newConsts = constDefs condConstNames @ constDefs elseConstNames
-
-    (newConsts, consts @ newConsts, Def (x, args, ite))
-  | _ -> ([], consts, def)
-
-let branching constDefs funDefs =
-  let isDefConstFn =
-    function
-    | Def (_, args, _) when args.Length = 0 -> true
-    | _ -> false
-
-  let funDefs' = funDefs |> List.filter isDefConstFn
-
-  funDefs
-  |> List.filter (not << isDefConstFn)
-  |> List.fold
-    (fun (newConsts, consts, funs) def ->
-      addBranch consts def
-      |> fun (newConsts', consts', def') -> (newConsts @ newConsts', consts', def' :: funs))
-    ([], constDefs, funDefs')
-  |> fun (newConsts, _, funDefs) ->
-      (newConsts, funDefs)
 
 let decConsts = List.map decConst
 
@@ -978,55 +700,27 @@ let approximation file =
 
 
   let defConstants =
-    let rec helper acc =
-      function
-      | Number _
-      | BoolConst _
-      | Match _
-      | smtExpr.Ite _
-      | Ident _
-      | Let _ -> acc
+    let rec helper = function
       | smtExpr.Apply (ElementaryOperation (ident, _, _), _)
-      | smtExpr.Apply (UserDefinedOperation (ident, _, _), _) when ident.Contains "c_" -> ident :: acc
-      | smtExpr.Apply (_, exprs) -> List.fold helper acc exprs
-      | smtExpr.And exprs -> List.fold helper acc exprs
-      | smtExpr.Or exprs -> List.fold helper acc exprs
-      | smtExpr.Not expr -> helper acc expr
-      | smtExpr.Hence (expr1, expr2) -> helper (helper acc expr2) expr1
-      | smtExpr.QuantifierApplication (_, expr) -> helper acc expr
+      | smtExpr.Apply (UserDefinedOperation (ident, _, _), _) when ident.Contains "c_" -> [Def (ident, [], Int 0)]
+      | smtExpr.Apply (_, exprs) -> List.collect helper exprs
+      | smtExpr.And exprs -> List.collect helper exprs
+      | smtExpr.Or exprs -> List.collect helper exprs
+      | smtExpr.Not expr -> helper expr
+      | smtExpr.Hence (expr1, expr2) -> helper expr1 @ helper expr2
+      | smtExpr.QuantifierApplication (_, expr) -> helper expr
+      | _ -> []
 
-    List.fold
-      (fun acc def ->
-        match def with
-        | Definition (DefineFun (_, _, _, expr)) -> helper acc expr
-        | _ -> acc)
-      []
-    >> List.map (fun n -> Def (n, [], Int 0))
-    >> List.rev
+    List.collect (function Definition (DefineFun (_, _, _, expr)) -> helper expr | _ -> [])
 
   let decFuns =
-    let rec helper acc =
-      function
-      | Command (DeclareFun _) as x -> x :: acc
-      | _ -> acc
-
-    List.fold helper [] >> List.rev
+    List.choose (function Command (DeclareFun _) as x -> Some x | _ -> None)
 
   let rec asserts =
-    let rec helper acc =
-      function
-      | originalCommand.Assert _ as x -> x :: acc
-      | _ -> acc
-
-    List.fold helper [] >> List.rev
+    List.choose (function originalCommand.Assert _ as x -> Some x | _ -> None)
 
   let rec defFuns =
-    let rec helper acc =
-      function
-      | originalCommand.Definition _ as x -> x :: acc
-      | _ -> acc
-
-    List.fold helper [] >> List.rev
+    List.choose (function Definition _ as x -> Some x | _ -> None)
 
   (defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
 
@@ -1069,23 +763,10 @@ let run file dbg =
 
   let appNames =
     funDecls
-    |> List.fold
-      (fun acc ->
-        function
-        | Decl (n, _) -> n :: acc
-        | _ -> acc)
-      []
-    |> List.rev
+    |> List.choose (function Decl (n, _) -> Some n | _ -> None)
 
   let asserts'' =
-    (asserts'
-     |> List.fold
-       (fun acc ->
-         function
-         | Program.Assert x -> Assert (apply2app appNames x) :: acc
-         | _ -> acc)
-       [])
-    |> List.rev
+    asserts' |> List.choose (function Assert x -> Some (Assert (apply2app appNames x)) | _ -> None)
   let toPrograms = List.map origCommand2program
 
   solver (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''

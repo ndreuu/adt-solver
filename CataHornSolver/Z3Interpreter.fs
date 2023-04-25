@@ -35,6 +35,14 @@ module AST =
     | ForAll of Name array * Expr
     | App of Name * Expr list
     | Ite of Expr * Expr * Expr
+  
+  module Expr =
+    let And = function
+      | [ expr ] -> expr
+      | exprs -> And (Array.ofList exprs)
+    let Or = function
+      | [ expr ] -> expr
+      | exprs -> Or (Array.ofList exprs)
 
   let rec expr2smtExpr =
     function
@@ -45,7 +53,7 @@ module AST =
     | Lt (expr1, expr2) -> smtExpr.Apply (lsOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Le (expr1, expr2) -> smtExpr.Apply (leqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Ge (expr1, expr2) -> smtExpr.Apply (geqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Add (expr1, expr2) -> smtExpr.Apply (addOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
+    | Add (expr1, expr2) -> add (expr2smtExpr expr1) (expr2smtExpr expr2)
     | Subtract (expr1, expr2) -> smtExpr.Apply (minusOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Neg expr -> neg (expr2smtExpr expr)
     | Mod (expr1, expr2) -> smtExpr.Apply (modOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
@@ -55,11 +63,11 @@ module AST =
     | Not expr -> expr2smtExpr expr |> smtExpr.Not
     | Implies (expr1, expr2) -> Hence (expr2smtExpr expr1, expr2smtExpr expr2)
     | Var n -> Ident (n, IntSort)
-    | App (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
+    | App (n, exprs)
     | Apply (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
     | ForAll (names, e) ->
       QuantifierApplication (
-        [ names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> ForallQuantifier ],
+        names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> Quantifiers.forall,
         expr2smtExpr e
       )
     | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
@@ -99,27 +107,18 @@ module AST =
     | Decl of Name * ArgsNum
     | Assert of Expr
 
-  let program2originalCommand =
-    function
+  let program2originalCommand = function
     | Def (n, ns, e) ->
-      originalCommand.Definition (DefineFun (n, List.map (fun n -> (n, IntSort)) ns, IntSort, expr2smtExpr e))
-    | DeclIntConst n -> originalCommand.Command (command.DeclareConst (n, IntSort))
+      Definition (DefineFun (n, List.map (fun n -> (n, IntSort)) ns, IntSort, expr2smtExpr e))
+    | DeclIntConst n -> Command (DeclareConst (n, IntSort))
     | DeclConst (n, t) ->
       let t' =
         match t with
         | Integer -> IntSort
         | Boolean -> BoolSort
-
-      originalCommand.Command (command.DeclareConst (n, t'))
+      Command (DeclareConst (n, t'))
     | Decl (n, num) ->
-      let args =
-        List.unfold (fun state ->
-          if state = 0 then
-            None
-          else
-            Some (IntSort, state - 1))
-
-      Command (DeclareFun (n, args num, BoolSort))
+      Command (DeclareFun (n, List.init num (fun _ -> IntSort), BoolSort))
     | Assert e -> originalCommand.Assert (expr2smtExpr e)
 
   let rec smtExpr2expr =
@@ -258,9 +257,6 @@ module Interpreter =
 
   let define = fun env (name, args, expr) -> env.ctxFuns.Add (name, (args, expr))
 
-  let declConsts = List.map DeclIntConst
-
-
   let rec evalExpr: Env -> Expr -> Microsoft.Z3.Expr =
     fun env ->
       function
@@ -307,15 +303,8 @@ module Interpreter =
             evalExpr { env with ctxVars = ctx_vars } body
       | ForAll ([||], expr) -> evalExpr env expr
       | ForAll (names, expr) ->
-        let vars: Microsoft.Z3.Expr[] =
-          names
-          |> Array.map (fun name ->
-            env.ctxSlvr.MkIntConst name) in
-
-        let ctxVars =
-          Array.zip names vars
-          |> Array.fold (fun acc (name, value) -> acc |> Map.add name value) env.ctxVars in
-
+        let vars: Microsoft.Z3.Expr[] = names |> Array.map (fun name -> env.ctxSlvr.MkIntConst name)
+        let ctxVars = Array.foldBack2 Map.add names vars env.ctxVars
         env.ctxSlvr.MkForall (vars, evalExpr { env with ctxVars = ctxVars } expr)
       | Ite (exprIf, exprThen, exprElse) ->
         env.ctxSlvr.MkITE (evalExpr env exprIf :?> BoolExpr, evalExpr env exprThen, evalExpr env exprElse)
@@ -393,22 +382,13 @@ module Interpreter =
     | Status.UNSATISFIABLE -> UNSAT <| x.unsat env solver
     | _ -> failwith "UNKNOWN"
 
-
-  let model (env: Env) (solver: Solver) =
-    env.ctxVars
-    |> Map.toList
-    |> List.fold (fun acc (n, v) -> (n, solver.Model.Double (solver.Model.Eval (v, true)) |> int64) :: acc) []
-    |> List.map (fun (n, i) -> Def (n, [], Int i))
-
   module SoftSolver =
-    let hardConstants (env: Env) =
-      env.ctxVars |> Map.filter (fun k _ -> k.Contains "soft" |> not)
-
     let model (env: Env) (solver: Solver) =
-      hardConstants env
+      env.ctxVars
       |> Map.toList
-      |> List.fold (fun acc (n, v) -> (n, solver.Model.Double (solver.Model.Eval (v, true)) |> int64) :: acc) []
-      |> List.map (fun (n, i) -> Def (n, [], Int i))
+      |> List.choose
+        (function (k, _) when k.Contains "soft" -> None
+                | (k, v) -> Some(Def(k, [], solver.Model.Double(solver.Model.Eval(v, true)) |> int64 |> Int)))
 
     type z3SoftSolve<'a, 'b> =
       { env: Env
@@ -421,7 +401,7 @@ module Interpreter =
       let env, solver, _ = evalCmds x.env x.solver x.cmds
 
       let softVars =
-        env.actives |> List.map (fun n -> env.ctxVars |> Map.find n) |> List.toArray
+        env.actives |> List.map (fun n -> Map.find n env.ctxVars) |> List.toArray
 
       match x.solver.Check softVars with
       | Status.SATISFIABLE -> SAT <| x.sat env solver
@@ -470,23 +450,14 @@ module Interpreter =
         | UNSAT (env', solver') -> solve env' solver'
 
     let setSoftAsserts env (solver: Solver) (constants: Program list) =
-      let constNames =
-        constants
-        |> List.fold
-          (fun acc x ->
-            match x with
-            | Def (n, [], _) -> n :: acc
-            | _ -> acc)
-          []
-        |> List.rev
-
+      let constNames = constants |> List.choose (function Def(n, [], _) -> Some n | _ -> None)
       let softNames = constNames |> List.map (fun n -> $"soft_{n}")
 
       constNames
       |> List.map2
         (fun softn n -> Assert (Implies (Var softn, Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |])))
         softNames
-      |> ((@) (softNames |> List.map (fun n -> DeclConst (n, Boolean))))
+      |> List.append (softNames |> List.map (fun n -> DeclConst (n, Boolean)))
       |> setCommands { env with actives = softNames } solver
 
 

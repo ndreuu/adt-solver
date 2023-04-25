@@ -62,15 +62,14 @@ let rec parseMul (mul: RedTraceParser.MulContext) =
     | :? RedTraceParser.NumContext as v ->
       let acc = mult power (parseFactorOrNum v)      
       factorNumMuls 2 mul.ChildCount
-      |> List.fold (fun acc v -> Apply (addOp, [ acc; mult power v])) acc
+      |> List.fold (fun acc v -> add acc (mult power v)) acc
     | _ ->
       let acc =
         match mul.GetChild 2 with
         | :? RedTraceParser.MulContext as mul -> mult power (parseMul mul)
         | _ -> __unreachable__ ()
-
       factorNumMuls 3 mul.ChildCount
-      |> List.fold (fun acc v -> Apply (addOp, [ acc; mult power v ])) acc
+      |> List.fold (fun acc v -> add acc (mult power v)) acc
   | _ -> __unreachable__ ()
 
 let parseNcong (ncong: RedTraceParser.NcgongContext) =
@@ -102,7 +101,7 @@ let rec parseBody (body: RedTraceParser.BodyContext) =
     let acc = parseFactorOrNum v
 
     factorNumMuls 2 body.ChildCount
-    |> List.fold (fun acc v -> Apply (addOp, [ acc; v ])) acc
+    |> List.fold add acc
 
   | _ ->
     match body.GetChild 2 with
@@ -110,7 +109,7 @@ let rec parseBody (body: RedTraceParser.BodyContext) =
       let acc = parseMul mul
 
       factorNumMuls 4 body.ChildCount
-      |> List.fold (fun acc v -> Apply (addOp, [ acc; v ])) acc
+      |> List.fold add acc
     | _ -> __unreachable__ ()
 
 let rec exprs (expr: RedTraceParser.ExprContext) i n =
@@ -269,21 +268,11 @@ let rec uniqVarsInQuantifier usedNames =
       let expr2', usedNames' = uniqVarsInQuantifier usedNames expr2
       Hence (expr1, expr2'), usedNames' 
     | Or exprs ->
-      let exprs', usedNames' =
-        List.fold
-          (fun (acc, usedNames) expr ->
-            let expr', usedNames' = uniqVarsInQuantifier usedNames expr
-            (expr'::acc, usedNames'))
-          ([], usedNames) exprs
-      Or (exprs' |> List.rev), usedNames'
+      let exprs', usedNames' = List.mapFold uniqVarsInQuantifier usedNames exprs
+      Or exprs', usedNames'
     | And exprs ->
-      let exprs', usedNames' =
-        List.fold
-          (fun (acc, usedNames) expr ->
-            let expr', usedNames' = uniqVarsInQuantifier usedNames expr
-            (expr'::acc, usedNames'))
-          ([], usedNames) exprs
-      And (exprs' |> List.rev), usedNames'
+      let exprs', usedNames' = List.mapFold uniqVarsInQuantifier usedNames exprs
+      And exprs', usedNames'
     | expr -> expr, usedNames 
       
 let rec clauseHead =
