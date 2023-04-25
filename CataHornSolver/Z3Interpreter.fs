@@ -47,9 +47,9 @@ module AST =
     | Ge (expr1, expr2) -> smtExpr.Apply (geqOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Add (expr1, expr2) -> smtExpr.Apply (addOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
     | Subtract (expr1, expr2) -> smtExpr.Apply (minusOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Neg expr -> smtExpr.Apply (negOp, [ expr2smtExpr expr ])
+    | Neg expr -> neg (expr2smtExpr expr)
     | Mod (expr1, expr2) -> smtExpr.Apply (modOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
-    | Mul (expr1, expr2) -> smtExpr.Apply (mulOp, [ expr2smtExpr expr1; expr2smtExpr expr2 ])
+    | Mul (expr1, expr2) -> mult(expr2smtExpr expr1) (expr2smtExpr expr2)
     | And exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.And
     | Or exprs -> Array.map expr2smtExpr exprs |> Array.toList |> smtExpr.Or
     | Not expr -> expr2smtExpr expr |> smtExpr.Not

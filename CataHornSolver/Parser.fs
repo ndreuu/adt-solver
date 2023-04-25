@@ -8,65 +8,42 @@ open ProofBased
 open SMTLIB2
 open Utils.IntOps
 
-let parseNumber (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int64.Parse
+let parseNumberRaw (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int32.Parse
+let parseNumber (number: RedTraceParser.NumberContext) = number |> parseNumberRaw |> int64 |> Number
 
 let parsePower (power: RedTraceParser.PowerContext) =
-  match (power.GetChild 1, power.GetChild 3) with
+  match power.GetChild 1, power.GetChild 3 with
   | :? RedTraceParser.IdContext as id, (:? RedTraceParser.NumberContext as number) ->
-    let app = Apply (UserDefinedOperation (id.GetText (), [], IntSort), [])
-
-    let power app number =
-      let rec helper app acc n =
-        match n with
-        | 0 -> acc
-        | n -> helper app (Apply (mulOp, [ app; acc ])) (n - 1)
-
-      helper app app (number - 1)
-
-    power app (number.NUM().GetText () |> Int32.Parse)
+    let app = Expr.makeConst (id.GetText()) IntSort
+    let number = parseNumberRaw number
+    assert(number >= 1)
+    Seq.init number (fun _ -> app) |> Seq.reduce mult
   | _ -> __unreachable__ ()
-  
-let rec simplifyMul =
-  function
-    | Apply (op, [ y; x ]) 
-    | Apply (op, [ x; y ]) when op = mulOp && x = Number 1 -> y
-    | Apply (op, [ y; x ]) 
-    | Apply (op, [ x; y ]) when op = mulOp && x = (Apply (negOp, [ Number 1 ])) ->
-      Apply (negOp, [ y ])
-    | otherwise -> otherwise 
-    
+
 let parseFactor (factor: RedTraceParser.FactorContext) =
   match factor.GetChild 1, factor.GetChild 3 with
   | :? RedTraceParser.PowerContext as pow, (:? RedTraceParser.NumberContext as number) ->
-    let power = pow |> parsePower
-    let coeff =
-        match number |> parseNumber with
-        | n when n < 0 -> Apply(negOp, [Number (n * -1L)])
-        | n -> Number n
-    
-    Apply (mulOp, [ power; coeff ]) |> simplifyMul
+    let power = parsePower pow
+    let coeff = number |> parseNumber
+    mult power coeff
   | _ -> __unreachable__ ()
 
 let parseNum (num: RedTraceParser.NumContext) =
   match num.GetChild 1 with
-  | :? RedTraceParser.NumberContext as number ->
-    match number |> parseNumber with
-    | n when n < 0 -> Apply(negOp, [Number (n * -1L)]) 
-    | n -> Number n
+  | :? RedTraceParser.NumberContext as number -> parseNumber number
   | _ -> __unreachable__ ()
-
   
 let parseFactorOrNum (v: IParseTree) =
   match v with
-  | :? RedTraceParser.FactorContext as factor -> factor |> parseFactor
-  | :? RedTraceParser.NumContext as num -> num |> parseNum
+  | :? RedTraceParser.FactorContext as factor -> parseFactor factor
+  | :? RedTraceParser.NumContext as num -> parseNum num
   | _ -> __unreachable__ ()
 
 let rec parseMul (mul: RedTraceParser.MulContext) =
   match mul.GetChild 0 with
   | :? RedTraceParser.FactorContext as factor -> parseFactor factor
   | :? RedTraceParser.PowerContext as power ->
-    let power = power |> parsePower
+    let power = parsePower power
     let factorNumMuls i n =
       let rec helper acc i n =
         match acc with
@@ -83,19 +60,17 @@ let rec parseMul (mul: RedTraceParser.MulContext) =
     match mul.GetChild 1 with
     | :? RedTraceParser.FactorContext
     | :? RedTraceParser.NumContext as v ->
-      let acc = Apply (mulOp, [ power; v |> parseFactorOrNum ]) |> simplifyMul
-      
+      let acc = mult power (parseFactorOrNum v)      
       factorNumMuls 2 mul.ChildCount
-      |> List.fold (fun acc v -> Apply (addOp, [ acc; Apply (mulOp, [ power; v ]) |> simplifyMul])) acc
-
+      |> List.fold (fun acc v -> Apply (addOp, [ acc; mult power v])) acc
     | _ ->
       let acc =
         match mul.GetChild 2 with
-        | :? RedTraceParser.MulContext as mul -> Apply (mulOp, [ power; parseMul mul ]) |> simplifyMul
+        | :? RedTraceParser.MulContext as mul -> mult power (parseMul mul)
         | _ -> __unreachable__ ()
 
       factorNumMuls 3 mul.ChildCount
-      |> List.fold (fun acc v -> Apply (addOp, [ acc; Apply (mulOp, [ power; v ]) |> simplifyMul ])) acc
+      |> List.fold (fun acc v -> Apply (addOp, [ acc; mult power v ])) acc
   | _ -> __unreachable__ ()
 
 let parseNcong (ncong: RedTraceParser.NcgongContext) =
