@@ -13,11 +13,8 @@ module Linearization =
     let p = Parser(false)
     let commands = p.ParseFile file
 
-    let plus =
-      makeElementaryOperationFromSorts "+" [ IntSort; IntSort ] IntSort
-
-    let mul =
-      makeElementaryOperationFromSorts "*" [ IntSort; IntSort ] IntSort
+    let plus = Expr.makeBinary "+" IntSort IntSort IntSort
+    let mul = Expr.makeBinary "*" IntSort IntSort IntSort
 
     let constants pdng (xs: _ list) =
       let _, cnsts =
@@ -32,6 +29,7 @@ module Linearization =
       cnsts
 
     let terms pdng args =
+<<<<<<< HEAD
       List.map2
         (fun c (x, _) ->
           Apply (
@@ -52,6 +50,15 @@ module Linearization =
             List.fold (fun acc x ->
                        Apply (plus, [ x; acc ])) t ts ]
         )
+=======
+      List.map2 (fun c (x, _) -> mul (Expr.makeConst c IntSort) (Ident(x, IntSort)))
+        (constants pdng args)
+        args
+
+    let sum pdng ts =
+      let c = Apply(UserDefinedOperation($"c_{pdng}", [], IntSort), [])
+      List.fold plus c ts
+>>>>>>> fixes
 
     let pdng_defs =
       fun cs pdng ->
@@ -112,7 +119,7 @@ module Linearization =
 
     let asserts =
       let quantiInt =
-        List.map (fun (name, _) -> name, IntSort) in
+        List.map (fun (name, _) -> name, IntSort)
 
       let geq_op typ =
         Operation.makeElementaryRelationFromSorts ">=" [ typ; typ ]
@@ -139,13 +146,7 @@ module Linearization =
         | _ -> smt
 
       commands
-      |> List.fold
-           (fun acc x ->
-             match x with
-             | Assert expr -> Assert (helper expr) :: acc
-             | _ -> acc)
-           []
-      |> List.rev
+      |> List.choose (function Assert expr -> Some (Assert (helper expr)) | _ -> None)
 
     let asserts' =
       fun f ->
@@ -188,4 +189,3 @@ module Linearization =
       commands |> List.filter (function | Definition (DefineFun _) -> true | _ -> false)
     
     (defFunctions, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
-
