@@ -42,7 +42,7 @@ let rec expr2redlogExpr =
     | otherwise  -> failwith $"{otherwise}" 
 let def2redlogProc =
   function
-    | Def (name, args, body) ->
+    | Def (name, args, _, body) ->
       let args' =
         match args with
         | [] -> ""

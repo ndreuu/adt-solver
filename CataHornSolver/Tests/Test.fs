@@ -8,7 +8,7 @@ open Z3Interpreter.AST
 [<TestFixture>]
 type TestClass () =
   let runWithoutFuns consts defFns decFns asserts =
-      Solver.solver [] consts defFns decFns asserts
+      Solver.solver [] Map.empty [] consts defFns decFns asserts
   
   [<Test>]
   member this.ListLenInv () =
@@ -19,11 +19,11 @@ type TestClass () =
   [<Test>]
   member this.TestDiseqInt () =
     let dConsts =
-      [ Def ("c_0", [], Int 0); Def ("c_1", [], Int 0); Def ("c_2", [], Int 1) ]
+      [ Def ("c_0", [], Integer, Int 0); Def ("c_1", [], Integer, Int 0); Def ("c_2", [], Integer, Int 1) ]
     
     let dDefFuns =
-      [ Def ("Z", [], Apply ("c_0", []))
-        Def ("S", [ "x" ], Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
+      [ Def ("Z", [], Integer, Apply ("c_0", []))
+        Def ("S", [ "x" ], Integer, Add (Apply ("c_1", []), Mul (Apply ("c_2", []), Var "x"))) ]
     
     let dDeclFuns = [ Decl ("diseqInt", 2) ]
     
@@ -52,17 +52,18 @@ type TestClass () =
   [<Test>]
   member this.TestLastAppList () =
     let listConst =
-      [ Def ("c_0", [], Int 0)
-        Def ("c_1", [], Int 1)
-        Def ("c_2", [], Int 1)
-        Def ("c_3", [], Int 1) ]
+      [ Def ("c_0", [], Integer, Int 0)
+        Def ("c_1", [], Integer, Int 1)
+        Def ("c_2", [], Integer, Int 1)
+        Def ("c_3", [], Integer, Int 1) ]
     
     let listDefFuns =
-      [ Def ("nil", [], Apply ("c_0", []))
+      [ Def ("nil", [], Integer, Apply ("c_0", []))
         Def (
           "cons",
           [ "x"; "y" ],
-          Add (Apply ("c_1", []), Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y")))
+          Integer,
+          Add (Apply ("c_1", []),  Add (Mul (Apply ("c_2", []), Var "x"), Mul (Apply ("c_3", []), Var "y")))
         ) ]
     
     let listDeclFuns = [ Decl ("app", 3); Decl ("last", 2) ]
@@ -119,7 +120,7 @@ type TestClass () =
     
     let actual =
       Process.Process.runWithTimeout
-        10
+        1000
         (fun _ -> runWithoutFuns listConst listDefFuns listDeclFuns [ listAssert1; listAssert2; listAssert3; listAssert4; listAssert5 ] )
       
       

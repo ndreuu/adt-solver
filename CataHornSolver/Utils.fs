@@ -11,9 +11,9 @@ open SMTLIB2
 let inline join s (xs: string seq) = String.Join (s, xs)
 
 module IntOps =
-  let private mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
-  let private negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
-  let private addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
+  let mulOp = ElementaryOperation ("*", [ IntSort; IntSort ], IntSort)
+  let negOp = ElementaryOperation ("-", [ IntSort ], IntSort)
+  let addOp = ElementaryOperation ("+", [ IntSort; IntSort ], IntSort)
   let neg = Expr.makeUnaryOp negOp
   let mult x y =
     match x, y with
