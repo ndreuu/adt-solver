@@ -1,7 +1,6 @@
 [submodule "SMTLIB2"]
 	path = SMTLIB2
 	url = https://github.com/ndreuu/SMTLIB2.git
-
 [submodule "z3"]
 	path = z3
 	url = https://github.com/ndreuu/z3.git
