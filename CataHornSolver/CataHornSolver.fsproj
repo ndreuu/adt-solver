@@ -30,7 +30,6 @@
         <PackageReference Include="FAKE" Version="5.16.0" />
         <PackageReference Include="FAKE.Core" Version="5.16.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
-        <PackageReference Include="Microsoft.Z3" Version="4.11.2" />
         <PackageReference Include="NUnit" Version="3.13.3" />
         <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
         <PackageReference Include="NUnit.Analyzers" Version="3.3.0" />
@@ -43,6 +42,12 @@
 
     <ItemGroup>
         <ProjectReference Include="..\RedlogParser\RedlogParser.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Reference Include="Microsoft.Z3">
+        <HintPath>..\z3\build\Microsoft.Z3.dll</HintPath>
+      </Reference>
     </ItemGroup>
 
 
