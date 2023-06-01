@@ -4,7 +4,3 @@ dotnet build
 ```
 
 
-For debug trace use
-```bash
-python dbg.py <dbg_folder>
-```
