@@ -394,7 +394,8 @@ module Interpreter =
                         function
                           | Boolean -> env.ctxSlvr.MkBoolSort ()  
                           | Integer -> env.ctxSlvr.MkIntSort ()  
-                          | ADT n when n <> name -> (env.ctxDataType |> Map.find n) :> Sort
+                          | ADT n when n <> name ->
+                            (env.ctxDataType |> Map.find n) :> Sort
                           | ADT _ -> null
                       let tester = $"tester_{n}"
                       let names, sorts = ts |> List.mapi (fun i t -> ($"x{i}", mkSort t)) |> List.toArray |> Array.unzip

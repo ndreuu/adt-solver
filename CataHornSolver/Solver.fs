@@ -1,5 +1,6 @@
 module ProofBased.Solver
 
+open CataHornSolver
 open Microsoft.FSharp.Core
 open Microsoft.Z3
 open Z3Interpreter.AST
@@ -220,29 +221,52 @@ let mapTreeOfLists f = Tree.fmap (List.map f)
 let rec assertsTreeNew asserts consts decs =
   function
   | Node (Apply (name, _), []) ->
-    name |> axiomAsserts id asserts |> (fun x -> Node (x, []))
+    printfn $">>{name}"
+    let axioms = axiomAsserts id asserts name
+    for x in axioms do
+      printfn $"{axioms}"
+    Node (axioms, [])
   | Node (Apply (name, _), ts) ->
     let value =
       name
       |> impliesAsserts id asserts
+    
     let appRestrictions =
       List.choose
         (function
           | Assert (ForAll (_, x))
           | Assert x ->
-            x |> appRestrictions
+            appRestrictions x 
             |> List.choose (function App (n, _) -> Some n | _ -> None) |> Some | _ -> None) value
         |> List.concat
+    
     let kidNames = ts |> List.choose (function Node (Apply (name, _), _) -> Some name | _ -> None)
+
+    let countOf x = List.filter (fun y -> y = x) >> List.length
+    
+    let genVals src diff =
+      List.choose
+        (fun x -> countOf x src |> flip List.replicate x |> Some) diff
+      |> List.concat
+    
+    let restoreExistsKids (kidNames: _ list) (source: _ list)   =
+      let rec helper acc =
+        function
+          | [] -> acc
+          | x :: xs -> helper (acc @ List.replicate (countOf x source - countOf x kidNames) x) xs
+      helper kidNames []
+    
     let recoveredKids =
-      appRestrictions
-      |> List.except kidNames
+      List.except kidNames appRestrictions
+      |> genVals appRestrictions
+      |> List.append (restoreExistsKids appRestrictions kidNames) 
       |> List.map (fun n -> Node (Apply (n, []), []))
       |> List.append ts
 
     Node (value, recoveredKids |> List.map (assertsTreeNew asserts consts decs))
   | Node (Bool false, ts) ->
     let query = queryAssert (List.head >> List.singleton) asserts
+    
     let appRestrictions =
       List.choose
         (function
@@ -252,13 +276,49 @@ let rec assertsTreeNew asserts consts decs =
             |> List.choose (function App (n, _) -> Some n | _ -> None) |> Some | _ -> None) query
         |> List.concat
     let kidNames = ts |> List.choose (function Node (Apply (name, _), _) -> Some name | _ -> None)
-    let recoveredKids =
-      appRestrictions
-      |> List.except kidNames
-      |> List.map (fun n -> Node (Apply (n, []), []))
-      |> List.append ts
+    
+    let countOf x = List.filter (fun y -> y = x) >> List.length
 
-    Node (query, recoveredKids |> List.map (assertsTreeNew asserts consts decs))
+    let genVals src diff =
+      List.choose
+        (fun x -> countOf x src |> flip List.replicate x |> Some) diff
+      |> List.concat
+    
+    let restoreExistsKids (kidNames: _ list) (source: _ list)   =
+      let rec helper acc =
+        function
+          | [] -> acc
+          | x :: xs -> helper (acc @ List.replicate (countOf x source - countOf x kidNames) x) xs
+      helper kidNames []
+    
+    let recoveredKids =
+      List.except kidNames appRestrictions
+      |> fun x ->
+        for x in appRestrictions do
+          printfn $" appRestrictions:: {x}"
+        
+        for x in kidNames do
+          printfn $" kidNames:: {x}"
+
+        for x in x do
+          printfn $" diff:: {x}"
+        x
+      |> genVals appRestrictions
+      |> fun x -> printfn $"{x}"; x 
+      |> List.append (restoreExistsKids appRestrictions kidNames) 
+      |> fun xs ->
+        for x in xs do printfn $"REC {x}"
+        xs
+      |> List.map (fun n -> Node (Apply (n, []), []))
+      |> fun xs->
+        for x in xs do printfn $"NEW LEF {x}"
+        xs
+      |> List.append ts
+      |> fun xs->
+        for x in xs do printfn $"BRANCH {x}"
+        xs
+      
+    Node (query,  List.map (assertsTreeNew asserts consts decs) recoveredKids)
   | _ -> __unreachable__ ()
 
 let treeOfExprs =
@@ -357,6 +417,7 @@ let collectApps (kids: Expr list list) =
 
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   let get k map =
+    printfn $"{k}"
     (map |> Map.find k |> List.head,
      map |> Map.change k (function Some (_ :: vs) -> Some vs | _ -> None))
 
@@ -542,14 +603,14 @@ module Simplifier =
 
 module TypeClarification =
   type exprType =
-    | Unit
+    | Any
     | Int
     | Bool
     | ADT of string
     static member (+) (x, y) =
       match x, y with
-      | Unit, t
-      | t, Unit -> t
+      | Any, t
+      | t, Any -> t
       | x, y when x = y -> x 
       | _ -> failwith "wrong types"
   
@@ -618,18 +679,18 @@ module TypeClarification =
         | Neg _ -> Int 
         | Not _ -> Bool
         | Or exprs
-        | And exprs -> Array.fold (fun acc x -> acc + helper adts x) Unit exprs
+        | And exprs -> Array.fold (fun acc x -> acc + helper adts x) Any exprs
         | Var n when typedVars |> Map.containsKey n ->
           match typedVars |> Map.find n with
           | Integer -> Int
           | Boolean -> Bool
           | Type.ADT name -> ADT name
-        | Var _ -> Unit
+        | Var _ -> Any
         | App (name, _) when adts |> Map.containsKey name ->
           adts
           |> Map.tryFind name
           |> function
-            | None _ -> Unit
+            | None _ -> Any
             | Some (tName, _) -> ADT tName  
         | Expr.Int _
         | Apply _ -> Int   
@@ -769,7 +830,7 @@ let feasible adtDecs adtConstrs funDefs resolvent =
   let env = emptyEnv [||]
   let solver = env.ctxSlvr.MkSolver "HORN"
   let x, vars = TypeClarification.clarify adtConstrs resolvent qNames
-  let env, solver, cmds = SoftSolver.setCommands env solver (unsatQuery funDefs adtDecs adtConstrs x (Set.toList vars)) 
+  let env, solver, cmds = SoftSolver.setCommands env solver (unsatQuery funDefs (adtDecs) adtConstrs x (Set.toList vars)) 
   z3solve
     { env = env
       solver = solver
@@ -779,11 +840,11 @@ let feasible adtDecs adtConstrs funDefs resolvent =
     }
   
 
-
-let hyperProof2clauseNew (adtConstrs: Map<ident,(symbol * Type list)>) defConsts constrDefs decFuns hyperProof asserts =
+let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
   let resolvent' =
     proofTree hyperProof
     |> assertsTreeNew asserts defConsts decFuns
+    |> fun x -> printfn $"{x}"; x
     |> treeOfExprs
     |> uniqVarNames
     |> resolvent
@@ -947,7 +1008,7 @@ let rec learner adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs (s
   match proof with
   | [ Command (Proof (hyperProof, _, _)) ] ->
     let resolvent =
-      hyperProof2clauseNew adtConstrs constDefs constrDefs funDecls hyperProof asserts
+      hyperProof2clauseNew constDefs funDecls hyperProof asserts
     
     match feasible adtDecs adtConstrs funDefs resolvent with
     | SAT _ -> Error "UNSAT"
@@ -1021,15 +1082,24 @@ let rec teacher
      $"(set-logic HORN)\n(set-option :produce-proofs true)\n{c}\n(check-sat)\n(get-proof)")
     iteration
 
+  let toOrigCmds = List.map program2originalCommand
+  
+  
   z3solve
     { env = envTeacher
       solver = teacherSolver
-      unsat = fun env solver -> unsat env solver iteration
+      // unsat = fun env solver -> unsat env solver iteration
+      unsat = fun env solver -> ()
       cmds = cmds
       sat = fun _ _ -> () }
   |> function
-    | SAT _ -> "SAT"
+    | SAT _ -> 
+      for x in constDefs do printfn $"{x}"
+    
+      "SAT"
     | UNSAT proof ->
+      let proof = z3Process.z3proof (toOrigCmds funDefs) (toOrigCmds constDefs) (toOrigCmds constrDefs) (toOrigCmds funDecls) (toOrigCmds asserts)
+      
       match
         learner adtDecs adtConstrs funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed (iteration + 1)
       with
@@ -1165,7 +1235,7 @@ module HenceNormalization =
         []
 
     let asserts' =
-      asserts |> List.filter (fun x -> trivialImpls |> List.contains x |> not)
+      List.filter (fun x -> trivialImpls |> List.contains x |> not) asserts 
 
     let newAsserts =
       trivialImpls
@@ -1244,16 +1314,17 @@ let solver adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs constDe
   let funDecls, asserts =
     let funDecls', asserts' =
       HenceNormalization.uniqQuery funDecls asserts
-      |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
-
-
+      |> fun (decs, asserts) ->
+        decs, List.map HenceNormalization.restoreVarNames asserts
+        
     funDecls',
     AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
     |> HenceNormalization.normalizeAsserts funDecls'
     |> HenceNormalization.substTrivialImpls funDecls'
     |> List.map HenceNormalization.restoreVarNames
 
-
+  for x in asserts do printfn $"ASSERT: {program2originalCommand x}"
+  
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
 
@@ -1267,6 +1338,8 @@ let solver adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs constDe
   let envLearner, solverLearner, setSofts =
     SoftSolver.setSoftAsserts envLearner solverLearner constDefs
 
+
+  
   writeDbg
     "smt-input.smt2"
     (let c =
@@ -1296,23 +1369,25 @@ let approximation file =
 
   let adtDecs =
     cmds
-    |> List.choose (function
+    |> List.mapi (fun i -> function
       | Command (DeclareDatatypes adts) ->
         adts
         |> List.map (fun (adtName, decl) ->
           decl
           |> List.choose (function
-            | ElementaryOperation (constrName, sorts, _), _, _ -> Some (constrName, (adtName, List.map sort2type sorts))
+            | ElementaryOperation (constrName, sorts, _), _, _ -> Some (constrName, (adtName, i, List.map sort2type sorts))
             | _ -> None) )
         |> List.concat
         |> Some
       | Command (DeclareDatatype (adtName, decl)) ->
         decl
         |> List.choose (function
-            | ElementaryOperation (constrName, sorts, _), _, _ -> Some (constrName, (adtName, List.map sort2type sorts))
+            | ElementaryOperation (constrName, sorts, _), _, _ -> Some (constrName, (adtName, i, List.map sort2type sorts))
             | _ -> None)
         |> Some
       | _ -> None)
+    |> List.filter Option.isSome
+    |> List.map Option.get
     |> List.concat
     |> Map
 
@@ -1382,13 +1457,18 @@ let run file dbg =
   let adtDecs =
     adtConstrs
     |> Map.fold
-         (fun (acc: Map<string, Constructor list>) constrName (adtName, argTypes) ->
+         (fun (acc: Map<string, (int * Constructor list)>) constrName (adtName, i, argTypes) ->
             acc
-            |> Map.change adtName (function Some constrs -> Some <| (constrName, argTypes) :: constrs | None -> Some [(constrName, argTypes)]))
+            |> Map.change adtName (function Some constrs -> Some <| (i, (constrName, argTypes) :: snd constrs) | None -> Some (i, [(constrName, argTypes)])))
          Map.empty
     |> Map.toList
+    |> List.sortBy (fun (_, (i, _)) -> i)
+    |> List.map (fun (x, (_, y)) -> (x, y))
+    // |> List.rev
     |> List.map DeclDataType
+    
   
+  let adtConstrs = adtConstrs |> Map.map (fun k (n, _, ts) -> (n, ts))
   
   let asserts' = List.map origCommand2program asserts
 
