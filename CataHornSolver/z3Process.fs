@@ -36,7 +36,11 @@ let runZ3 funDefs constDefs constrDefs funDecls asserts =
 let z3proof funDefs constDefs constrDefs funDecls asserts =
   let out = runZ3 funDefs constDefs constrDefs funDecls asserts
   
+  
+  
   printfn $">>> {out}"
+  
+  
   
   let queryDecs =
     Regex(@"\(declare-fun query").Matches out
@@ -64,8 +68,8 @@ let z3proof funDefs constDefs constrDefs funDecls asserts =
         |> p.ParseLine 
       | None -> []
   
-  List.choose (function Command (Proof (HyperProof (a, hs, _), x, _)) -> Command ( (Proof (HyperProof (a, hs, BoolConst false), x, BoolConst false))) |> Some | _ -> None) mp
-  
+  (List.choose (function Command (Proof (HyperProof (a, hs, _), x, _)) -> Command ( (Proof (HyperProof (a, hs, BoolConst false), x, BoolConst false))) |> Some | _ -> None) mp
+  , out)
   // let rQuery = Regex "\(query"
   // rQuery.Matches mp.Head
   // |> Seq.toArray

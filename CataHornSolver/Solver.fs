@@ -1099,7 +1099,14 @@ let rec teacher
     
       "SAT"
     | UNSAT proof ->
-      let proof = z3Process.z3proof (toOrigCmds funDefs) (toOrigCmds constDefs) (toOrigCmds constrDefs) (toOrigCmds funDecls) (toOrigCmds asserts)
+      let (proof, dbgProof) = z3Process.z3proof (toOrigCmds funDefs) (toOrigCmds constDefs) (toOrigCmds constrDefs) (toOrigCmds funDecls) (toOrigCmds asserts)
+      
+      writeDbg
+        "proof.smt2"
+        dbgProof
+        iteration
+ 
+
       
       match
         learner adtDecs adtConstrs funDefs solverLearner envLearner asserts constDefs constrDefs funDecls proof pushed (iteration + 1)
