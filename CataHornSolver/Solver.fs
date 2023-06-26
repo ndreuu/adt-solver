@@ -1015,7 +1015,7 @@ let rec learner adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs (s
     | UNSAT _ ->
         let clause = Implies (resolvent, Bool false) |> forAll
     
-        writeDbg "redlog-input.smt2" $"{Redlog.redlogQuery (def2decVars constrDefs) clause}" iteration
+        writeDbg "redlog-input.smt2" $"{Redlog.redlogQuery (funDefs @ def2decVars constrDefs) clause}" iteration
     
         let redlogResult = redlog (funDefs @ def2decVars constrDefs) clause
     
@@ -1084,7 +1084,8 @@ let rec teacher
 
   let toOrigCmds = List.map program2originalCommand
   
-  
+  for x in constDefs do printfn $">>>>>>>>{x}"
+
   z3solve
     { env = envTeacher
       solver = teacherSolver
