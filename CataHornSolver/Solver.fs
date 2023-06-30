@@ -1002,7 +1002,9 @@ let writeDbg file (content: string) iteration =
     File.AppendAllText ($"{path}", $"{content}\n")
   | None -> ()
 
-
+let banOldValues constDefs =
+  Assert (Implies (And (List.choose (function Def (n, _, _, v) -> Some ((Eq (Var n, v))) | _ -> None) constDefs |> List.toArray),
+           Bool false))
 
 let rec learner adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs (solver: Solver) env asserts constDefs constrDefs funDecls proof pushed iteration =
   match proof with
@@ -1010,18 +1012,20 @@ let rec learner adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs (s
     let resolvent =
       hyperProof2clauseNew constDefs funDecls hyperProof asserts
     
+    
     match feasible adtDecs adtConstrs funDefs resolvent with
     | SAT _ -> Error "UNSAT"
     | UNSAT _ ->
         let clause = Implies (resolvent, Bool false) |> forAll
-    
+        printfn $"RESOLVENTTTTT : : : {expr2smtExpr clause}"
+
+        
         writeDbg "redlog-input.smt2" $"{Redlog.redlogQuery (funDefs @ def2decVars constrDefs) clause}" iteration
     
         let redlogResult = redlog (funDefs @ def2decVars constrDefs) clause
     
         writeDbg "redlog-output.smt2" $"{program2originalCommand redlogResult}" iteration
-    
-        let env, solver, setCmds = SoftSolver.setCommands env solver [ redlogResult ]
+        let env, solver, setCmds = SoftSolver.setCommands env solver [ redlogResult; banOldValues constDefs ]
     
         writeDbg
           "smt-input.smt2"
@@ -1041,6 +1045,154 @@ let rec learner adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs (s
         
   | _ -> Error "PROOF_FORMAT"
 
+
+let tst () =
+  let envTeacher = emptyEnv [| ("proof", "true") |]
+  let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
+  teacherSolver.Set ("fp.spacer.global", true)
+  teacherSolver.Set ("fp.xform.inline_eager", false)
+  teacherSolver.Set ("fp.xform.inline_linear", false)
+  
+  let cmds =
+    [ Def ("Z_2017", [], Integer, Int 0L)
+      Def ("S_457", ["x"], Integer, Add (Var "x", Int 1L))
+      Def ("Z_2013", [], Integer, Int 0L)
+      Def ("S_456", ["x"], Integer, Add (Var "x", Int 1L))
+      Def ("c_5", [], Integer, Int 1L)
+      Def ("c_4", [], Integer, Int 0L)
+      Def ("c_3", [], Integer, Int 0L)
+      Def ("c_2", [], Integer, Int 0L)
+      Def ("c_1", [], Integer, Int 0L)
+      Def ("c_0", [], Integer, Int 1L)
+      Def ("false_334", [], Integer, Apply ("c_0", []))
+      Def ("true_334", [], Integer, Apply ("c_1", []))
+      Def ("nil_268", [], Integer, Apply ("c_2", []))
+      Def
+        ("cons_238", ["head_476"; "tail_476"], Integer,
+         Add
+           (Add (Apply ("c_3", []), Mul (Apply ("c_4", []), Var "head_476")),
+            Mul (Apply ("c_5", []), Var "tail_476")))
+      Decl ("unS_669", 2)
+      Decl ("isZ_424", 1)
+      Decl ("isS_424", 1)
+      Decl ("add_360", 3)
+      Decl ("minus_355", 3)
+      Decl ("le_334", 2)
+      Decl ("ge_334", 2)
+      Decl ("lt_354", 2)
+      Decl ("gt_337", 2)
+      Decl ("mult_334", 3)
+      Decl ("div_334", 3)
+      Decl ("mod_336", 3)
+      Decl ("diseqBool_154", 2)
+      Decl ("isfalse_154", 1)
+      Decl ("istrue_154", 1)
+      Decl ("and_334", 3)
+      Decl ("or_341", 3)
+      Decl ("hence_334", 3)
+      Decl ("not_339", 2)
+      Decl ("diseqlist_238", 2)
+      Decl ("head_477", 2)
+      Decl ("tail_477", 2)
+      Decl ("isnil_268", 1)
+      Decl ("iscons_238", 1)
+      Decl ("projS_179", 2)
+      Decl ("isZ_423", 1)
+      Decl ("isS_423", 1)
+      Decl ("length_47", 2)
+      Decl ("even_3", 2)
+      Decl ("x_54976", 3)
+      Decl ("x_54978", 3)
+      Assert
+        (ForAll
+           ([|"x_54980"; "x_54994"; "x_54995"; "x_54996"; "x_54997"; "x_54998";
+              "x_54999"; "x_55000"; "y_2253"|],
+            Implies
+              (And
+                 [|App ("diseqBool_154", [Var "x_54996"; Var "x_55000"]);
+                   App ("x_54978", [Var "x_54994"; Var "x_54980"; Var "y_2253"]);
+                   App ("length_47", [Var "x_54995"; Var "x_54994"]);
+                   App ("even_3", [Var "x_54996"; Var "x_54995"]);
+                   App ("length_47", [Var "x_54997"; Var "y_2253"]);
+                   App ("length_47", [Var "x_54998"; Var "x_54980"]);
+                   App ("x_54976", [Var "x_54999"; Var "x_54997"; Var "x_54998"]);
+                   App ("even_3", [Var "x_55000"; Var "x_54999"])|], Bool false)))
+      Assert
+        (ForAll
+           ([|"x_54990"|],
+            App ("x_54976", [Var "x_54990"; Apply ("Z_2013", []); Var "x_54990"])))
+      Assert
+        (ForAll
+           ([|"x_54993"|],
+            App ("x_54978", [Var "x_54993"; Apply ("nil_268", []); Var "x_54993"])))
+      Assert
+        (ForAll
+           ([|"x_54984"; "z_2014"|],
+            Implies
+              (App ("even_3", [Var "x_54984"; Var "z_2014"]),
+               App
+                 ("even_3",
+                  [Var "x_54984"; Apply ("S_456", [Apply ("S_456", [Var "z_2014"])])]))))
+      Assert
+        (ForAll
+           ([|"x_54982"; "xs_645"; "y_2249"|],
+            Implies
+              (App ("length_47", [Var "x_54982"; Var "xs_645"]),
+               App
+                 ("length_47",
+                  [Apply ("S_456", [Var "x_54982"]);
+                   Apply ("cons_238", [Var "y_2249"; Var "xs_645"])]))))
+      Assert
+        (ForAll
+           ([|"x_54989"; "y_2251"; "z_2015"|],
+            Implies
+              (App ("x_54976", [Var "x_54989"; Var "z_2015"; Var "y_2251"]),
+               App
+                 ("x_54976",
+                  [Apply ("S_456", [Var "x_54989"]); Apply ("S_456", [Var "z_2015"]);
+                   Var "y_2251"]))))
+      Assert
+        (ForAll
+           ([|"x_54992"; "xs_646"; "y_2252"; "z_2016"|],
+            Implies
+              (App ("x_54978", [Var "x_54992"; Var "xs_646"; Var "y_2252"]),
+               App
+                 ("x_54978",
+                  [Apply ("cons_238", [Var "z_2016"; Var "x_54992"]);
+                   Apply ("cons_238", [Var "z_2016"; Var "xs_646"]); Var "y_2252"]))))
+      Assert
+        (App ("diseqBool_154", [Apply ("false_334", []); Apply ("true_334", [])]))
+      Assert
+        (App ("diseqBool_154", [Apply ("true_334", []); Apply ("false_334", [])]))
+      Assert
+        (App
+           ("even_3",
+            [Apply ("false_334", []); Apply ("S_456", [Apply ("Z_2013", [])])]))
+      Assert (App ("even_3", [Apply ("true_334", []); Apply ("Z_2013", [])]))
+      Assert (App ("length_47", [Apply ("Z_2013", []); Apply ("nil_268", [])])) ]
+  
+  let unsat env (solver: Solver) =
+    let p = Parser.Parser false
+  
+    for d in env.ctxDecfuns.Values do
+      p.ParseLine <| d.ToString () |> ignore
+  
+    p.ParseLine (
+      proof (fun _ -> ()) (solver.Proof.ToString()))
+  
+  z3solve
+    { env = envTeacher
+      solver = teacherSolver
+      unsat = unsat
+      // unsat = fun env solver -> ()
+      cmds = cmds
+      sat = fun _ _ -> () }
+  |> function
+    | SAT _ -> failwith "SAT?"
+    | UNSAT proof -> printfn $"PROOF:\n{proof}"
+  
+  ()
+
 let unsat env (solver: Solver) iteration =
   let p = Parser.Parser false
 
@@ -1048,16 +1200,15 @@ let unsat env (solver: Solver) iteration =
     p.ParseLine <| d.ToString () |> ignore
 
   p.ParseLine (
-    solver.Proof.ToString ()
-    |> proof (fun _ -> ())
+    proof (fun _ -> ()) (solver.Proof.ToString())
     |> fun prettyProof ->
-        writeDbg "proof.smt2" $"{solver.Proof}\nPRETTY:\n{prettyProof}" iteration
+        writeDbg "proof-api.smt2" $"{solver.Proof}\nPRETTY:\n{prettyProof}" iteration
         $"{prettyProof}"
   )
 
 let rec teacher
   adtDecs
-  (adtConstrs: Map<ident,(symbol * Type list)>)
+  (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
   (solverLearner: Solver)
   envLearner
@@ -1070,12 +1221,15 @@ let rec teacher
   =
   let envTeacher = emptyEnv [| ("proof", "true") |]
   let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
+  
   teacherSolver.Set ("fp.spacer.global", true)
   teacherSolver.Set ("fp.xform.inline_eager", false)
   teacherSolver.Set ("fp.xform.inline_linear", false)
 
   let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
 
+  for cmd in cmds do printfn $"CMD::{cmd}"
+  
   writeDbg
     "horn-input.smt2"
     (let c = List.map (program2originalCommand >> toString) cmds |> join "\n" in
@@ -1089,8 +1243,8 @@ let rec teacher
   z3solve
     { env = envTeacher
       solver = teacherSolver
-      // unsat = fun env solver -> unsat env solver iteration
-      unsat = fun env solver -> ()
+      unsat = fun env solver -> unsat env solver iteration; ()
+      // unsat = fun env solver -> ()
       cmds = cmds
       sat = fun _ _ -> () }
   |> function
@@ -1099,7 +1253,9 @@ let rec teacher
     
       "SAT"
     | UNSAT proof ->
-      let (proof, dbgProof) = z3Process.z3proof (toOrigCmds funDefs) (toOrigCmds constDefs) (toOrigCmds constrDefs) (toOrigCmds funDecls) (toOrigCmds asserts)
+      
+      
+      let proof, dbgProof = z3Process.z3proof (toOrigCmds funDefs) (toOrigCmds constDefs) (toOrigCmds constrDefs) (toOrigCmds funDecls) (toOrigCmds asserts)
       
       writeDbg
         "proof.smt2"
@@ -1330,24 +1486,24 @@ let solver adtDecs (adtConstrs: Map<ident,(symbol * Type list)>) funDefs constDe
     |> HenceNormalization.normalizeAsserts funDecls'
     |> HenceNormalization.substTrivialImpls funDecls'
     |> List.map HenceNormalization.restoreVarNames
-
+  
   for x in asserts do printfn $"ASSERT: {program2originalCommand x}"
   
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
-
+  
   let startCmds = funDefs @ decConsts @ (notZeroFunConsts constrDefs)
-
+  
   solverLearner.Push ()
-
+  
   let envLearner, solverLearner, setCmds =
     SoftSolver.setCommands envLearner solverLearner startCmds
+
 
   let envLearner, solverLearner, setSofts =
     SoftSolver.setSoftAsserts envLearner solverLearner constDefs
 
 
-  
   writeDbg
     "smt-input.smt2"
     (let c =
