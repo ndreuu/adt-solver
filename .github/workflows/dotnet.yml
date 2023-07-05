@@ -27,7 +27,8 @@ jobs:
         cd ./z3
         python3 ./scripts/mk_make.py 
         cd build; make
-        cd ..
+        cd ../../CataHornSolver/
+
     - name: Build
       run: dotnet build 
     - name: Shiza
