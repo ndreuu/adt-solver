@@ -1,10 +1,22 @@
 module Tests.ProofBased.Test
-//
-// open System.IO
-// open NUnit.Framework
-// open ProofBased
-// open Z3Interpreter.AST
-//
+
+open System.IO
+open NUnit.Framework
+open ProofBased
+open Z3Interpreter.AST
+
+
+[<TestFixture>]
+type TestClass () =
+  let run () =
+      let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
+      let v, st, curDuration = Solver.run file None None
+      printfn $"{v}"
+      printfn $"{curDuration}"
+      for s in st do printfn $"{s}"
+      Assert.True(1 = 11)
+
+
 // [<TestFixture>]
 // type TestClass () =
 //   let runWithoutFuns consts defFns decFns asserts =

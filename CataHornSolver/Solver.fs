@@ -474,7 +474,6 @@ let collectApps (kids: Expr list list) =
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
-      printfn $"{k}";
       (map |> Map.find k |> List.head,
        map
        |> Map.change k (function
