@@ -24,979 +24,979 @@
         <Content Include="Tests\Source\racer.horn.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_times_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_cfg5_unambig.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_42.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_bt3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NMSortTDCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_bt4.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_bt5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_btp5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_d5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_times_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_d7.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_FromToConj.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p7.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_50.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p9.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortBU2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p11.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_36.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p21.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_TSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_p31.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_74.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_t3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_60.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_t5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_graph_tp5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_koen_easy.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_hotel_key_safe0.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_times.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_hotel_key_safe1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BubSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_hotel_key_safe2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_51.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_hotel_key_safe3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortTDCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_imperative_Apa.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NMSortTDSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_mergesort_merge_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_38.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_app_inj1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_46.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_app_inj2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_drop_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_drop_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p11.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_drop_idem.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_times.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_drop_inj1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_48.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_drop_inj2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_drop_invol.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus_1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_len_bs.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_SeqAssociative.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_bogus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_btp5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind7.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_inj0.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_rotate_snoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_inj00.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_43.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_inj1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_uhhh.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_uhhhw1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_56.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_rot_uhhhw2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_44.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_union_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_productive_use_of_failure_union_idem.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_37.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue1_QueueL.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_Deeps.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue1_QueueR.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus_easy_2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue2_QueueL.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find4.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue2_QueueR.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NMSortTDIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue3_QueueL.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_drop_inj1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_queue3_QueueR.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BubSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_bad_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_80.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_bad_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_08.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_Conj.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_18.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_Conj0.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_FromToConj.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_uhhh.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_FromToConj_difficult.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_iter.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_iter.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_86.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_iter0.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_13.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_koen.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_star_plus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_nat_Interleave.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_star_plus_easy.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NMSortTDIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_star_seq.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_29.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_deluxe_switcheroo.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_ISortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find6.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BubSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_37.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find4.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_72.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_40.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find6.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_s.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_find7.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_53.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_simp_expr_unambig4.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BubSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_Star.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind4.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p9.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind6.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_relaxedprefix_is_prefix_1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_kfind7.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_plus_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_koen.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_uhhhw1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_koen_easy.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_bt4.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_same.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_plus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_rotate_mod.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus_1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_77.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus_2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_weird_is_normal.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus_easy.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_simp_expr_unambig2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus_easy_1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_07.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_plus_easy_2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_41.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_star_seq.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_relaxedprefix_is_prefix_4.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_regexp_switcheroo.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortBU2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\false_show_bin_lists_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_t5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_packrat_unambigPackrat.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_30.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_simp_expr_unambig1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_len_bs.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_simp_expr_unambig2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecPlus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_simp_expr_unambig3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_20.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_simp_expr_unambig4.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\grammars_simp_expr_unambig5.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_71.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_01.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_15.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_02.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortBU2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_03.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_relaxedprefix_is_prefix_3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_04.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_82.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_05.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_02.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_11.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecEps.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_13.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_11.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_15.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_16.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_84.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_19.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue3_QueueL.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_20.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_uhhhw2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_26.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_relaxedprefix_correct.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_27.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_bad_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_28.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_29.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_05.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_30.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_49.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_37.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind6.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_38.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_39.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_bt5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_40.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_Reverse.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_42.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecSeq.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_44.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_52.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_45.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_25.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_46.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_47.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_SeqDistrPlus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_48.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_49.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_simp_expr_unambig5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_50.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_star_plus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_51.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_26.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_52.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_59.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_53.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_Interleave.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_55.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_TSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_56.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BubSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_57.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue1_QueueL.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_58.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NMSortTDSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_59.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind4.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_60.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_propositional_AndIdempotent.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_61.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_tree_Flatten2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_62.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_tree_SwapAB.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_63.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_06.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_64.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_times_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_67.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_68.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_distrib.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_71.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_append_inj_2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_72.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue1_QueueR.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_74.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_plus_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_75.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_28.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_76.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecStar.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_77.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_39.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_78.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_rotate_self.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_80.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p7.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_81.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_cfg5_unambig.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_82.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_nat_append_inj_2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_83.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_rotate_structural_mod.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_84.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_48.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_85.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_27.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_86.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_ISortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_02.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_propositional_AndImplication.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_03.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p21.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_04.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_bad_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_05.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_03.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_06.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_44.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_07.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_08.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_inj1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_09.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_10.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_29.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_11.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_hotel_key_safe2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_12.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_PairUnpair.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_14.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_83.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_17.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_04.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_18.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_05.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_19.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_20.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_21.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_22.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_TSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_23.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_TSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_25.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_49.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_27.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_28.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_PlusIdempotent.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_29.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_30.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_30.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_31.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_19.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_32.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_rotate_snoc_self.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_36.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortBU2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_37.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_38.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_50.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_39.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_40.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_41.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_16.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_42.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_seq.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_43.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_10.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_44.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_20.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_45.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_61.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_46.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_78.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_47.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortBU2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_48.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_76.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_49.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_append_inj_1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\prod_prop_50.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_hotel_key_safe3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_distrib.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_19.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_distrib.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_d5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_plus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_plus_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_64.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_plus_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_28.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_s.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_escape_Injective.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_times.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_09.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_times_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_12.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_nat_times_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_plus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_plus_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NMSortTDCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_plus_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_TSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_s.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortTDIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_times.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortTDSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_times_assoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_bin_times_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_ISortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_escape_Injective.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_11.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_escape_NoSpecial.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_append_inj_1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_hotel_key_safe1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_append_inj_2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_star_seq.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_Interleave.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortTDSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_nat_append_inj_1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_escape_NoSpecial.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_nat_append_inj_2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_kfind1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_nat_Interleave.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_62.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_nat_PairUnpair.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_packrat_unambigPackrat.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_PairUnpair.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_list_weird_is_normal.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_propositional_AndCommutative.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_koen.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_propositional_AndIdempotent.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_StoogeSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_propositional_AndImplication.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_14.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_propositional_Okay.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_plus_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_propositional_Sound.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_17.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_Deeps.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_simp_expr_unambig3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_PlusAssociative.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_PlusCommutative.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_57.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_PlusIdempotent.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_nat_s.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecAtom.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_koen.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecEps.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_mergesort_merge_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecNil.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_68.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecPlus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus_2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecSeq.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_union_idem.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_RecStar.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_67.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_Reverse.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_47.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_SeqAssociative.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_hotel_key_safe0.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_SeqDistrPlus.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_PlusCommutative.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_regexp_Star.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_nat_append_inj_1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_relaxedprefix_correct.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_union_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_relaxedprefix_is_prefix_1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_03.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_relaxedprefix_is_prefix_2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_45.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_relaxedprefix_is_prefix_3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_relaxedprefix_is_prefix_4.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_inj00.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_rotate_mod.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_propositional_Okay.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_rotate_self.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_81.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_rotate_snoc.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortTDCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_rotate_snoc_self.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus_easy_1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_rotate_structural_mod.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_75.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_47.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue3_QueueR.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_PlusAssociative.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BubSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BubSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_BSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_BubSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_app_inj2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue2_QueueR.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_star_plus_easy.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_42.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_bogus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_HSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecNil.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_ISortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_times_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_ISortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_switcheroo.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortBU2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_32.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortBU2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_imperative_Apa.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortBU2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_NStoogeSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortTDCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_propositional_Sound.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortTDIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_38.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_MSortTDSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_27.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_propositional_AndCommutative.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_drop_idem.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_23.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BubSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_58.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BubSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_list_nat_PairUnpair.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_BubSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_BubSortCount.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_tree_Flatten1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_drop_invol.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_show_bin_lists_assoc.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_drop_inj2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_HSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSort2IsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_ISortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_rot_inj0.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_ISortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_relaxedprefix_is_prefix_2.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortBU2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_85.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortBU2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_21.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortBU2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_d7.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortTDCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_regexp_RecAtom.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortTDIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_star_plus_easy.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_MSortTDSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_45.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NMSortTDCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_find7.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NMSortTDIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_MSortTDIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NMSortTDSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_Conj0.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_queue2_QueueL.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_ISortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_40.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_t3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_tree_Flatten3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_NStoogeSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_63.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_tp5.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_04.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_distrib.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_p31.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_46.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_StoogeSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_02.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_TSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_TSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_FromToConj_difficult.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_nat_TSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_MSortBU2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NMSortTDCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_Conj.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NMSortTDIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_switcheroo.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NMSortTDSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_deluxe_iter0.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_plus_comm.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_55.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_graph_bt3.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_22.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_NStoogeSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\isaplanner_prop_01.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSort2Count.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_39.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSort2IsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\prod_prop_31.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSort2Sorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_productive_use_of_failure_app_inj1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\grammars_simp_expr_unambig1.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_StoogeSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_StoogeSortSorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_TSortCount.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_HSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_TSortIsSort.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_TSortIsSort.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_sort_TSortSorts.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_NStoogeSort2Count.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten1.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_sort_nat_HSort2Sorts.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten2.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\tip2015_bin_plus.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\adt_lia\false_regexp_same.smt2">
+        <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_SwapAB.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Include="..\z3\build\z3">

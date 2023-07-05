@@ -8,19 +8,15 @@ module Program =
 
   [<EntryPoint>]
   let main _ = 
-      // let files = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/adt_lia")
-      // printfn $"{Directory.Exists(files)}"
-      //
-      // let  d = DirectoryInfo(files);
-      // let a = d .GetFiles("*.smt2"); //Getting Text files
-      // printfn $"{a}"
-      //
-      
-      let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
-      printfn $"{File.Exists(file)}"
-      let v, st, curDuration = run file None None
-      let a = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
-      File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{a}")
+      // let path = Path.Join(TestContext.CurrentContext.TestDirectory, @"Tests/Source/TIP-no-NAT")
+      let path = @"./Tests/Source/TIP-no-NAT"
+      printfn $"{Directory.Exists(path)}"
+      let dir = DirectoryInfo(path);
+      let files = dir.GetFiles("*.smt2"); 
+      for file in files do
+        let v, st, curDuration = run file.DirectoryName None None
+        let content = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
+        File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
       0
 
   // let main = function

@@ -25,10 +25,12 @@ jobs:
         git clone --recursive https://github.com/ndreuu/SMTLIB2.git
         git submodule update --init --recursive
         cd ./z3
-        python3 ./scripts/mk_make.py --dotnet
+        python3 ./scripts/mk_make.py 
         cd build; make
-        cd ../../
+        cd ..
     - name: Build
       run: dotnet build 
-    - name: Run
-      run: dotnet run
+    - name: Shiza
+      run: ./bin/Debug/net6.0/CataHornSolver ./bin/Debug/net6.0/Tests/Source/racer.horn.smt2 
+#    - name: Run
+#      run: dotnet run
