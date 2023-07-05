@@ -160,11 +160,16 @@ module AST =
         match t with
         | Integer -> IntSort
         | Boolean -> BoolSort
+        | ADT s -> ADTSort s
       Command (DeclareConst (n, t'))
     | Decl (n, num) ->
       Command (DeclareFun (n, List.init num (fun _ -> IntSort), BoolSort))
     | Assert e -> originalCommand.Assert (expr2smtExpr e)
-
+    | DeclDataType (n, dd) ->
+      // let 
+      failwith ""
+      // Command (DeclareDatatype n, )  
+    
   let rec smtExpr2expr =
     function
     | Number i -> Int i
@@ -305,8 +310,36 @@ module Interpreter =
   let define = fun env (name, args, expr) -> env.ctxFuns.Add (name, (args, expr))
 
   let declConsts = List.map DeclIntConst
-
-
+  
+  let rec normalizeAst (env: Env) =
+    function
+      | Var n ->
+        env.ctxDecfuns.TryFind n
+        |> function
+          | Some _ ->
+            App (n, [])
+          | _ -> Var n
+      | Eq (e1, e2) -> Eq (normalizeAst env e1, normalizeAst env e2)
+      | Lt (e1, e2) -> Lt (normalizeAst env e1, normalizeAst env e2)
+      | Gt (e1, e2) -> Gt (normalizeAst env e1, normalizeAst env e2)
+      | Le (e1, e2) -> Le (normalizeAst env e1, normalizeAst env e2)
+      | Ge (e1, e2) -> Ge (normalizeAst env e1, normalizeAst env e2)
+      | Mod (e1, e2) -> Mod (normalizeAst env e1, normalizeAst env e2)
+      | Add (e1, e2) -> Add (normalizeAst env e1, normalizeAst env e2)
+      | Subtract (e1, e2) -> Subtract (normalizeAst env e1, normalizeAst env e2)
+      | Mul (e1, e2) -> Mul (normalizeAst env e1, normalizeAst env e2)
+      | Implies (e1, e2) -> Implies (normalizeAst env e1, normalizeAst env e2)
+      | Neg e -> Neg (normalizeAst env e)
+      | Not e -> Not (normalizeAst env e)
+      | And exprs -> And (Array.map (normalizeAst env) exprs) 
+      | Or exprs -> Or (Array.map (normalizeAst env) exprs)
+      | Apply (n, exprs) -> Apply (n, List.map (normalizeAst env) exprs) 
+      | App (n, exprs) -> App (n, List.map (normalizeAst env) exprs) 
+      | ForAllTyped (vars, expr) -> ForAllTyped (vars, normalizeAst env expr) 
+      | ForAll (names, expr) -> ForAll (names, normalizeAst env expr) 
+      | Ite (e1, e2, e3) -> Ite (normalizeAst env e1, normalizeAst env e2, normalizeAst env e3)
+      | otherwise -> otherwise
+      
   let rec evalExpr: Env -> Expr -> Microsoft.Z3.Expr =
     fun env ->
       function
@@ -335,7 +368,10 @@ module Interpreter =
       | Implies (expr1, expr2) ->
         env.ctxSlvr.MkImplies (evalExpr env expr1 :?> BoolExpr, evalExpr env expr2 :?> BoolExpr)
       | Var x ->
-        env.ctxVars |> Map.find x
+        env.ctxVars |> Map.tryFind x
+        |> function
+          | Some v -> v
+          | None -> evalExpr env (App (x, []))
       | App (name, expr) ->
         let decFun = env.ctxDecfuns |> Map.find name in
         let args = List.map (evalExpr env) expr
@@ -394,7 +430,8 @@ module Interpreter =
                         function
                           | Boolean -> env.ctxSlvr.MkBoolSort ()  
                           | Integer -> env.ctxSlvr.MkIntSort ()  
-                          | ADT n when n <> name -> (env.ctxDataType |> Map.find n) :> Sort
+                          | ADT n when n <> name ->
+                            (env.ctxDataType |> Map.find n) :> Sort
                           | ADT _ -> null
                       let tester = $"tester_{n}"
                       let names, sorts = ts |> List.mapi (fun i t -> ($"x{i}", mkSort t)) |> List.toArray |> Array.unzip
@@ -423,7 +460,13 @@ module Interpreter =
                   ctxVars = env.ctxVars |> Map.add n boolConst },
                solver,
                expr)
+            | ADT tName ->
+              let adtConst = env.ctxSlvr.MkConstDecl (n, env.ctxDataType |> Map.find tName) 
               
+              ({ env with
+                  ctxDecfuns =  env.ctxDecfuns |> Map.add n adtConst },
+               solver,
+               expr)
           | DeclIntConst n ->
             let intConst = env.ctxSlvr.MkIntConst n
 
@@ -432,7 +475,6 @@ module Interpreter =
              solver,
              expr)
           | Assert e ->
-
             let assrt = evalExpr env e in
             solver.Add [| assrt :?> BoolExpr |]
             (env, solver, evalExpr env e)
@@ -570,55 +612,6 @@ module Interpreter =
       ctxDecfuns = Map.empty
       ctxDataType = Map.empty 
       actives = [] }
-
-
-open Interpreter
-
-// let dsf () =
-//   let emptyEnv argss =
-//     { ctxSlvr = new Context (argss |> dict |> Dictionary)
-//       ctxVars = Map.empty
-//       ctxFuns = Map.empty
-//       ctxDecfuns = Map.empty
-//       ctxDataType =  Map.empty
-//       actives = [] }
-//   
-//   let env = emptyEnv [||]
-//   
-//   let solver = env.ctxSlvr.MkSolver "HORN"
-//   z3solve
-//     { env = env
-//       solver = solver
-//       unsat = fun _ _ -> printfn "UNSAT"
-//       sat = fun _ _ -> "SAT"
-//       cmds =
-//         [
-//       DeclDataType ("nat", [("Z", []); ("S", [ADT "nat"])])
-//       DeclDataType ("list", [("nil", []); ("cons", [ADT "nat"; ADT "list"])])
-//       // Assert (ForAllTyped ([("q", ADT "nat"); ("y1", ADT "nat")], Not (Eq (Var "q", Var "y1"))))
-//     // ]
-//       Assert (ForAllTyped ([("x", ADT "nat"); ("y", ADT "nat")], Eq ((App ("cons", [|Var "x"; App ("nil", [||]) |])), (App ("cons", [|Var "y"; App ("nil", [||]) |])))))]}
-//     
-//   ()
-//   // Interpreter.evalCmds env solver
-//   //   [
-//   //     DeclDataType ("nat", [("Z", []); ("S", [ADT "nat"])])
-//   //     DeclDataType ("list", [("nil", []); ("cons", [ADT "nat"; ADT "list"])])
-//   //     // Assert (ForAllTyped ([("q", ADT "nat"); ("y1", ADT "nat")], Not (Eq (Var "q", Var "y1"))))
-//   //   // ]
-//   //     Assert (ForAllTyped ([("x", ADT "nat"); ("y", ADT "nat")], Eq ((App ("cons", [|Var "x"; App ("nil", [||]) |])), (App ("cons", [|Var "y"; App ("nil", [||]) |])))))]
-//   //     // Assert (Eq ((App ("cons", [|App ("Z", [||]); App ("nil", [||]) |])), (App ("cons", [|App ("S", [|App ("Z", [||])|]); App ("nil", [||]) |]))))]
-//   // |> fun (env, solver, _) -> printfn $"{solver.Check ()}"
-//
-
-
-
-
-
-
-
-
-
 
 
 

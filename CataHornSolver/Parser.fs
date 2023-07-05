@@ -1,6 +1,7 @@
 module RedlogParser.RedTrace.Parser
 
 open System
+open System.Text.RegularExpressions
 open Antlr4.Runtime
 open Antlr4.Runtime.Tree
 open Microsoft.FSharp.Core
@@ -293,3 +294,70 @@ let translateToSmt line =
   | :? RedTraceParser.ExprContext as expr ->
       parseExpr expr 
   | _ -> __unreachable__ ()
+let chc () =
+  
+  
+  let balancedBracket (str: string) =
+    let rec helper depth acc =
+      function
+      | _ when depth = 0 -> Some acc
+      | h :: tl ->
+        let inc =
+          match h with
+          | '(' -> 1
+          | ')' -> -1
+          | _ -> 0
+  
+        helper (depth + inc) (h :: acc) tl
+      | _ -> None
+  
+    str.Substring 1
+    |> Seq.toList
+    |> helper 1 []
+    |> function
+      | Some cs ->
+        List.fold (fun acc c -> $"{c}{acc}") "" cs
+        |> (fun str -> $"({str}" )
+        |> Some
+      | None -> None
+  
+  let result =
+    """Reduce (CSL, rev 6339), 16-Jun-2022 ...
+
+
+
+***** FANCY is not current output handler 
+
+
+
+
+Redlog Revision 6288 of 2022-04-24, 14:13:40Z
+(c) 1992-2022 T. Sturm and A. Dolzmann (www.redlog.eu)
+type ?; for help
+
+
+
+
+
+debug_me
+
+
+(debug_me)
+
+Enter (1) debug_me
+sth := (!*fof (pasf) (and (neq (((c_0 . 1) ((c_3 . 1) . 1) . -1) ((c_1 . 1) . 1)
+) nil) (or ((ncong ((c_2 . 1) . 1)) (((c_0 . 1) ((c_3 . 1) . 1) . -1) ((c_1 . 1)
+. 1)) nil) (equal (((c_2 . 1) . 1)) nil))) t)
+Leave (1) debug_me = (!*fof (pasf) (and (neq (((c_0 . 1) ((c_3 . 1) . 1) . -1) (
+(c_1 . 1) . 1)) nil) (or ((ncong ((c_2 . 1) . 1)) (((c_0 . 1) ((c_3 . 1) . 1) .
+-1) ((c_1 . 1) . 1)) nil) (equal (((c_2 . 1) . 1)) nil))) t)
+
+"""
+  let r = Regex "sth := "
+  let preambula = Seq.head <| r.Matches result
+  let subStr = result.Substring (preambula.Index + preambula.Length)
+  subStr
+  |> balancedBracket
+  |> function
+    | Some s -> translateToSmt s |> fun x -> printfn $"{x}"
+  

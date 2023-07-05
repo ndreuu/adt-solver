@@ -264,3 +264,5 @@ solver.zip
 cvc
 vampire
 *.generated
+
+build
