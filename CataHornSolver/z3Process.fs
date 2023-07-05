@@ -29,18 +29,12 @@ let runZ3 funDefs constDefs constrDefs funDecls asserts =
 """
   File.WriteAllText(file, content)
   
-  let result = execute "z3" $"fp.spacer.global=true fp.xform.inline_eager=true fp.xform.inline_linear=true {file}"
+  let result = execute "./z3" $"fp.spacer.global=true fp.xform.inline_eager=true fp.xform.inline_linear=true {file}"
   
   result.StdOut
 
 let z3proof funDefs constDefs constrDefs funDecls asserts =
   let out = runZ3 funDefs constDefs constrDefs funDecls asserts
-  
-  
-  
-  printfn $">>> {out}"
-  
-  
   
   let queryDecs =
     Regex(@"\(declare-fun query").Matches out

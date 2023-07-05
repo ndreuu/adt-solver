@@ -46,7 +46,7 @@ module Linearization =
             | Command (DeclareDatatypes [ _, cs ]) ->
               let pdng', def = pdng_defs cs pdng
               (pdng', def @ acc)
-            | Command (DeclareDatatypes _) -> failwith "???"
+            | Command (DeclareDatatypes _) as v -> failwith $"??? {v}"
             | _ -> (pdng, acc))
           (0, [])
           commands
