@@ -20,8 +20,6 @@ jobs:
       uses: actions/setup-dotnet@v3
       with:
         dotnet-version: 6.0.x
-    - name: Restore dependencies
-      run: dotnet restore
     - name: Preparing
       run: |
         git clone --recursive https://github.com/ndreuu/SMTLIB2.git
@@ -30,8 +28,7 @@ jobs:
         python3 ./scripts/mk_make.py --dotnet
         cd build; make
         cd ../../
-#        dotnet build
     - name: Build
-      run: dotnet build --no-restore
+      run: dotnet build 
     - name: Run
       run: dotnet run
