@@ -5,5 +5,5 @@ cd ./z3
 python3 ./scripts/mk_make.py --dotnet 
 cd build; make
 cd ../../
-dotnet build 
+dotnet build
 ```
