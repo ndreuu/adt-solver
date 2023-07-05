@@ -31,7 +31,12 @@ jobs:
 
     - name: Build
       run: dotnet build 
-    - name: Shiza
-      run: ./bin/Debug/net6.0/CataHornSolver ./bin/Debug/net6.0/Tests/Source/racer.horn.smt2 
-#    - name: Run
-#      run: dotnet run
+    - name: Run
+      run: dotnet run  ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
+
+
+#for v in ./bin/Debug/net6.0/Tests/Source/; do
+#  echo $v; 
+#  /home/andrew/RiderProjects/adt-solver-smr/CataHornSolver/bin/Release/net6.0/CataHornSolver $v
+#done;
+
