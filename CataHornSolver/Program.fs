@@ -53,7 +53,7 @@ module Program =
       let result, st, curDurName = run path None None
       let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
       let content = $"{testName} {result}\n\t{curDurName}\n{durations}"
-      File.WriteAllText("./out.txt", content")
+      File.WriteAllText("./out.txt", content)
       printfn $"{content}"
       0
     | _ -> 
