@@ -1994,11 +1994,12 @@ let run file dbg timeLimit =
 
   let go () = solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
   
-  let v, st, curDuration =
-    match runWithTimeout 60000 go with
-    | Some (v, _) -> v, durations, ""
-    | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
+  // let v, st, curDuration =
+    // match runWithTimeout 60000 go with
+    // | Some (v, _) -> v, durations, ""
+    // | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
   //
-  (v, st, curDuration)
-  // let v, _ = go ()
-  // v, durations, ""
+  // (v, st, curDuration)
+  
+  let v, _ = go ()
+  v, durations, ""
