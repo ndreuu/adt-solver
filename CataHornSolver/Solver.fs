@@ -474,6 +474,7 @@ let collectApps (kids: Expr list list) =
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
+      // printfn $"{k}"
       (map |> Map.find k |> List.head,
        map
        |> Map.change k (function
@@ -1741,7 +1742,7 @@ module HenceNormalization =
                 | Assert (ForAll (_, Implies (_, x)))
                 | Assert (Implies (_, x))
                 | Assert (ForAll (_, x))
-                | Assert x -> x.EqualsAnon l
+                | Assert x -> x.StructEq l
                 | _ -> false)
               |> List.map (function
                 | Assert (App (_, fArgs))
@@ -1759,7 +1760,7 @@ module HenceNormalization =
     newAsserts @ asserts'
 
 
-  let uniqQuery funDecs asserts =
+  let mkSingleQuery funDecs asserts =
     match queryAssert id asserts with
     | [ _ ] -> funDecs, asserts
     | xs ->
@@ -1808,7 +1809,7 @@ let rec solver
   =
   let funDecls, asserts =
     let funDecls', asserts' =
-      HenceNormalization.uniqQuery funDecls asserts
+      HenceNormalization.mkSingleQuery funDecls asserts
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
 
     funDecls',
@@ -1819,7 +1820,6 @@ let rec solver
 
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
-
   let startCmds = funDefs @ decConsts @ (notZeroFunConsts constrDefs)
 
   solverLearner.Push ()
@@ -1838,10 +1838,6 @@ let rec solver
 
         $"(set-logic NIA)\n{content}"
       )
-    
-    
-    
-    
     match! Debug.Duration.go (lazy Solver.evalModel constDefs) "(INIT)SMT.NIA" with
     | Ok x ->
       return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
@@ -2001,7 +1997,7 @@ let run file dbg timeLimit =
   let v, st, curDuration =
     match runWithTimeout 10000 go with
     | Some (v, st) -> v, durations, ""
-    | None -> "TIMEOUT", durations, curDuration
+    | None -> "TIMEOUT", durations, $"{curDuration}\n"
 
   // printfn $"{v}"
   // printfn $"{curDuration}"

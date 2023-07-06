@@ -49,7 +49,7 @@ module AST =
     | Ite of Expr * Expr * Expr
 
     
-    member x.EqualsAnon y =
+    member x.StructEq y =
       let rec helper (x,y) = 
         match x, y with
         | Var _, Var _ -> true
