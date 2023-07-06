@@ -41,9 +41,12 @@ jobs:
     - name: Run
       run: |
         cd ./CataHornSolver
-        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do
-          dotnet run --project CataHornSolver.fsproj $v 
+        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do 
+        echo "$v"
         done;
+  
+#        for v in ./Tests/Source/TIP-no-NAT/*.smt2; do dotnet run --project CataHornSolver.fsproj "${v}" done;
+
 #        dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
 
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do
