@@ -24,14 +24,15 @@ jobs:
       run: |
         git clone --recursive https://github.com/ndreuu/SMTLIB2.git
         git submodule update --init --recursive
-        cd ./z3
-        python3 ./scripts/mk_make.py 
-        cd build; make
-        cd ../../
-#        cd ../../CataHornSolver/
+        cp ./d ./z3/build/
+#        cd ./z3
+#        python3 ./scripts/mk_make.py 
+#        cd build; make
+#        cd ../../
 
     - name: Build
       run: |
+        ls
         dotnet build ./ADTsolver.sln
         cd ./CataHornSolver
     - name: Run
