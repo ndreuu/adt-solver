@@ -42,7 +42,7 @@ jobs:
       run: |
         cd ./CataHornSolver
         for v in ./Tests/Source/TIP-no-NAT/*.smt2 
-        do dotnet run --project CataHornSolver.fsproj v
+        do dotnet run --project CataHornSolver.fsproj $v
         done;
   
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2; do dotnet run --project CataHornSolver.fsproj "${v}" done;
