@@ -1962,7 +1962,7 @@ let run file dbg timeLimit =
   let adtDecs =
     adtConstrs
     |> Map.fold
-      (fun (acc: Map<string, (int * Constructor list)>) constrName (adtName, i, argTypes) ->
+      (fun (acc: Map<string, int * Constructor list>) constrName (adtName, i, argTypes) ->
         acc
         |> Map.change adtName (function
           | Some constrs -> Some <| (i, (constrName, argTypes) :: snd constrs)
@@ -1994,11 +1994,11 @@ let run file dbg timeLimit =
 
   let go () = solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
   
-  // let v, st, curDuration =
-  //   match runWithTimeout 10000 go with
-  //   | Some (v, st) -> v, durations, ""
-  //   | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
+  let v, st, curDuration =
+    match runWithTimeout 60000 go with
+    | Some (v, _) -> v, durations, ""
+    | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
   //
-  // (v, st, curDuration)
-  let v, _ = go ()
-  v, durations, ""
+  (v, st, curDuration)
+  // let v, _ = go ()
+  // v, durations, ""
