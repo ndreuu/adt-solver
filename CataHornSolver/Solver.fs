@@ -1997,7 +1997,7 @@ let run file dbg timeLimit =
   let v, st, curDuration =
     match runWithTimeout 10000 go with
     | Some (v, st) -> v, durations, ""
-    | None -> "TIMEOUT", durations, $"{curDuration}\n"
+    | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
 
   // printfn $"{v}"
   // printfn $"{curDuration}"
