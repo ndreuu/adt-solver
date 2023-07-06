@@ -1651,7 +1651,7 @@ module AssertsMinimization =
     match query with
     | Assert x ->
       let q = bodyAppNames x
-      helper Set.empty q Set.empty |> fst |> (fun xs -> query :: Set.toList xs)
+      helper Set.empty q Set.empty |> fst |> fun xs -> Set.toList xs |> List.addLast query  
     | _ -> []
 
 module HenceNormalization =
@@ -1758,8 +1758,6 @@ module HenceNormalization =
         []
 
     newAsserts @ asserts'
-
-// module 
   
   let mkSingleQuery funDecs asserts =
     match queryAssert id asserts with
@@ -1796,7 +1794,8 @@ module HenceNormalization =
     | otherwise -> otherwise
 
 
-
+// module HenceWalker =
+  // let 
 
 
 let rec solver
@@ -1995,14 +1994,11 @@ let run file dbg timeLimit =
 
   let go () = solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
   
-  let v, st, curDuration =
-    match runWithTimeout 10000 go with
-    | Some (v, st) -> v, durations, ""
-    | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
-
-  // printfn $"{v}"
-  // printfn $"{curDuration}"
-  // for s in st do printfn $"{s}"
-  
-  
-  (v, st, curDuration)
+  // let v, st, curDuration =
+  //   match runWithTimeout 10000 go with
+  //   | Some (v, st) -> v, durations, ""
+  //   | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
+  //
+  // (v, st, curDuration)
+  let v, _ = go ()
+  v, durations, ""
