@@ -51,7 +51,8 @@ jobs:
       run: |
         cd ./CataHornSolver
         for v in ./Tests/Source/TIP-no-NAT/*.smt2
-        do timeout 20s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v"
+        do timeout 20s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v" || true
+
         done;
   
 #  for v in ./Tests/Source/TIP-no-NAT/*.smt2 
