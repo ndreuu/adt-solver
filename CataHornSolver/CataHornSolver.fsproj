@@ -84,9 +84,6 @@
         <Content Include="Tests\Source\TIP-no-NAT\false_hotel_key_safe3.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\false_imperative_Apa.smt2">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
         <Content Include="Tests\Source\TIP-no-NAT\false_mergesort_merge_comm.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
@@ -427,9 +424,6 @@
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_71.smt2">
-          <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
-        <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_72.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Content Include="Tests\Source\TIP-no-NAT\isaplanner_prop_74.smt2">

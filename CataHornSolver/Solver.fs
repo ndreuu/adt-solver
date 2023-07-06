@@ -493,8 +493,9 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
     |> Expr.And
   with
   | _ ->
-    printfn "--------------------------------ERR NO_SIMPLEST----------------------------";
-    failwith ""
+    printfn "ERR NO_SIMPLEST";
+    Environment.Exit(1)
+    Expr.Int 1
     
 let argsBinds appsOfParents kids =
   appsOfParents |> List.map (fun parent -> singleArgsBinds parent kids) |> Expr.Or
@@ -1379,7 +1380,10 @@ let rec learner
         | Ok defConsts' -> return Ok (defConsts', constrDefs, pushed')
         | Error e -> return Error e
 
-    | a -> return Error $"PROOF_FORMAT {a}"
+    | a ->
+      printfn $"PROOF_FORMAT {a}"
+      Environment.Exit(1)
+      return Error $"PROOF_FORMAT {a}"
   }
 
 let tst () =
