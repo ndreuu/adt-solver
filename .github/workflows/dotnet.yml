@@ -55,6 +55,7 @@ jobs:
 
         done;
   
+  
 #  for v in ./Tests/Source/TIP-no-NAT/*.smt2 
 #        do timeout 1s dotnet run --project CataHornSolver.fsproj $v
 #        done;
