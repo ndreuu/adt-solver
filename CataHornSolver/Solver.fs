@@ -1759,7 +1759,8 @@ module HenceNormalization =
 
     newAsserts @ asserts'
 
-
+// module 
+  
   let mkSingleQuery funDecs asserts =
     match queryAssert id asserts with
     | [ _ ] -> funDecs, asserts
