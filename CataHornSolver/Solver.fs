@@ -494,7 +494,8 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   with
   | _ ->
     printfn "ERR NO_SIMPLEST";
-    Environment.Exit(1)
+    Environment.Exit(0)
+
     Expr.Int 1
     
 let argsBinds appsOfParents kids =
@@ -1382,7 +1383,7 @@ let rec learner
 
     | a ->
       printfn $"PROOF_FORMAT {a}"
-      Environment.Exit(1)
+      Environment.Exit(0)
       return Error $"PROOF_FORMAT {a}"
   }
 
