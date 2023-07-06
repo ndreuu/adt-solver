@@ -27,10 +27,13 @@ jobs:
         cd ./z3
         python3 ./scripts/mk_make.py 
         cd build; make
-        cd ../../CataHornSolver/
+        cd ../../
+#        cd ../../CataHornSolver/
 
     - name: Build
-      run: dotnet build 
+      run: |
+        dotnet build ./ADTsolver.sln
+        cd ./CataHornSolver
     - name: Run
       run: dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do
