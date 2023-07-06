@@ -38,7 +38,9 @@ jobs:
         dotnet build ./ADTsolver.sln
         cd ./CataHornSolver
     - name: Run
-      run: dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
+      run: |
+        ls
+        dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do
 #        echo $v; /home/andrew/RiderProjects/adt-solver-smr/CataHornSolver/bin/Release/net6.0/CataHornSolver $v 
 #        done;
