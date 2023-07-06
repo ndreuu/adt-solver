@@ -39,6 +39,7 @@ jobs:
         cd ./CataHornSolver
     - name: Run
       run: |
+        cd ./CataHornSolver
         ls
         dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2 do
