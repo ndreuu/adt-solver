@@ -51,7 +51,7 @@ module Program =
       //   File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
       let testName = Path.GetFileName path
       let result, st, curDurName = run path None None
-      let durations = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
+      let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
       let content = $"{testName} {result}\n{curDurName}\n{durations}"
       File.WriteAllText("./out.txt", $"{result}\n{curDurName}\n{durations}")
       printfn $"{content}"
