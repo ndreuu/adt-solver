@@ -45,7 +45,7 @@ jobs:
 
       - name: Build
         run: |
-          ls
+          dotnet restore ./ADTsolver.sln
           dotnet build ./ADTsolver.sln
       - name: Run
         run: |
