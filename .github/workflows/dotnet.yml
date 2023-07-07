@@ -17,52 +17,52 @@ jobs:
         os: [ ubuntu-latest ]
     runs-on: ${{ matrix.os }}
     steps:
-#    - name: Cleanup pre-installed tools
-#      run: |
-#        # This is a fix for https://github.com/actions/virtual-environments/issues/1918
-#        sudo rm -rf /usr/share/dotnet
-#        sudo rm -rf /opt/ghc
-#        sudo rm -rf "/usr/local/share/boost"
-#        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-    - uses: actions/checkout@v3
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
-    - name: Preparing
-      run: |
-        git clone --recursive https://github.com/ndreuu/SMTLIB2.git
-        git submodule update --init --recursive
-        ls
-        mkdir ./z3/build/
-        cp -r ./d/z3 ./z3/build/
-        sudo apt install gdebi
-        sudo gdebi --n ./d/reduce.deb
-#        cd ./z3
-#        python3 ./scripts/mk_make.py 
-#        cd build; make
-#        cd ../../
+      - name: Cleanup pre-installed tools
+        run: |
+          # This is a fix for https://github.com/actions/virtual-environments/issues/1918
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf "/usr/local/share/boost"
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 6.0.x
+      - name: Preparing
+        run: |
+          git clone --recursive https://github.com/ndreuu/SMTLIB2.git
+          git submodule update --init --recursive
+          ls
+          mkdir ./z3/build/
+          cp -r ./d/z3 ./z3/build/
+          sudo apt install gdebi
+          sudo gdebi --n ./d/reduce.deb
+      #        cd ./z3
+      #        python3 ./scripts/mk_make.py 
+      #        cd build; make
+      #        cd ../../
 
-    - name: Build
-      run: |
-        ls
-        dotnet build ./ADTsolver.sln
-    - name: Run
-      run: |
-        cd ./CataHornSolver
-        for v in ./Tests/Source/TIP-no-NAT/*.smt2
-        do timeout 150 sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v" -- >> output.txt || true 
-        done;
-    - uses: actions/upload-artifact@v3
-      with:
-        name: artifact
-        path: out.txt
+      - name: Build
+        run: |
+          ls
+          dotnet build ./ADTsolver.sln
+      - name: Run
+        run: |
+          cd ./CataHornSolver
+          for v in ./Tests/Source/TIP-no-NAT/*.smt2
+          do timeout 60 sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v" -- >> output.txt || true 
+          done;
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifact
+          path: out.txt
   
   
-#  for v in ./Tests/Source/TIP-no-NAT/*.smt2 
-#        do timeout 1s dotnet run --project CataHornSolver.fsproj $v
-#        done;
-  
+  #  for v in ./Tests/Source/TIP-no-NAT/*.smt2 
+  #        do timeout 1s dotnet run --project CataHornSolver.fsproj $v
+  #        done;
+
 #        for v in ./Tests/Source/TIP-no-NAT/*.smt2; do dotnet run --project CataHornSolver.fsproj "${v}" done;
 
 #        dotnet run --project CataHornSolver.fsproj ./Tests/Source/TIP-no-NAT/false_graph_bt3.smt2
@@ -76,4 +76,3 @@ jobs:
 #  echo $v; 
 #  /home/andrew/RiderProjects/adt-solver-smr/CataHornSolver/bin/Release/net6.0/CataHornSolver $v
 #done;
-
