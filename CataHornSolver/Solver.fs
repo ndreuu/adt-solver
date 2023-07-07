@@ -1798,6 +1798,45 @@ module HenceNormalization =
   // let 
 
 
+
+
+let noAxiomsAppsImpls asserts =
+  List.choose (function Decl (name, _) when axiomAsserts id asserts name |> List.isEmpty -> Some name | _ -> None)
+  >> List.map (impliesAsserts id asserts) >> List.concat
+
+let haveApp name =
+  Array.tryFind (function App (n, _) when n = name -> true | _ -> false)
+  >> function Some _ -> true | None -> false
+
+let haveTrue =
+  Array.tryFind (function Bool true -> true | _ -> false)
+    >> function Some _ -> true | None -> false
+  
+let nonRecClauseBy name = haveApp name >> not 
+let good name body = (nonRecClauseBy name body)
+
+
+let isAxiomatlyBody asserts =
+  function
+    | Assert (ForAll (_, Implies (And body, App(name, _)))) | Assert (Implies (And body, App(name, _))) when good name body ->
+        Array.map (axiomAsserts id asserts) (Array.choose (function App (n, _) -> Some n | _ -> None) body)
+        |> Array.filter (function [] -> true | _ -> false)
+        |> fun xs ->
+          for x in xs do printfn $"{name}>{x}"
+          xs
+        |> Array.isEmpty
+        // |> fun x ->
+          // printfn $"{x}"
+          // x
+        // |> not
+    | Assert (ForAll (_, Implies ((App (n, _) as body), App(name, _)))) | Assert (Implies ((App (n, _) as body), App(name, _))) when good name [| body |] ->
+        axiomAsserts id asserts n
+        |> List.isEmpty
+        |> not
+    | Assert (ForAll (_, Implies (And body, App(name, _)))) | Assert (Implies (And body, App(name, _))) -> true
+    | Assert (ForAll (_, Implies ((App (n, _) as body), App(name, _)))) | Assert (Implies ((App (n, _) as body), App(name, _))) -> true
+    | a -> failwith $"{program2originalCommand a}"
+    // | _ -> true
 let rec solver
   adtDecs
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -1807,6 +1846,21 @@ let rec solver
   funDecls
   (asserts: Program list)
   =
+  
+  // let noAxiomsAppsImpls = noAxiomsAppsImpls asserts funDecls
+  // for x in noAxiomsAppsImpls do printfn $"{program2originalCommand x}" 
+  // List.map (isAxiomatlyBody asserts) noAxiomsAppsImpls
+  // // |> fun x -> 
+  //   // printfn $"{x}"
+  //   // x
+  // |> List.fold (&&) true
+  // |> printfn "%O"
+  //
+  // Environment.Exit(0)
+  
+  
+  
+  
   let funDecls, asserts =
     let funDecls', asserts' =
       HenceNormalization.mkSingleQuery funDecls asserts
@@ -2003,3 +2057,6 @@ let run file dbg timeLimit =
   
   let v, _ = go ()
   v, durations, ""
+  
+  
+      
