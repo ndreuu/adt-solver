@@ -57,7 +57,7 @@ jobs:
         with:
           run: ls
           name: artifact
-          path: ./CataHornSolver/out.txt
+          path: ./CataHornSolver/output.txt
   
   
   #  for v in ./Tests/Source/TIP-no-NAT/*.smt2 
