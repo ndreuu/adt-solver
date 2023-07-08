@@ -42,7 +42,7 @@ jobs:
       - name: Build
         run: |
           dotnet restore ./ADTsolver.sln
-          dotnet build ./ADTsolver.sln
+          dotnet build ./ADTsolver.sln  /nodeReuse:false 
       - name: Run
         run: |
           cd ./CataHornSolver
