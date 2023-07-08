@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ ubuntu-latest ]
+        os: [ windows-latest ]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Cleanup pre-installed tools
@@ -47,7 +47,7 @@ jobs:
         run: |
           cd ./CataHornSolver
           for v in ./Tests/Source/TIP-no-NAT/*.smt2
-          do timeout 30s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
+          do timeout 10s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
           done;
       - uses: actions/upload-artifact@v3
         with:
