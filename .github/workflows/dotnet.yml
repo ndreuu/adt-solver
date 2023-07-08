@@ -34,12 +34,9 @@ jobs:
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
           ls
-          sudo apt install gdebi
-          sudo gdebi --n ./d/reduce.deb
           cd ./z3
           python3 ./scripts/mk_make.py 
           cd build; make
-
       - name: Build
         run: |
           dotnet restore ./ADTsolver.sln
