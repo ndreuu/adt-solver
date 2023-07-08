@@ -34,10 +34,6 @@ jobs:
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
           ls
-#          mkdir ./z3/build/
-#          cp -r ./d/z3 ./z3/build/
-#          sudo apt install gdebi
-#          sudo gdebi --n ./d/reduce.deb
           cd ./z3
           python3 ./scripts/mk_make.py 
           cd build; make
