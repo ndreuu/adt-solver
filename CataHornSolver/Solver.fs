@@ -1,10 +1,13 @@
 module ProofBased.Solver
 
+open System
 open System.Diagnostics
 open CataHornSolver
 open Microsoft.FSharp.Core
+open Microsoft.VisualStudio.TestPlatform.TestHost
 open Microsoft.Z3
 open Process
+open Tree
 open Z3Interpreter.AST
 
 let mutable dbgPath = None
@@ -1296,6 +1299,7 @@ module Debug =
     let private runStopWatch durationName =
       State (fun st ->
         curDuration <- durationName;
+        printfn $"{curDuration}"
         st.stopwatch.Start ()
         ((), st))
 
@@ -1303,6 +1307,7 @@ module Debug =
       State (fun st ->
         st.stopwatch.Stop ()
         let duration = st.stopwatch.ElapsedMilliseconds
+        printfn $"{duration}"
         st.stopwatch.Reset ()
         durations <- (curDuration, duration) :: durations
         ((), st))
@@ -1794,11 +1799,184 @@ module HenceNormalization =
     | otherwise -> otherwise
 
 
-// module HenceWalker =
-  // let 
-
-
-
+module ImpliesWalker =
+  let assertBodies =
+    List.choose (function | Assert b -> Some b | _ -> None)
+  let implBody =
+    List.choose (function | Implies (b, _) -> Some b | _ -> None)
+  let funcDecls = List.filter (function Decl _ -> true | _ -> false)
+  let asserts = List.filter (function Assert _ -> true | _ -> false)
+  let appNames = List.choose (function App (n, _) -> Some n | _ -> None)
+  let declNames = List.choose (function Decl (n, _) -> Some n | _ -> None)
+  let axioms = axiomAsserts id  
+  let implications = impliesAsserts id
+  let withoutAxioms cmds =
+    let appNames = funcDecls cmds |> declNames
+    List.filter (fun x -> axioms (asserts cmds) x |> List.isEmpty) appNames
+       
+  let haveApp name =
+    Array.tryFind (function App (n, _) when n = name -> true | _ -> false)
+    >> function Some _ -> true | None -> false
+ 
+  let isRecClause =
+    function
+      | Assert (Implies (And body, App (name, _))) | Assert (ForAll (_, Implies (And body, App (name, _)))) ->
+        haveApp name body
+      | Assert (Implies (body, App (name, _))) | Assert (ForAll (_, Implies (body, App (name, _)))) ->
+        haveApp name [| body |]    
+      | _ -> false
+        
+  let roots cmds =
+    List.map (implications cmds) (withoutAxioms cmds)
+    |> List.concat
+    |> List.filter (not << isRecClause)
+  
+  let cutLayer =
+    List.choose (function [] -> Some (None) | h :: tl -> Some (Some (h, tl)))
+    >> fun xs ->
+        for x in xs do printfn $"{x}";
+        xs
+      
+    >> List.map (function None -> None, [] | Some (x, xs) -> Some x, xs) 
+    >> List.unzip
+  
+  let unusedImplies used =
+    List.filter (function
+      | Assert (Implies (_, App (name, _))) | Assert (ForAll (_, Implies (_, App (name, _)))) ->
+        used |> List.contains name |> not
+      | _ -> failwith "how")
+  // let cutter xs =
+    // let (>>>) =
+      // function
+        // | Some _, _ | _, Some _ -> true
+        // | None_, None -> false
+        
+    // if List.fold (fun (layer, _) -> function None, _ -> acc || false | Some _, _ -> )  (cutLayer xs)  
+  
+  let layer facts impls =
+    let l =
+      List.map2
+        (fun f i ->
+          match f, i with
+          | None, None -> None
+          | Some f', _ -> Some f'
+          | None, Some i' -> Some i')
+        facts impls
+    
+    if l |> List.contains None then None else Some (List.map Option.get l)
+  
+  type state = {
+    queue: Program tree list
+  }
+  
+  let addInQueue q' =
+    State (fun st -> (), { st with queue = st.queue @ q' })
+  
+  let eachState (l: State<_, _> list) =
+    State (fun (st: state) ->
+    let go =
+      List.map (fun (State g) ->
+        let x, st' = g { queue = [] } 
+        (x, st'.queue)) l
+    let xs, qs = List.unzip go
+    let st' = { st with queue = List.fold List.append st.queue qs } 
+    xs, st')
+    
+  let cutLayerImpls facts' implies =
+    let implies', impliesTail = cutLayer implies
+    let excludedImpls =
+      List.map2
+        (fun f i ->
+          match f, i with
+          | Some _, Some i -> [ i ]
+          | None, _
+          | Some _, None -> []) facts' implies'
+    let impliesTail = excludedImpls @ impliesTail
+    implies', impliesTail
+    
+  // let s = List.append [] [1;2;3] 
+  let walker cmds =
+    // let state = StateBuilder ()
+    let queue = roots cmds |> List.map (fun root -> Node (root, [])) 
+  
+    let rec helper' acc body used value =
+      state {
+        let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body))
+        printfn "AAAAAAAAAAAAAAAAAAAAAAAA"
+        do for f in (appNames (Array.toList body)) do printfn $"{f}"
+        
+        let facts = List.map (axioms cmds) (appNames (Array.toList body))
+        do for f in facts do printfn $"{f}"
+        let implies =
+          List.map2 (fun n u -> implications cmds n |> unusedImplies u) (appNames (Array.toList body)) usedForEach
+        let facts', factsTail = cutLayer facts
+        let implies', impliesTail = cutLayerImpls facts' implies
+                                                                // appenQueue
+        match layer facts' implies' with
+        | Some l ->
+          let leafs = List.map2 (fun x u -> Node ((x, u), [])) (assertBodies l) usedForEach
+          let! ts = eachState <| List.map (helper acc) leafs
+          return Node ((value, used), ts)
+        | None -> return failwith "WTF"
+      }
+        
+    and helper acc v  = // used 
+      state {          
+        match v with
+        | Node ((Implies (And body, _) as value, used), []) | Node ((ForAll (_, Implies (And body, _)) as value, used), []) -> //here for nonand body
+          return! helper' acc body used value
+          // let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body)) 
+          // let facts = List.map (axioms cmds) (appNames (Array.toList body))
+          // let implies =
+          //   List.map2 (fun n u -> implications cmds n |> unusedImplies u) (appNames (Array.toList body)) usedForEach
+          // let facts', factsTail = cutLayer facts
+          // let implies', impliesTail = cutLayerImpls facts' implies
+          //                                                         // appenQueue
+          // match layer facts' implies' with
+          // | Some l ->
+          //   let leafs = List.map2 (fun x u -> Node ((x, u), [])) (assertBodies l) usedForEach
+          //   let! ts = eachState <| List.map (helper acc) leafs
+          //   return Node ((x, used), ts)
+          // | None -> return failwith "WTF" 
+          
+          
+          // let argFact = List.zip (Array.toList body) facts'  // [None, Fp, None, Fa ..]
+             // [I1,   Fp, I2,   Fa   ]
+          
+          
+          // let! aaa =
+            // eachState
+            // <| List.map (fun x -> helper acc x) [Node ((Int 0, used'), []) ; Node ((Int 0, used'), []); Node ((Int 0, used'), [])]
+            // x |-> fact/impl; fact/impl; fact/impl foreach
+          
+          // return Node ((x, used), aaa)
+          
+          
+          // return! helper used' acc (Node (x, [])) // [] |-> [ Node (fact/impl, []); Node (fact/impl, []); Node (fact/impl, []);... ]
+          // return Node ((Implies (And body, Bool true)), [])
+        | Node ((Implies (body, _) as value, used), []) | Node ((ForAll (_, (Implies (body, _) as value)), used), []) ->
+          return! helper' acc [| body |] used value
+        | Node ((_, used), []) as otherwise ->
+          return otherwise 
+        | Node ((v, used), ts) ->
+          let! ts' = eachState <| List.map (helper acc) ts
+          return (Node ((v, used), ts'))
+        // | _ ->
+          // v
+          // return 2
+        
+      }
+      
+    let aa = (List.toArray (assertBodies (roots cmds)))[0]
+    printfn $"AAA: {expr2smtExpr aa}"
+    let a =
+      match aa with
+      | ForAll (_, Implies (_, App (n, _))) | Implies (_, App (n, _)) -> n  
+    helper [] (Node ((aa, [ a ]), []))
+    |> run { queue = queue }
+      
+  
+  
 
 let noAxiomsAppsImpls asserts =
   List.choose (function Decl (name, _) when axiomAsserts id asserts name |> List.isEmpty -> Some name | _ -> None)
@@ -1819,16 +1997,13 @@ let good name body = (nonRecClauseBy name body)
 let isAxiomatlyBody asserts =
   function
     | Assert (ForAll (_, Implies (And body, App(name, _)))) | Assert (Implies (And body, App(name, _))) when good name body ->
-        Array.map (axiomAsserts id asserts) (Array.choose (function App (n, _) -> Some n | _ -> None) body)
-        |> Array.filter (function [] -> true | _ -> false)
-        |> fun xs ->
-          for x in xs do printfn $"{name}>{x}"
-          xs
-        |> Array.isEmpty
-        // |> fun x ->
-          // printfn $"{x}"
-          // x
-        // |> not
+        for b in body do printfn $"{name} bb>> {b}"
+        let axioms = Array.map (axiomAsserts id asserts) (Array.choose (function App (n, _) -> Some n | _ -> None) body)
+        
+        Array.filter (function [] -> true | _ -> false) axioms
+        |> fun arr ->
+          for x in axioms do printfn $">>{x}"
+          arr |> Array.isEmpty
     | Assert (ForAll (_, Implies ((App (n, _) as body), App(name, _)))) | Assert (Implies ((App (n, _) as body), App(name, _))) when good name [| body |] ->
         axiomAsserts id asserts n
         |> List.isEmpty
@@ -1847,17 +2022,42 @@ let rec solver
   (asserts: Program list)
   =
   
+    
+  // let asserts =  AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
   // let noAxiomsAppsImpls = noAxiomsAppsImpls asserts funDecls
-  // for x in noAxiomsAppsImpls do printfn $"{program2originalCommand x}" 
+  // // for x in noAxiomsAppsImpls do printfn $"{program2originalCommand x}" 
   // List.map (isAxiomatlyBody asserts) noAxiomsAppsImpls
   // // |> fun x -> 
   //   // printfn $"{x}"
   //   // x
   // |> List.fold (&&) true
   // |> printfn "%O"
+  
+  // let cmds =
+  //   (funDefs
+  //     @ constDefs
+  //     @ constrDefs
+  //     @ funDecls
+  //     @ asserts)
+  //
+  // for x in cmds do printfn $"{program2originalCommand x}"
+  //
+  // let l, _ = 
+  //   ImpliesWalker.walker 
+  //     (funDefs
+  //     @ constDefs
+  //     @ constrDefs
+  //     @ funDecls
+  //     @ asserts)
+  //
+  // let a = fmap (fun (e, ns) -> (toString <| expr2smtExpr e, ns)) l
+  //
+  // printfn $"ANS {a}"
+  // // for x in l do printfn $"{program2originalCommand x}"
+  //
   //
   // Environment.Exit(0)
-  
+  //
   
   
   
@@ -2009,7 +2209,13 @@ let run file dbg timeLimit =
   dbgPath <- dbg
 
   let adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
-    approximation file
+    try
+      approximation file
+    with
+    | _ ->
+      printfn "ERR APPROXIMATION"
+      Environment.Exit(0)
+      (Map.empty, [], [], [], [], [])
 
   let funDecls = List.map origCommand2program declFuns
 
