@@ -1265,6 +1265,31 @@ let branching constDefs funDefs =
 let decConsts = List.map decConst
 
 module Debug =
+  module Duration =
+    let private runStopWatch durationName =
+      State (fun st ->
+        curDuration <- durationName;
+        printfn $"{curDuration}"
+        st.stopwatch.Start ()
+        ((), st))
+
+    let private stopStopwatch =
+      State (fun st ->
+        st.stopwatch.Stop ()
+        let duration = st.stopwatch.ElapsedMilliseconds
+        printfn $"{duration}"
+        st.stopwatch.Reset ()
+        durations <- (curDuration, duration) :: durations
+        ((), st))
+
+    let go (f: State<_, _> Lazy) name =
+      state {
+        do! runStopWatch name
+        let! r = f.Force ()
+        do! stopStopwatch 
+        return r
+      }
+
   module Print =
     let writeDbg file (content: string) iteration =
       match dbgPath with
@@ -1295,30 +1320,6 @@ module Debug =
 
     let proof = write "proof.smt2"
 
-  module Duration =
-    let private runStopWatch durationName =
-      State (fun st ->
-        curDuration <- durationName;
-        printfn $"{curDuration}"
-        st.stopwatch.Start ()
-        ((), st))
-
-    let private stopStopwatch =
-      State (fun st ->
-        st.stopwatch.Stop ()
-        let duration = st.stopwatch.ElapsedMilliseconds
-        printfn $"{duration}"
-        st.stopwatch.Reset ()
-        durations <- (curDuration, duration) :: durations
-        ((), st))
-
-    let go (f: State<_, _> Lazy) name =
-      state {
-        do! runStopWatch name
-        let! r = f.Force ()
-        do! stopStopwatch 
-        return r
-      }
 
 let banOldValues constDefs =
   Assert (
@@ -1373,6 +1374,9 @@ let rec learner
         let setCmds = [ redlogResult; banOldValues constDefs ]
 
         do! Solver.setCommands setCmds
+        
+        
+
         do!
           Debug.Print.smtInput (
             let content =
@@ -1380,10 +1384,9 @@ let rec learner
 
             $"(set-logic NIA)\n{content}"
           )
-
+        
         let pushed' = pushed @ setCmds
-
-        match! Solver.solve with
+        match! Debug.Duration.go (lazy Solver.solve) "Z3.NIA" with
         | Ok defConsts' -> return Ok (defConsts', constrDefs, pushed')
         | Error e -> return Error e
 
