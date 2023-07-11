@@ -12,10 +12,8 @@ open Z3Interpreter.AST
 
 let mutable dbgPath = None
 
-open System
 open System.Collections.Generic
 open System.IO
-open Microsoft.Z3
 open SMTLIB2
 
 open Process
@@ -505,7 +503,7 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
 let argsBinds appsOfParents kids =
   appsOfParents |> List.map (fun parent -> singleArgsBinds parent kids) |> Expr.Or
 
-let rec resolvent =
+let rec foldTreeResolvent =
   function
   | Node (_, []) -> []
   | Node (xs, ts) ->
@@ -515,162 +513,11 @@ let rec resolvent =
 
     argsBinds appRestrictions kids
     :: notAppRestrictions
-    :: List.collect resolvent ts
+    :: List.collect foldTreeResolvent ts
 
 
-module Simplifier =
-  let emptyFilter =
-    Array.filter (function
-      | And [||]
-      | Or [||] -> false
-      | _ -> true)
 
-  let rec rmEmpty =
-    function
-    | And args -> args |> emptyFilter |> Array.map rmEmpty |> And
-    | Or args -> args |> emptyFilter |> Array.map rmEmpty |> Or
-    | otherwise -> otherwise
-
-  let rec private rmNestedOrs =
-    function
-    | Or [| x |] -> x
-    | Or args ->
-      args
-      |> Array.toList
-      |> List.fold
-        (fun acc arg ->
-          match arg with
-          | Or args' ->
-            Array.toList args'
-            |> List.map (rmNestedAnds >> rmNestedOrs)
-            |> fun x -> x @ acc
-          | otherwise -> (rmNestedAnds >> rmNestedOrs <| otherwise) :: acc)
-        []
-      |> List.rev
-      |> List.toArray
-      |> Or
-    | And _ as andExpr -> rmNestedAnds andExpr
-    | otherwise -> otherwise
-
-  and private rmNestedAnds =
-    function
-    | And [| x |] -> x
-    | And args ->
-      args
-      |> Array.toList
-      |> List.fold
-        (fun acc arg ->
-          match arg with
-          | And args' ->
-            Array.toList args'
-            |> List.map (rmNestedAnds >> rmNestedOrs)
-            |> fun x -> x @ acc
-          | otherwise -> (rmNestedAnds >> rmNestedOrs <| otherwise) :: acc)
-        []
-      |> List.rev
-      |> List.toArray
-      |> And
-    | Or _ as orExpr -> rmNestedOrs orExpr
-    | otherwise -> otherwise
-
-  let normalize = rmNestedAnds >> rmEmpty
-
-
-  let private eqVarConditions =
-    let rec helper acc =
-      function
-      | And args -> args |> Array.toList |> List.fold helper acc
-      | Eq (Var _, _)
-      | Eq (_, Var _) as eq -> eq :: acc
-      | Or _
-      | _ -> acc
-
-    helper []
-
-  let add (k: Expr) (v: Expr) used (t: Expr list list) =
-    let kv =
-      match k with
-      | _ when used |> List.contains k -> Some (k, v)
-      | _ when used |> List.contains v -> Some (v, k)
-      | _ -> None
-
-
-    match kv with
-    | Some (k, v) when used |> List.contains k && used |> List.contains v -> (t, used)
-    | Some (k, v) ->
-      let t' =
-        t
-        |> List.map (function
-          | xs when xs |> List.contains k -> v :: xs
-          | xs -> xs)
-
-      (t', v :: used)
-    | None -> ([ k; v ] :: t, k :: v :: used)
-
-
-  let map vs =
-    let applyTester =
-      function
-      | Apply _ -> true
-      | _ -> false
-
-    let applies = List.filter applyTester
-    let vars = List.filter (not << applyTester)
-
-    let helper vs =
-      List.fold
-        (fun (acc, used) eq ->
-          match eq with
-          | Eq (x, y) -> add x y used acc
-          | _ -> (acc, used))
-        ([], [])
-        vs
-
-    helper vs
-    |> fst
-    |> List.map (fun xs ->
-      xs
-      |> applies
-      |> function
-        | [] -> (xs, List.head xs)
-        | vs -> (vars xs, List.head vs))
-
-
-  let substitute v (map: (Expr list * Expr) list) =
-    map
-    |> List.fold (fun acc (vars, v) -> List.fold (fun acc var -> substituteVar var v acc) acc vars) v
-
-  let substituteNew =
-    let rec helper m =
-      function
-      | Or args -> Or (Array.map (helper []) args)
-      | And args as andExpr ->
-        let m' = andExpr |> eqVarConditions |> map
-        And (Array.map (helper m') args)
-      | expr -> substitute expr m
-
-    helper []
-
-  let rec rmEqs =
-    function
-    | And args ->
-      And (
-        args
-        |> Array.filter (function
-          | Eq (x, y) when x = y -> false
-          | _ -> true)
-        |> Array.map rmEqs
-      )
-    | Or args ->
-      Or (
-        args
-        |> Array.filter (function
-          | Eq (x, y) when x = y -> false
-          | _ -> true)
-        |> Array.map rmEqs
-      )
-    | otherwise -> otherwise
-
+  
 
 module TypeClarification =
   type exprType =
@@ -937,6 +784,113 @@ module TypeClarification =
 //   |> fun xs -> for x in snd xs do printfn $"{x}"
 
 
+
+module Simplifier =
+  let private emptyFilter =
+    Array.filter (function
+      | And [||]
+      | Or [||] -> false
+      | _ -> true)
+
+  let rec private rmEmpty =
+    function
+    | And args -> args |> emptyFilter |> Array.map rmEmpty |> And
+    | Or args -> args |> emptyFilter |> Array.map rmEmpty |> Or
+    | otherwise -> otherwise
+
+  let rec private rm = rmNestedAnds >> rmNestedOrs 
+
+  and private rmNestedOrs =
+    function
+    | Or [| x |] -> x
+    | Or args ->
+      args
+      |> Array.toList
+      |> List.choose
+           (function
+            | Or args' ->
+                Array.toList args'
+                |> List.map rm |> Some
+            | otherwise -> Some [rm otherwise] )
+      |> List.concat
+      // |> List.fold
+        // (fun acc arg ->
+          // match arg with
+          // | Or args' ->
+            // Array.toList args'
+            // |> List.map (rmNestedAnds >> rmNestedOrs)
+            // |> fun x -> x @ acc
+          // | otherwise -> (rmNestedAnds >> rmNestedOrs <| otherwise) :: acc)
+        // []
+      // |> List.rev
+      |> List.toArray
+      |> Or
+    | And _ as andExpr -> rmNestedAnds andExpr
+    | otherwise -> otherwise
+
+  and private rmNestedAnds =
+    function
+    | And [| x |] -> x
+    | And args ->
+      let rm = rmNestedAnds >> rmNestedOrs 
+      args
+      |> Array.toList
+      |> List.choose
+           (function
+            | And args' ->
+                Array.toList args'
+                |> List.map (rm >> function And e -> e | otherwise -> [| otherwise |]) |> Array.concat |> List.ofArray |> Some
+            | otherwise -> (rm otherwise |> function And e -> e | otherwise -> [| otherwise |]) |> List.ofArray |> Some )
+      |> List.concat
+      // |> List.fold
+      //   (fun acc arg ->
+      //     let rm = rmNestedAnds >> rmNestedOrs 
+      //     match arg with
+      //     | And args' ->
+      //       Array.toList args'
+      //       |> List.map rm
+      //       |> fun x -> x @ acc
+      //     | otherwise -> (rm otherwise) :: acc)
+      //   []
+      // |> List.rev
+      |> List.toArray
+      |> And
+    | Or _ as orExpr -> rmNestedOrs orExpr
+    | otherwise -> otherwise
+
+  let normalize = rmNestedAnds >> rmEmpty
+  
+  let rec private haveOr' = 
+    let rec helper acc =
+      function
+        | Or _ -> true
+        | And exprs -> acc || Array.fold (fun acc' e -> helper acc' e || acc') false exprs
+        | _ -> acc
+        
+    helper false
+  
+  let rec private haveOr =
+    Array.fold (fun acc x -> acc || haveOr' x) false
+  
+  let fstLayer =
+    function
+      | And exprs ->
+        Array.choose (fun e -> if not <| haveOr' e then Some e else None) exprs,
+        Array.choose (fun e -> if haveOr' e then Some e else None) exprs
+      | _ -> ([||], [||])
+  
+  let equals =
+    Array.choose (function Eq _ as e -> Some e | _ -> None) >> Set
+  
+  let rmEqs' =
+    equals
+      
+  let rmEqs =
+    normalize
+    >> fstLayer
+    >> fun (xs, other) -> (rmEqs' xs, other)
+  
+
 let unsatQuery funDefs adtDecs resolvent typedVars =
   let clause =
     seq {
@@ -1174,16 +1128,16 @@ let feasible adtDecs adtConstrs funDefs resolvent =
   }
   |> run (statement.Init env solver)
   
-let hyperProof2clauseNew defConsts decFuns hyperProof asserts =
+let resolvent defConsts decFuns hyperProof asserts =
   let resolvent' =
     proofTree hyperProof
     |> assertsTreeNew asserts defConsts decFuns
     |> treeOfExprs
     |> uniqVarNames
-    |> resolvent
+    |> foldTreeResolvent
     |> List.toArray
 
-  let resolvent = resolvent' |> And |> Simplifier.normalize
+  let resolvent = resolvent' |> And |> Simplifier.normalize 
 
   resolvent
 
@@ -1338,7 +1292,7 @@ let banOldValues constDefs =
   )
 
 
-
+let simplifyFstLayer = id
 
 let rec learner
   adtDecs
@@ -1354,8 +1308,16 @@ let rec learner
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
-      let resolvent = hyperProof2clauseNew constDefs funDecls hyperProof asserts
-
+      let resolvent = resolvent constDefs funDecls hyperProof asserts |> simplifyFstLayer
+      // printfn $"{resolvent |> expr2smtExpr}\n-------------------"
+      
+      // let aaaa , _ = resolvent |> Simplifier.rmEqs
+      // do for x in aaaa do printfn $">>>>>>> {expr2smtExpr x}"
+      // printfn $"{resolvent |> Simplifier.rmEqs  }"
+     
+     
+      // Environment.Exit(1)
+      
       let! (feasible, smtADTLIAcContent), _ =
         Debug.Duration.go 
           (lazy state.Return (feasible adtDecs adtConstrs funDefs resolvent))
@@ -1381,8 +1343,6 @@ let rec learner
 
         do! Solver.setCommands setCmds
         
-        
-
         do!
           Debug.Print.smtInput (
             let content =

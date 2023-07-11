@@ -28,8 +28,8 @@ let runZ3 funDefs constDefs constrDefs funDecls asserts =
 (get-proof)
 """
   File.WriteAllText(file, content)
-  let result = executeZ3 file
-  // let result = execute "./z3" $"fp.spacer.global=true fp.xform.inline_eager=true fp.xform.inline_linear=true {file}"
+  // let result = executeZ3 file
+  let result = execute "./z3" $"fp.spacer.global=true fp.xform.inline_eager=true fp.xform.inline_linear=true {file}"
   
   result.StdOut
 

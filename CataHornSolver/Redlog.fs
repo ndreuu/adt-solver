@@ -76,8 +76,9 @@ let runRedlog definitions formula =
   let file = Path.GetTempPath() + ".red"
   
   File.WriteAllText(file, redlogQuery definitions formula)
-    
-  let result = executeRedlog file
+  
+  // let result = executeRedlog file
+  let result = execute "redcsl" $"-w- {file}"
   let r = Regex "sth := "
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
