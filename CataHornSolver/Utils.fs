@@ -31,7 +31,6 @@ module IntOps =
   let geqOp = ElementaryOperation (">=", [ IntSort; IntSort ], BoolSort)
   let modOp = ElementaryOperation ("mod", [ IntSort; IntSort ], IntSort)
 
-
 let balancedBracket (str: string) =
   let rec helper depth acc =
     function
@@ -51,12 +50,10 @@ let balancedBracket (str: string) =
   |> helper 1 []
   |> function
     | Some cs ->
-      List.fold (fun acc c -> $"{c}{acc}") "" cs
+      String.Concat(List.rev cs |> Array.ofList |> String)
       |> (fun str -> $"({str}" )
       |> Some
     | None -> None
-
-
 
 let varsIdxs (str: string) =
   let var = Regex "a![0-9]+"

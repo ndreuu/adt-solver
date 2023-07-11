@@ -1098,6 +1098,61 @@ let sykablyat () =
   ()
     
 
+module Debug =
+  module Duration =
+    let private runStopWatch durationName =
+      State (fun st ->
+        curDuration <- durationName;
+        printfn $"{curDuration}"
+        st.stopwatch.Start ()
+        ((), st))
+
+    let private stopStopwatch =
+      State (fun st ->
+        st.stopwatch.Stop ()
+        let duration = st.stopwatch.ElapsedMilliseconds
+        printfn $"{duration}"
+        st.stopwatch.Reset ()
+        durations <- (curDuration, duration) :: durations
+        ((), st))
+
+    let go (f: State<_, _> Lazy) name =
+      state {
+        do! runStopWatch name
+        let! r = f.Force ()
+        do! stopStopwatch 
+        return r
+      }
+
+  module Print =
+    let writeDbg file (content: string) iteration =
+      match dbgPath with
+      | Some dbgPath ->
+        let path = Path.Join [| dbgPath; "lol"; toString iteration; file |]
+
+        if not <| Directory.Exists (Path.GetDirectoryName path) then
+          Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+
+        File.AppendAllText ($"{path}", $"{content}\n")
+      | None -> ()
+
+    let next = State (fun st -> (), { st with iteration = st.iteration + 1 })
+
+    let private write file s =
+      State (fun st -> (writeDbg file s st.iteration), st)
+
+    let smtInput s =
+      State (fun st ->
+        let actives = join " " (List.map toString st.env.actives)
+        (writeDbg "smt-input.smt2" $"{s}\n(check-sat-assuming ({actives}))\n(get-model)" st.iteration), st)
+
+    let redlogInput = write "redlog-input.smt2"
+    let redlogOutput = write "redlog-output.smt2"
+    let hornInput = write "horn-input.smt2"
+    let smtADTLIA = write "smt-ADT-LIA.smt2"
+    let proof = write "proof.smt2"
+
+
 let feasible adtDecs adtConstrs funDefs resolvent =
   let env = emptyEnv [||]
   let solver = env.ctxSlvr.MkSolver "ALL"
@@ -1112,8 +1167,10 @@ let feasible adtDecs adtConstrs funDefs resolvent =
   
     let expr, vars = TypeClarification.clarify adtConstrs resolvent qNames
     
-    do! Solver.setCommands (unsatQuery funDefs adtDecs expr (Set.toList vars))
-    return! Solver.solve 
+    let q = unsatQuery funDefs adtDecs expr (Set.toList vars)
+    do! Solver.setCommands q
+    let! r = Solver.solve
+    return (r, q)
   }
   |> run (statement.Init env solver)
   
@@ -1264,62 +1321,6 @@ let branching constDefs funDefs =
 
 let decConsts = List.map decConst
 
-module Debug =
-  module Duration =
-    let private runStopWatch durationName =
-      State (fun st ->
-        curDuration <- durationName;
-        printfn $"{curDuration}"
-        st.stopwatch.Start ()
-        ((), st))
-
-    let private stopStopwatch =
-      State (fun st ->
-        st.stopwatch.Stop ()
-        let duration = st.stopwatch.ElapsedMilliseconds
-        printfn $"{duration}"
-        st.stopwatch.Reset ()
-        durations <- (curDuration, duration) :: durations
-        ((), st))
-
-    let go (f: State<_, _> Lazy) name =
-      state {
-        do! runStopWatch name
-        let! r = f.Force ()
-        do! stopStopwatch 
-        return r
-      }
-
-  module Print =
-    let writeDbg file (content: string) iteration =
-      match dbgPath with
-      | Some dbgPath ->
-        let path = Path.Join [| dbgPath; "lol"; toString iteration; file |]
-
-        if not <| Directory.Exists (Path.GetDirectoryName path) then
-          Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-
-        File.AppendAllText ($"{path}", $"{content}\n")
-      | None -> ()
-
-    let next = State (fun st -> (), { st with iteration = st.iteration + 1 })
-
-    let private write file s =
-      State (fun st -> (writeDbg file s st.iteration), st)
-
-    let smtInput s =
-      State (fun st ->
-        let actives = join " " (List.map toString st.env.actives)
-        (writeDbg "smt-input.smt2" $"{s}\n(check-sat-assuming ({actives}))\n(get-model)" st.iteration), st)
-
-    let redlogInput = write "redlog-input.smt2"
-
-    let redlogOutput = write "redlog-output.smt2"
-
-    let hornInput = write "horn-input.smt2"
-
-    let proof = write "proof.smt2"
-
 
 let banOldValues constDefs =
   Assert (
@@ -1355,11 +1356,16 @@ let rec learner
     | [ Command (Proof (hyperProof, _, _)) ] ->
       let resolvent = hyperProof2clauseNew constDefs funDecls hyperProof asserts
 
-      let! feasible, _ =
+      let! (feasible, smtADTLIAcContent), _ =
         Debug.Duration.go 
           (lazy state.Return (feasible adtDecs adtConstrs funDefs resolvent))
           "Z3.ADT(LIA)"
+      
+      do! Debug.Print.smtADTLIA
+            (let content = List.map (program2originalCommand >> toString) smtADTLIAcContent |> join "\n" in
+             $"(set-option :produce-proofs true)\n{content}(check-sat)") 
 
+      
       match feasible with
       | Ok _ -> return Error "UNSAT"
       | Error _ ->
@@ -1847,14 +1853,7 @@ module ImpliesWalker =
     List.filter (function
       | Assert (Implies (_, App (name, _))) | Assert (ForAll (_, Implies (_, App (name, _)))) ->
         used |> List.contains name |> not
-      | _ -> failwith "how")
-  // let cutter xs =
-    // let (>>>) =
-      // function
-        // | Some _, _ | _, Some _ -> true
-        // | None_, None -> false
-        
-    // if List.fold (fun (layer, _) -> function None, _ -> acc || false | Some _, _ -> )  (cutLayer xs)  
+      | _ -> false)
   
   let layer facts impls =
     let l =
@@ -1869,7 +1868,7 @@ module ImpliesWalker =
     if l |> List.contains None then None else Some (List.map Option.get l)
   
   type state = {
-    queue: Program tree list
+    queue: (Expr * Name list) tree list
   }
   
   let addInQueue q' =
@@ -1885,6 +1884,17 @@ module ImpliesWalker =
     let st' = { st with queue = List.fold List.append st.queue qs } 
     xs, st')
     
+  let forEachQueue f =
+    State (fun st ->
+      // let q =
+      //   List.map
+      //     (fmap (fun (x, y) ->
+      //       match x with
+      //       | Assert x' -> x', y
+      //       | _ -> failwith ""))
+      //     st.queue
+      List.map f st.queue |> eachState |> run st)
+
   let cutLayerImpls facts' implies =
     let implies', impliesTail = cutLayer implies
     let excludedImpls =
@@ -1897,12 +1907,23 @@ module ImpliesWalker =
     let impliesTail = excludedImpls @ impliesTail
     implies', impliesTail
     
-  // let s = List.append [] [1;2;3] 
+  let isFact cmds n =
+    flip List.contains (axioms cmds n |> assertBodies)   
+  
+  let implHeadNames =
+    List.choose (function
+      | ForAll (_, Implies (_, App (n, _)))
+      | Implies (_, App (n, _)) -> Some n
+      | _ -> None)
+  
   let walker cmds =
     // let state = StateBuilder ()
-    let queue = roots cmds |> List.map (fun root -> Node (root, [])) 
+    let queue =
+      let roots = roots cmds |> assertBodies
+      let appNames = implHeadNames roots
+      List.map2 (fun root n -> Node ((root, [ n ]), [])) roots appNames
   
-    let rec helper' acc body used value =
+    let rec helper' body used value =
       state {
         let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body))
         printfn "AAAAAAAAAAAAAAAAAAAAAAAA"
@@ -1915,72 +1936,61 @@ module ImpliesWalker =
         let facts', factsTail = cutLayer facts
         let implies', impliesTail = cutLayerImpls facts' implies
                                                                 // appenQueue
+        ///////////////SHITTY_CODE///////////////
+        
+        // let q = List.map (fun fs -> List.map (fun f -> Node ((x, u), [])) fs) factsTail  
+        do for x in factsTail do printfn $"OOOO {x}"
+        if List.length facts' <> Array.length body then failwith "OOPS!"
+        
+        
+        // for fs in state.Return factsTail do 
+        //   for x in fs do 
+        //     do! addInQueue ([])
+        ////////////////////////////////////////
+        
         match layer facts' implies' with
         | Some l ->
           let leafs = List.map2 (fun x u -> Node ((x, u), [])) (assertBodies l) usedForEach
-          let! ts = eachState <| List.map (helper acc) leafs
+          let! ts = eachState <| List.map helper leafs
           return Node ((value, used), ts)
         | None -> return failwith "WTF"
       }
         
-    and helper acc v  = // used 
-      state {          
+    and helper v  = // used 
+      state {
         match v with
-        | Node ((Implies (And body, _) as value, used), []) | Node ((ForAll (_, Implies (And body, _)) as value, used), []) -> //here for nonand body
-          return! helper' acc body used value
-          // let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body)) 
-          // let facts = List.map (axioms cmds) (appNames (Array.toList body))
-          // let implies =
-          //   List.map2 (fun n u -> implications cmds n |> unusedImplies u) (appNames (Array.toList body)) usedForEach
-          // let facts', factsTail = cutLayer facts
-          // let implies', impliesTail = cutLayerImpls facts' implies
-          //                                                         // appenQueue
-          // match layer facts' implies' with
-          // | Some l ->
-          //   let leafs = List.map2 (fun x u -> Node ((x, u), [])) (assertBodies l) usedForEach
-          //   let! ts = eachState <| List.map (helper acc) leafs
-          //   return Node ((x, used), ts)
-          // | None -> return failwith "WTF" 
-          
-          
-          // let argFact = List.zip (Array.toList body) facts'  // [None, Fp, None, Fa ..]
-             // [I1,   Fp, I2,   Fa   ]
-          
-          
-          // let! aaa =
-            // eachState
-            // <| List.map (fun x -> helper acc x) [Node ((Int 0, used'), []) ; Node ((Int 0, used'), []); Node ((Int 0, used'), [])]
-            // x |-> fact/impl; fact/impl; fact/impl foreach
-          
-          // return Node ((x, used), aaa)
-          
-          
-          // return! helper used' acc (Node (x, [])) // [] |-> [ Node (fact/impl, []); Node (fact/impl, []); Node (fact/impl, []);... ]
-          // return Node ((Implies (And body, Bool true)), [])
+        | Node ((Implies (And body, App (n, _)) as value, used), [])
+        | Node ((ForAll (_, Implies (And body, App (n, _))) as value, used), []) when not <| isFact cmds n value -> //here for nonand body
+          return! helper' body used value
         | Node ((Implies (body, _) as value, used), []) | Node ((ForAll (_, (Implies (body, _) as value)), used), []) ->
-          return! helper' acc [| body |] used value
-        | Node ((_, used), []) as otherwise ->
+          return! helper' [| body |] used value
+        | Node (_, []) as otherwise ->
           return otherwise 
         | Node ((v, used), ts) ->
-          let! ts' = eachState <| List.map (helper acc) ts
+          let! ts' = eachState <| List.map helper ts
           return (Node ((v, used), ts'))
-        // | _ ->
-          // v
-          // return 2
-        
       }
-      
-    let aa = (List.toArray (assertBodies (roots cmds)))[0]
+    for x in (List.toArray (assertBodies (roots cmds))) do printfn $"<><><><> {expr2smtExpr x}"
+    
+    let aa = (List.toArray (assertBodies (roots cmds)))[14]
     printfn $"AAA: {expr2smtExpr aa}"
-    let a =
-      match aa with
-      | ForAll (_, Implies (_, App (n, _))) | Implies (_, App (n, _)) -> n  
-    helper [] (Node ((aa, [ a ]), []))
-    |> run { queue = queue }
-      
-  
-  
+    
+    let rec go acc queue =
+      let xs, sts =
+        List.map (fun q -> helper q |> run { queue = [ q ] }) queue
+        |> List.unzip
 
+      let stQueue st = st.queue
+
+      go (acc @ xs) (List.map stQueue sts |> List.concat)
+        
+    go [] queue
+    
+    // helper (Node ((aa, [ a ]), []))
+    // |> run { queue = queue }
+    
+    // List.map (fun expr -> ) (assertBodies (roots cmds))
+  
 let noAxiomsAppsImpls asserts =
   List.choose (function Decl (name, _) when axiomAsserts id asserts name |> List.isEmpty -> Some name | _ -> None)
   >> List.map (impliesAsserts id asserts) >> List.concat
@@ -2036,6 +2046,8 @@ let rec solver
   // |> List.fold (&&) true
   // |> printfn "%O"
   
+    
+    
   // let cmds =
   //   (funDefs
   //     @ constDefs
@@ -2060,7 +2072,7 @@ let rec solver
   //
   //
   // Environment.Exit(0)
-  //
+  
   
   
   
@@ -2113,7 +2125,7 @@ let approximation file =
   let _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
   let p = Parser.Parser false
   let cmds = p.ParseFile file
-
+  
   let adtDecs =
     cmds
     |> List.mapi (fun i ->

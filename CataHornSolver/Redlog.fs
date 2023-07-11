@@ -77,10 +77,11 @@ let runRedlog definitions formula =
   
   File.WriteAllText(file, redlogQuery definitions formula)
     
-  let result = execute "redcsl" $"-w- {file}"
+  let result = executeRedlog file
   let r = Regex "sth := "
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
+
   subStr
   |> balancedBracket
   |> function

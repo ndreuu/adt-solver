@@ -165,10 +165,17 @@ module AST =
     | Decl (n, num) ->
       Command (DeclareFun (n, List.init num (fun _ -> IntSort), BoolSort))
     | Assert e -> originalCommand.Assert (expr2smtExpr e)
-    | DeclDataType (n, dd) ->
-      // let 
-      failwith ""
-      // Command (DeclareDatatype n, )  
+    | DeclDataType (n, cs) as k ->
+      let constructor name argSorts adtName =
+        ElementaryOperation (name, argSorts, ADTSort adtName),
+        ElementaryOperation ($"is-{name}", [ADTSort adtName], BoolSort),
+        List.mapi (fun i s -> ElementaryOperation ($"{n}x{i}", [ADTSort n], s)) argSorts 
+      
+      let args = List.map (fun (t: Type) -> t.toSort)
+
+      Command (command.DeclareDatatype
+           (n, List.map (fun (n', t) -> constructor n' (args t) n) cs))  
+    
     
   let rec smtExpr2expr =
     function
@@ -591,7 +598,7 @@ module Interpreter =
       |> function
         | SAT x -> Ok x
         | UNSAT (Some (env', solver')) -> solve env' solver'
-        | UNSAT None -> Error "UNKNOWN"
+        | UNSAT None -> Error "!!!!!UNKNOWN"
 
     let setSoftAsserts env (solver: Solver) (constants: Program list) =
       let constNames = constants |> List.choose (function Def(n, [], _, _) -> Some n | _ -> None)
