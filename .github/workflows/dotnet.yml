@@ -29,25 +29,40 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 6.0.x
-      - name: Preparing
+      - name: Cache
+        id: cache
+        uses: actions/cache@v3.0.2
+        with:
+          path: cache
+          key: ${{ runner.os }}-cache
+      - name: Submodules
         run: |
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
+      - name: Redlog
+        run: |
           ls
           sudo apt install gdebi
           sudo gdebi --n ./d/reduce.deb
+      - name: Preparing
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
           cd ./z3
           python3 ./scripts/mk_make.py 
           cd build; make
+          cp -r z3 cache
       - name: Build
         run: |
+          rm -rf ./z3/build 
+          mkdir ./z3/build
+          cp -r cache/z3 ./z3/build 
           dotnet restore ./ADTsolver.sln
           dotnet build ./ADTsolver.sln  /nodeReuse:false 
       - name: Run
         run: |
           cd ./CataHornSolver
           for v in ./Tests/Source/TIP-no-NAT/*.smt2
-          do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
+          do timeout 2s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
           done;
       - uses: actions/upload-artifact@v3
         with:
