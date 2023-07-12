@@ -813,16 +813,6 @@ module Simplifier =
                 |> List.map rm |> Some
             | otherwise -> Some [rm otherwise] )
       |> List.concat
-      // |> List.fold
-        // (fun acc arg ->
-          // match arg with
-          // | Or args' ->
-            // Array.toList args'
-            // |> List.map (rmNestedAnds >> rmNestedOrs)
-            // |> fun x -> x @ acc
-          // | otherwise -> (rmNestedAnds >> rmNestedOrs <| otherwise) :: acc)
-        // []
-      // |> List.rev
       |> List.toArray
       |> Or
     | And _ as andExpr -> rmNestedAnds andExpr
@@ -842,55 +832,182 @@ module Simplifier =
                 |> List.map (rm >> function And e -> e | otherwise -> [| otherwise |]) |> Array.concat |> List.ofArray |> Some
             | otherwise -> (rm otherwise |> function And e -> e | otherwise -> [| otherwise |]) |> List.ofArray |> Some )
       |> List.concat
-      // |> List.fold
-      //   (fun acc arg ->
-      //     let rm = rmNestedAnds >> rmNestedOrs 
-      //     match arg with
-      //     | And args' ->
-      //       Array.toList args'
-      //       |> List.map rm
-      //       |> fun x -> x @ acc
-      //     | otherwise -> (rm otherwise) :: acc)
-      //   []
-      // |> List.rev
       |> List.toArray
       |> And
     | Or _ as orExpr -> rmNestedOrs orExpr
     | otherwise -> otherwise
 
   let normalize = rmNestedAnds >> rmEmpty
-  
-  let rec private haveOr' = 
-    let rec helper acc =
-      function
-        | Or _ -> true
-        | And exprs -> acc || Array.fold (fun acc' e -> helper acc' e || acc') false exprs
-        | _ -> acc
-        
-    helper false
-  
-  let rec private haveOr =
-    Array.fold (fun acc x -> acc || haveOr' x) false
-  
-  let fstLayer =
+    
+  let isOr = function Or _ -> true | _ -> false
+
+  let cutLayer =
     function
       | And exprs ->
-        Array.choose (fun e -> if not <| haveOr' e then Some e else None) exprs,
-        Array.choose (fun e -> if haveOr' e then Some e else None) exprs
+        Array.filter (not << isOr) exprs ,
+        Array.filter isOr exprs
       | _ -> ([||], [||])
-  
+ 
   let equals =
-    Array.choose (function Eq _ as e -> Some e | _ -> None) >> Set
+    Array.choose (function Eq _ as e -> Some e | _ -> None) >> Set >> Set.toList
   
-  let rmEqs' =
-    equals
-      
-  let rmEqs =
-    normalize
-    >> fstLayer
-    >> fun (xs, other) -> (rmEqs' xs, other)
+  // var -> APPL
   
+  // let add (map: Map<_ list, Expr>) v =
+  
+  let heads =
+    List.choose (function Eq (Apply _ as a, _) | Eq (_, (Apply _ as a)) -> Some a | _ -> None)
 
+  
+  let haveVar expr var =
+    let rec helper acc =
+      function
+        | Var _ as x -> var = x
+        | And exprs | Or exprs ->
+          Array.fold (fun acc arg -> acc || helper acc arg) acc exprs
+        | Apply (_, exprs) | App (_, exprs) ->
+          List.fold (fun acc arg -> acc || helper acc arg) acc exprs
+        | Eq (x, y)
+        | Lt (x, y)
+        | Gt (x, y)
+        | Le (x, y)
+        | Ge (x, y)
+        | Mod (x, y)
+        | Add (x, y)
+        | Subtract (x, y)
+        | Mul (x, y)
+        | Implies (x, y) -> helper acc x || helper acc y
+        | ForAllTyped (_ , x)
+        | ForAll (_, x)
+        | Not x
+        | Neg x -> helper acc x
+        | Ite (x, y, z) -> helper acc x || helper acc y || helper acc z
+        | _ -> acc
+    helper false expr
+  
+  let isUsingByOrs cmds var =
+    Array.choose (function Or _ as x -> Some x | _ -> None) cmds      
+    |> Array.fold (fun acc expr -> acc || haveVar expr var) false
+  
+  let transitiveEqs eqs =
+    let rec helper eqs from =
+      match from with
+      | Apply _ as a ->
+        let xs = List.choose (function Eq (app, x) | Eq (x, app) when app = a -> Some x | _ -> None) eqs 
+        let eqs' = List.filter (function Eq (app, _) | Eq (_, app) -> app <> a | _ -> true) eqs
+        let eqs'' = List.filter (function Eq (Apply _, _) | Eq (_, Apply _) -> false | _ -> true) eqs'
+        List.map (fun x -> [ x ] @ (helper eqs'' x |> fst)) xs |> List.concat, eqs' 
+      | var ->
+        // printfn $"{var}"
+        // printfn $"varvarvarvarv {var} {eqs}"
+        match List.tryFind (function Eq (x, _) | Eq (_, x) when x = var -> true | _ -> false) eqs with
+        | Some (Eq (var', value) as e) | Some (Eq (value, var') as e) when var' = var ->
+          // printfn $"eeeeeeeee "
+          // printfn $"eeeeeeeee {e}"
+          let xs = List.choose (function Eq (v, x) | Eq (x, v) when v = value -> Some x | _ -> None) eqs
+          let eqs' = List.filter (function v -> e <> v) eqs
+          List.map
+            (fun x ->
+              (helper eqs' x |> fst)) xs
+              |> fun xs ->
+                ([ var ] :: [ value ] :: xs)
+              |> List.concat, []
+        | None -> [ from ], []
+      
+    let heads = heads eqs |> Set.ofList |> Set.toList
+    // for h in heads do printfn $"hhh {h}"
+    
+    List.zip
+      heads
+      (List.fold
+        (fun (acc, eqs) x ->
+          match eqs with
+            | [] -> (acc, eqs)
+            | _ -> let a, eqs' = helper eqs x in (List.addLast (Set.ofList a) acc, eqs'))
+        ([], eqs)
+        heads
+      |> fst)
+    |> List.map (fun (e, xs) -> Set.toList xs |> List.map (fun x -> (x, e)))
+    |> List.concat
+  
+  let notEqs =
+    Array.choose (function Eq _ -> None | otherwise -> Some otherwise )
+    
+  let subst transitiveEqs exprs =
+    List.fold (fun acc (var, x) -> substituteVar var x acc) (And exprs) transitiveEqs
+  
+  let substituteMany transitiveEqs expr =
+    List.fold (fun expr (var, value) -> substituteVar var value expr ) expr transitiveEqs
+    
+  
+  let mkEq x y = Eq (x, y)
+
+  
+  let simplify' exprs ors =
+    // for x in exprs do printfn $">> {expr2smtExpr x}"
+    // for x in ors do printfn $"< {expr2smtExpr x}"
+    let equals = equals exprs
+    let transitiveEqs = transitiveEqs equals
+    // for x in transitiveEqs do printfn $"transitive {x}"
+    // for x in equals do printfn $"equal {expr2smtExpr x}"
+    // let usedEquals = equals |> List.filter (function Eq (x, _) | Eq (_, x) -> isUsingByOrs ors x | _ -> false) |> List.toArray
+    // for x in usedEquals do printfn $"used {x}"
+    let unusedEquals = equals |> List.filter (function Eq (x, _) | Eq (_, x) -> not <| isUsingByOrs ors x | _ -> false) |> List.toArray
+    // for x in unusedEquals do printfn $"unused {x}"
+    let notEq = notEqs exprs
+    // for x in notEq do printfn $"notEq {x}"
+    
+    let usedVars =
+      Array.fold
+        (fun acc ->
+          function
+            | Eq (x, y) | Eq (y, x) when isUsingByOrs ors x -> Set.add x acc
+            // | Eq (Var _ as x, (Var _ as y)) | Eq (Var _ as y, (Var _ as x))  -> Set.add y (Set.add x acc)
+            // | Eq (Var _ as x, _) | Eq (_, (Var _ as x)) when isUsingByOrs ors x -> Set.add x acc
+            | _ -> acc)
+        Set.empty
+        // usedEquals
+        (Array.ofList equals)
+      |> Set.toList
+    // for x in usedVars do printfn $"usdvar {x}"
+    
+    let varsInTransitiveEqs = List.unzip transitiveEqs |> fst
+    let usedVarsInTransitiveEqs =
+      List.filter (fun var -> List.contains var varsInTransitiveEqs) usedVars 
+    
+    let usedVarsOutTransitiveEqs =
+      List.filter (fun var -> not <| List.contains var varsInTransitiveEqs) usedVars 
+    
+    let usedEqualssssssss = 
+      Array.filter
+        (function
+         | Eq (x, y) when List.contains x usedVarsOutTransitiveEqs && List.contains y usedVarsOutTransitiveEqs -> true
+         | _ -> false)
+        (Array.ofList equals) 
+    
+    // let aaaaaaaaaa = List.filter () usedVars
+    
+    let usedEquals' =
+      let map = Map transitiveEqs
+      List.map
+        (fun x ->
+          // printfn $"{x}"
+          Eq (x, substituteMany transitiveEqs (map |> Map.find x)))
+        usedVarsInTransitiveEqs
+        // usedVars
+      |> List.toArray
+    
+    [| subst transitiveEqs unusedEquals
+       subst transitiveEqs notEq |]
+    |> Array.choose (function And exprs -> Some exprs | _ -> None)
+    |> Array.concat
+    |> Array.filter (function Eq (x, y) -> x <> y | _ -> true)
+    |> Array.append usedEquals' |> Array.append usedEqualssssssss
+    
+  let simplify resolvent =
+    let layer, ors = cutLayer resolvent
+    And (Array.append (simplify' layer ors) ors)
+    
 let unsatQuery funDefs adtDecs resolvent typedVars =
   let clause =
     seq {
@@ -1104,6 +1221,7 @@ module Debug =
     let redlogOutput = write "redlog-output.smt2"
     let hornInput = write "horn-input.smt2"
     let smtADTLIA = write "smt-ADT-LIA.smt2"
+    let smtADTLIABBB = write "smt-ADT-LIABBBBBBBBBB.smt2"
     let proof = write "proof.smt2"
 
 
@@ -1292,7 +1410,6 @@ let banOldValues constDefs =
   )
 
 
-let simplifyFstLayer = id
 
 let rec learner
   adtDecs
@@ -1308,26 +1425,54 @@ let rec learner
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
-      let resolvent = resolvent constDefs funDecls hyperProof asserts |> simplifyFstLayer
-      // printfn $"{resolvent |> expr2smtExpr}\n-------------------"
+      let before = 
+        resolvent constDefs funDecls hyperProof asserts
+
+      let resolvent =
+        resolvent constDefs funDecls hyperProof asserts
+        |> Simplifier.simplify 
       
-      // let aaaa , _ = resolvent |> Simplifier.rmEqs
-      // do for x in aaaa do printfn $">>>>>>> {expr2smtExpr x}"
-      // printfn $"{resolvent |> Simplifier.rmEqs  }"
-     
+        
+      // printfn $"after {expr2smtExpr (forAll resolvent) }\n-------------------"
+      
+      // let aaaa, bbbb = resolvent |> Simplifier.cutLayer
+      // printfn $">>>>>>>{aaaa.Length}"
+      // do for x in aaaa do printfn $"{x}"
+      // let ee = Simplifier.equals aaaa  
+      // let a = Simplifier.transitiveEqs ee
+      // do for x in a do printfn $"! {x} "
+      // printfn $"OIOOUOUO {expr2smtExpr <| Simplifier.simplify resolvent}"
+      // for b in b do
+        // printfn $"---------------"
+        // for v in Set.toList b do printfn $"{v}"
      
       // Environment.Exit(1)
       
+      let! (_, BBBBBBb), _ =
+        Debug.Duration.go 
+          (lazy state.Return (feasible adtDecs adtConstrs funDefs before))
+          "Z3.ADT(LIA)BBBB"
+
+      do! Debug.Print.smtADTLIABBB
+            (let content = List.map (program2originalCommand >> toString) BBBBBBb |> join "\n" in
+              $"(set-option :produce-proofs true)\n{content}\n(check-sat)") 
+
+                
       let! (feasible, smtADTLIAcContent), _ =
         Debug.Duration.go 
           (lazy state.Return (feasible adtDecs adtConstrs funDefs resolvent))
           "Z3.ADT(LIA)"
       
-      do! Debug.Print.smtADTLIA
-            (let content = List.map (program2originalCommand >> toString) smtADTLIAcContent |> join "\n" in
-             $"(set-option :produce-proofs true)\n{content}(check-sat)") 
 
       
+      
+      do! Debug.Print.smtADTLIA
+            (let content = List.map (program2originalCommand >> toString) smtADTLIAcContent |> join "\n" in
+             $"(set-option :produce-proofs true)\n{content}\n(check-sat)") 
+
+
+      
+            
       match feasible with
       | Ok _ -> return Error "UNSAT"
       | Error _ ->
@@ -1946,45 +2091,7 @@ module ImpliesWalker =
         
     go [] queue
     
-    // helper (Node ((aa, [ a ]), []))
-    // |> run { queue = queue }
-    
-    // List.map (fun expr -> ) (assertBodies (roots cmds))
-  
-let noAxiomsAppsImpls asserts =
-  List.choose (function Decl (name, _) when axiomAsserts id asserts name |> List.isEmpty -> Some name | _ -> None)
-  >> List.map (impliesAsserts id asserts) >> List.concat
 
-let haveApp name =
-  Array.tryFind (function App (n, _) when n = name -> true | _ -> false)
-  >> function Some _ -> true | None -> false
-
-let haveTrue =
-  Array.tryFind (function Bool true -> true | _ -> false)
-    >> function Some _ -> true | None -> false
-  
-let nonRecClauseBy name = haveApp name >> not 
-let good name body = (nonRecClauseBy name body)
-
-
-let isAxiomatlyBody asserts =
-  function
-    | Assert (ForAll (_, Implies (And body, App(name, _)))) | Assert (Implies (And body, App(name, _))) when good name body ->
-        for b in body do printfn $"{name} bb>> {b}"
-        let axioms = Array.map (axiomAsserts id asserts) (Array.choose (function App (n, _) -> Some n | _ -> None) body)
-        
-        Array.filter (function [] -> true | _ -> false) axioms
-        |> fun arr ->
-          for x in axioms do printfn $">>{x}"
-          arr |> Array.isEmpty
-    | Assert (ForAll (_, Implies ((App (n, _) as body), App(name, _)))) | Assert (Implies ((App (n, _) as body), App(name, _))) when good name [| body |] ->
-        axiomAsserts id asserts n
-        |> List.isEmpty
-        |> not
-    | Assert (ForAll (_, Implies (And body, App(name, _)))) | Assert (Implies (And body, App(name, _))) -> true
-    | Assert (ForAll (_, Implies ((App (n, _) as body), App(name, _)))) | Assert (Implies ((App (n, _) as body), App(name, _))) -> true
-    | a -> failwith $"{program2originalCommand a}"
-    // | _ -> true
 let rec solver
   adtDecs
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -1996,16 +2103,6 @@ let rec solver
   =
   
     
-  // let asserts =  AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
-  // let noAxiomsAppsImpls = noAxiomsAppsImpls asserts funDecls
-  // // for x in noAxiomsAppsImpls do printfn $"{program2originalCommand x}" 
-  // List.map (isAxiomatlyBody asserts) noAxiomsAppsImpls
-  // // |> fun x -> 
-  //   // printfn $"{x}"
-  //   // x
-  // |> List.fold (&&) true
-  // |> printfn "%O"
-  
     
     
   // let cmds =

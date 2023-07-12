@@ -358,8 +358,6 @@
 
     <ItemGroup>
         <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
-        <PackageReference Include="FAKE" Version="5.16.0" />
-        <PackageReference Include="FAKE.Core" Version="5.16.0" />
         <PackageReference Include="Fli" Version="1.1.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
         <PackageReference Include="Microsoft.Z3" Version="4.11.2" />
