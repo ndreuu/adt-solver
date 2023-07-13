@@ -851,10 +851,6 @@ module Simplifier =
   let equals =
     Array.choose (function Eq _ as e -> Some e | _ -> None) >> Set >> Set.toList
   
-  // var -> APPL
-  
-  // let add (map: Map<_ list, Expr>) v =
-  
   let heads =
     List.choose (function Eq (Apply _ as a, _) | Eq (_, (Apply _ as a)) -> Some a | _ -> None)
 
@@ -898,12 +894,8 @@ module Simplifier =
         let eqs'' = List.filter (function Eq (Apply _, _) | Eq (_, Apply _) -> false | _ -> true) eqs'
         List.map (fun x -> [ x ] @ (helper eqs'' x |> fst)) xs |> List.concat, eqs' 
       | var ->
-        // printfn $"{var}"
-        // printfn $"varvarvarvarv {var} {eqs}"
         match List.tryFind (function Eq (x, _) | Eq (_, x) when x = var -> true | _ -> false) eqs with
         | Some (Eq (var', value) as e) | Some (Eq (value, var') as e) when var' = var ->
-          // printfn $"eeeeeeeee "
-          // printfn $"eeeeeeeee {e}"
           let xs = List.choose (function Eq (v, x) | Eq (x, v) when v = value -> Some x | _ -> None) eqs
           let eqs' = List.filter (function v -> e <> v) eqs
           List.map
@@ -915,7 +907,6 @@ module Simplifier =
         | None -> [ from ], []
       
     let heads = heads eqs |> Set.ofList |> Set.toList
-    // for h in heads do printfn $"hhh {h}"
     
     List.zip
       heads
@@ -942,34 +933,23 @@ module Simplifier =
   
   let mkEq x y = Eq (x, y)
 
+  let rmObviousEqs = Array.filter (function Eq (x, y) -> x <> y | _ -> true)
   
   let simplify' exprs ors =
-    // for x in exprs do printfn $">> {expr2smtExpr x}"
-    // for x in ors do printfn $"< {expr2smtExpr x}"
     let equals = equals exprs
     let transitiveEqs = transitiveEqs equals
-    // for x in transitiveEqs do printfn $"transitive {x}"
-    // for x in equals do printfn $"equal {expr2smtExpr x}"
-    // let usedEquals = equals |> List.filter (function Eq (x, _) | Eq (_, x) -> isUsingByOrs ors x | _ -> false) |> List.toArray
-    // for x in usedEquals do printfn $"used {x}"
     let unusedEquals = equals |> List.filter (function Eq (x, _) | Eq (_, x) -> not <| isUsingByOrs ors x | _ -> false) |> List.toArray
-    // for x in unusedEquals do printfn $"unused {x}"
     let notEq = notEqs exprs
-    // for x in notEq do printfn $"notEq {x}"
     
     let usedVars =
       Array.fold
         (fun acc ->
           function
-            | Eq (x, y) | Eq (y, x) when isUsingByOrs ors x -> Set.add x acc
-            // | Eq (Var _ as x, (Var _ as y)) | Eq (Var _ as y, (Var _ as x))  -> Set.add y (Set.add x acc)
-            // | Eq (Var _ as x, _) | Eq (_, (Var _ as x)) when isUsingByOrs ors x -> Set.add x acc
+            | Eq (x, _) | Eq (_, x) when isUsingByOrs ors x -> Set.add x acc
             | _ -> acc)
         Set.empty
-        // usedEquals
         (Array.ofList equals)
       |> Set.toList
-    // for x in usedVars do printfn $"usdvar {x}"
     
     let varsInTransitiveEqs = List.unzip transitiveEqs |> fst
     let usedVarsInTransitiveEqs =
@@ -985,28 +965,30 @@ module Simplifier =
          | _ -> false)
         (Array.ofList equals) 
     
-    // let aaaaaaaaaa = List.filter () usedVars
-    
     let usedEquals' =
       let map = Map transitiveEqs
       List.map
         (fun x ->
-          // printfn $"{x}"
           Eq (x, substituteMany transitiveEqs (map |> Map.find x)))
         usedVarsInTransitiveEqs
-        // usedVars
       |> List.toArray
     
     [| subst transitiveEqs unusedEquals
        subst transitiveEqs notEq |]
     |> Array.choose (function And exprs -> Some exprs | _ -> None)
     |> Array.concat
-    |> Array.filter (function Eq (x, y) -> x <> y | _ -> true)
+    |> rmObviousEqs
     |> Array.append usedEquals' |> Array.append usedEqualssssssss
+    
+  let substituteFirstLayer layer ors =
+    let simpleExprs = simplify' layer ors
+    let eqs = equals simpleExprs 
+    List.fold (fun exprs -> function Eq (Var _ as var, x) -> Array.map (substituteVar var x) exprs | _ -> exprs) (Array.append simpleExprs ors) eqs 
+    |> rmObviousEqs
     
   let simplify resolvent =
     let layer, ors = cutLayer resolvent
-    And (Array.append (simplify' layer ors) ors)
+    And (Array.append (substituteFirstLayer layer ors) ors)
     
 let unsatQuery funDefs adtDecs resolvent typedVars =
   let clause =
@@ -1014,7 +996,6 @@ let unsatQuery funDefs adtDecs resolvent typedVars =
       yield! List.map DeclConst typedVars
       yield! Assert resolvent |> List.singleton
     } |> Seq.toList
-  // let clause = List.map DeclConst typedVars @ (Assert resolvent |> List.singleton)
   adtDecs @ funDefs @ clause
 
 module Solver =
@@ -1425,8 +1406,8 @@ let rec learner
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
-      let before = 
-        resolvent constDefs funDecls hyperProof asserts
+      // let before = 
+        // resolvent constDefs funDecls hyperProof asserts
 
       let resolvent =
         resolvent constDefs funDecls hyperProof asserts
@@ -1448,14 +1429,14 @@ let rec learner
      
       // Environment.Exit(1)
       
-      let! (_, BBBBBBb), _ =
-        Debug.Duration.go 
-          (lazy state.Return (feasible adtDecs adtConstrs funDefs before))
-          "Z3.ADT(LIA)BBBB"
+      // let! (_, BBBBBBb), _ =
+        // Debug.Duration.go 
+        //   (lazy state.Return (feasible adtDecs adtConstrs funDefs before))
+        //   "Z3.ADT(LIA)BBBB"
 
-      do! Debug.Print.smtADTLIABBB
-            (let content = List.map (program2originalCommand >> toString) BBBBBBb |> join "\n" in
-              $"(set-option :produce-proofs true)\n{content}\n(check-sat)") 
+      // do! Debug.Print.smtADTLIABBB
+      //       (let content = List.map (program2originalCommand >> toString) BBBBBBb |> join "\n" in
+      //         $"(set-option :produce-proofs true)\n{content}\n(check-sat)") 
 
                 
       let! (feasible, smtADTLIAcContent), _ =
@@ -1946,13 +1927,16 @@ module ImpliesWalker =
     |> List.filter (not << isRecClause)
   
   let cutLayer =
-    List.choose (function [] -> Some (None) | h :: tl -> Some (Some (h, tl)))
+    List.choose (function [] -> Some None | h :: tl -> Some (Some (h, tl)))
     >> fun xs ->
         for x in xs do printfn $"{x}";
         xs
       
     >> List.map (function None -> None, [] | Some (x, xs) -> Some x, xs) 
     >> List.unzip
+    >> fun (l, tl) ->
+      printfn $"?? {tl}"
+      l, (List.filter (not << List.isEmpty) tl)
   
   let unusedImplies used =
     List.filter (function
@@ -1991,13 +1975,6 @@ module ImpliesWalker =
     
   let forEachQueue f =
     State (fun st ->
-      // let q =
-      //   List.map
-      //     (fmap (fun (x, y) ->
-      //       match x with
-      //       | Assert x' -> x', y
-      //       | _ -> failwith ""))
-      //     st.queue
       List.map f st.queue |> eachState |> run st)
 
   let cutLayerImpls facts' implies =
@@ -2012,6 +1989,22 @@ module ImpliesWalker =
     let impliesTail = excludedImpls @ impliesTail
     implies', impliesTail
     
+  let sliceLayers =
+    let rec helper acc xs =
+      List.filter (List.isEmpty >> not) xs 
+      |> fun xs ->
+        printfn $"slicer{xs}"        
+        printfn $"slicer{acc}"
+        xs
+      |> function
+      | [] -> acc
+      | tl ->
+        for x in tl do printfn $"{tl}"
+        let l, tl' = cutLayer tl
+        helper (l :: acc) tl'
+    helper []
+    
+    
   let isFact cmds n =
     flip List.contains (axioms cmds n |> assertBodies)   
   
@@ -2021,15 +2014,28 @@ module ImpliesWalker =
       | Implies (_, App (n, _)) -> Some n
       | _ -> None)
   
+  let deq =
+    let tail =
+      function
+        | [] -> []
+        | _::tl -> tl
+    State (fun st -> ((), { st with queue = tail st.queue}))
+
+  
   let walker cmds =
-    // let state = StateBuilder ()
     let queue =
       let roots = roots cmds |> assertBodies
       let appNames = implHeadNames roots
       List.map2 (fun root n -> Node ((root, [ n ]), [])) roots appNames
-  
+    
+    
     let rec helper' body used value =
       state {
+        printfn "RA`"
+        printfn $"VALUE {expr2smtExpr value}"
+        do for b in body do printfn $"BODY {b}"
+        do for b in used do printfn $"USED {b}"
+        
         let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body))
         printfn "AAAAAAAAAAAAAAAAAAAAAAAA"
         do for f in (appNames (Array.toList body)) do printfn $"{f}"
@@ -2045,52 +2051,76 @@ module ImpliesWalker =
         
         // let q = List.map (fun fs -> List.map (fun f -> Node ((x, u), [])) fs) factsTail  
         do for x in factsTail do printfn $"OOOO {x}"
-        if List.length facts' <> Array.length body then failwith "OOPS!"
-        
-        
-        // for fs in state.Return factsTail do 
-        //   for x in fs do 
-        //     do! addInQueue ([])
+        let factSlices = facts' :: sliceLayers factsTail
+        printfn "AOAOAAOAOOA"
+        for x in factSlices do
+          printfn $"slice: {x}"
+          if List.length x <> Array.length body then failwith "OOPS!"
+
         ////////////////////////////////////////
         
         match layer facts' implies' with
         | Some l ->
           let leafs = List.map2 (fun x u -> Node ((x, u), [])) (assertBodies l) usedForEach
+          // let! ts = eachState <| List.map (helper') leafs
           let! ts = eachState <| List.map helper leafs
+          printfn $"RETURN >>> V: {value}, USED: {used} TS: {ts}"
           return Node ((value, used), ts)
         | None -> return failwith "WTF"
       }
-        
+    
+            
     and helper v  = // used 
       state {
+        printfn "helper"
         match v with
         | Node ((Implies (And body, App (n, _)) as value, used), [])
-        | Node ((ForAll (_, Implies (And body, App (n, _))) as value, used), []) when not <| isFact cmds n value -> //here for nonand body
+        | Node ((ForAll (_, Implies (And body, App (n, _))) as value, used), []) when not <| isFact cmds n value -> 
+          printfn $"value_______ {value}"
+          printfn "___________A"
           return! helper' body used value
         | Node ((Implies (body, _) as value, used), []) | Node ((ForAll (_, (Implies (body, _) as value)), used), []) ->
+          printfn "___________B"
           return! helper' [| body |] used value
         | Node (_, []) as otherwise ->
+          printfn "___________C"
           return otherwise 
         | Node ((v, used), ts) ->
+          printfn "___________D"
           let! ts' = eachState <| List.map helper ts
           return (Node ((v, used), ts'))
       }
+    
+    let runHelper x =
+      
+      state {
+        do! deq
+        return! helper x
+      }
+
     for x in (List.toArray (assertBodies (roots cmds))) do printfn $"<><><><> {expr2smtExpr x}"
     
-    let aa = (List.toArray (assertBodies (roots cmds)))[14]
-    printfn $"AAA: {expr2smtExpr aa}"
+    // let aa = (List.toArray (assertBodies (roots cmds)))[14]
+    // printfn $"AAA: {expr2smtExpr aa}"
+    printfn "AAAAAAAAAAAAAAAA"
+    for q in queue do printfn $"{q}"
     
+    
+    printfn "AAAAAAAAAAAAAAAA"
     let rec go acc queue =
-      let xs, sts =
-        List.map (fun q -> helper q |> run { queue = [ q ] }) queue
-        |> List.unzip
-
-      let stQueue st = st.queue
-
-      go (acc @ xs) (List.map stQueue sts |> List.concat)
+      printfn $"QQQQQQQQQQ {queue}"
+      match queue with
+      | [] -> acc
+      | _ ->
+        printfn "STEPSTEPSTEPSTEP"
+        let xs, sts = List.map (fun q -> runHelper q |> run { queue = [ q ] }) queue |> List.unzip
+        let stQueue st = st.queue
+        List.map stQueue sts
+        |> fun xs  ->  for x in xs do printfn $"sssssssssssss {x}"
+        go (acc @ xs) (List.map stQueue sts |> List.concat)
         
     go [] queue
-    
+    //
 
 let rec solver
   adtDecs
@@ -2105,33 +2135,24 @@ let rec solver
     
     
     
-  // let cmds =
-  //   (funDefs
-  //     @ constDefs
-  //     @ constrDefs
-  //     @ funDecls
-  //     @ asserts)
+  let cmds =
+    (funDefs
+      @ constDefs
+      @ constrDefs
+      @ funDecls
+      @ asserts)
+  
+  // // for x in cmds do printfn $"{program2originalCommand x}"
   //
-  // for x in cmds do printfn $"{program2originalCommand x}"
-  //
-  // let l, _ = 
-  //   ImpliesWalker.walker 
-  //     (funDefs
-  //     @ constDefs
-  //     @ constrDefs
-  //     @ funDecls
-  //     @ asserts)
-  //
-  // let a = fmap (fun (e, ns) -> (toString <| expr2smtExpr e, ns)) l
-  //
-  // printfn $"ANS {a}"
+  // let l =  ImpliesWalker.walker cmds 
+  // // let a = fmap (fun (e, ns) -> (toString <| expr2smtExpr e, ns)) l
+  // printfn $" *******************************"
+  // for x in l do  printfn $" dsf0{x}"
+  // // printfn $"ANS {a}"
   // // for x in l do printfn $"{program2originalCommand x}"
   //
   //
   // Environment.Exit(0)
-  
-  
-  
   
   let funDecls, asserts =
     let funDecls', asserts' =
