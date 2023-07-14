@@ -354,6 +354,7 @@
         </Content>
         <Compile Include="Processssss.fs" />
         <Compile Include="Program.fs" />
+        <Content Include="build-table.py" />
     </ItemGroup>
 
     <ItemGroup>

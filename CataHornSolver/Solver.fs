@@ -1483,7 +1483,7 @@ let rec learner
         | Error e -> return Error e
 
     | a ->
-      printfn $"PROOF_FORMAT {a}"
+      printfn $"ERR PROOF_FORMAT {a}"
       Environment.Exit(0)
       return Error $"PROOF_FORMAT {a}"
   }
@@ -1989,20 +1989,20 @@ module ImpliesWalker =
     let impliesTail = excludedImpls @ impliesTail
     implies', impliesTail
     
-  let sliceLayers =
-    let rec helper acc xs =
-      List.filter (List.isEmpty >> not) xs 
-      |> fun xs ->
-        printfn $"slicer{xs}"        
-        printfn $"slicer{acc}"
-        xs
-      |> function
-      | [] -> acc
-      | tl ->
-        for x in tl do printfn $"{tl}"
-        let l, tl' = cutLayer tl
-        helper (l :: acc) tl'
-    helper []
+  // let sliceLayers =
+  //   let rec helper acc xs =
+  //     List.filter (List.isEmpty >> not) xs 
+  //     |> fun xs ->
+  //       printfn $"slicer{xs}"        
+  //       printfn $"slicer{acc}"
+  //       xs
+  //     |> function
+  //     | [] -> acc
+  //     | tl ->
+  //       for x in tl do printfn $"{tl}"
+  //       let l, tl' = cutLayer tl
+  //       helper (l :: acc) tl'
+  //   helper []
     
     
   let isFact cmds n =
@@ -2026,7 +2026,19 @@ module ImpliesWalker =
     let queue =
       let roots = roots cmds |> assertBodies
       let appNames = implHeadNames roots
-      List.map2 (fun root n -> Node ((root, [ n ]), [])) roots appNames
+      List.map2 (fun root n -> Node ([(root, [ n ])], [])) roots appNames
+
+    // Node ([[ p1 p2 p3 -> q ]],
+    //       Node ([[ Ip1 ]; [ Ip2 ]; [Ip3]],
+    //             [
+    //               Node ([[ FIp1 ]; [ FIp1 ] ], [])
+    //             ]))
+  
+        
+    let rec aaaa =
+      function
+        | Node (xs, kids) ->
+          List.map 
     
     
     let rec helper' body used value =
@@ -2038,6 +2050,7 @@ module ImpliesWalker =
         
         let usedForEach = List.map (flip List.cons used) (appNames (Array.toList body))
         printfn "AAAAAAAAAAAAAAAAAAAAAAAA"
+        do for x in usedForEach do printfn $"{x}"
         do for f in (appNames (Array.toList body)) do printfn $"{f}"
         
         let facts = List.map (axioms cmds) (appNames (Array.toList body))
@@ -2051,11 +2064,11 @@ module ImpliesWalker =
         
         // let q = List.map (fun fs -> List.map (fun f -> Node ((x, u), [])) fs) factsTail  
         do for x in factsTail do printfn $"OOOO {x}"
-        let factSlices = facts' :: sliceLayers factsTail
+        // let factSlices = facts' :: sliceLayers factsTail
         printfn "AOAOAAOAOOA"
-        for x in factSlices do
-          printfn $"slice: {x}"
-          if List.length x <> Array.length body then failwith "OOPS!"
+        // for x in factSlices do
+          // printfn $"slice: {x}"
+          // if List.length x <> Array.length body then failwith "OOPS!"
 
         ////////////////////////////////////////
         
@@ -2069,7 +2082,6 @@ module ImpliesWalker =
         | None -> return failwith "WTF"
       }
     
-            
     and helper v  = // used 
       state {
         printfn "helper"
@@ -2085,11 +2097,45 @@ module ImpliesWalker =
         | Node (_, []) as otherwise ->
           printfn "___________C"
           return otherwise 
-        | Node ((v, used), ts) ->
+        | Node (x, ts) ->
           printfn "___________D"
           let! ts' = eachState <| List.map helper ts
-          return (Node ((v, used), ts'))
+          return (Node (x, ts'))
       }
+    
+    let forEachValue =
+      function
+        | Implies (And body, App (n, _)) as value, used 
+        | (ForAll (_, Implies (And body, App (n, _))) as value), used when not <| isFact cmds n value -> 
+          printfn $"value_______ {value}"
+          printfn "___________A"
+          helper' body used value
+        | Implies (body, _) as value, used
+        | ForAll (_, (Implies (body, _) as value)), used ->
+          printfn "___________B"
+          helper' [| body |] used value
+        
+                
+    // and helper v  = // used 
+    //   state {
+    //     printfn "helper"
+    //     match v with
+    //     | Node ((Implies (And body, App (n, _)) as value, used), [])
+    //     | Node ((ForAll (_, Implies (And body, App (n, _))) as value, used), []) when not <| isFact cmds n value -> 
+    //       printfn $"value_______ {value}"
+    //       printfn "___________A"
+    //       return! helper' body used value
+    //     | Node ((Implies (body, _) as value, used), []) | Node ((ForAll (_, (Implies (body, _) as value)), used), []) ->
+    //       printfn "___________B"
+    //       return! helper' [| body |] used value
+    //     | Node (_, []) as otherwise ->
+    //       printfn "___________C"
+    //       return otherwise 
+    //     | Node ((v, used), ts) ->
+    //       printfn "___________D"
+    //       let! ts' = eachState <| List.map helper ts
+    //       return (Node ((v, used), ts'))
+    //   }
     
     let runHelper x =
       
@@ -2107,20 +2153,22 @@ module ImpliesWalker =
     
     
     printfn "AAAAAAAAAAAAAAAA"
-    let rec go acc queue =
-      printfn $"QQQQQQQQQQ {queue}"
-      match queue with
-      | [] -> acc
-      | _ ->
-        printfn "STEPSTEPSTEPSTEP"
-        let xs, sts = List.map (fun q -> runHelper q |> run { queue = [ q ] }) queue |> List.unzip
-        let stQueue st = st.queue
-        List.map stQueue sts
-        |> fun xs  ->  for x in xs do printfn $"sssssssssssss {x}"
-        go (acc @ xs) (List.map stQueue sts |> List.concat)
+    // let rec go acc queue =
+    //   printfn $"QQQQQQQQQQ {queue}"
+    //   match queue with
+    //   | [] -> acc
+    //   | [ queue ] ->
+    //     printfn "STEPSTEPSTEPSTEP"
+    //     let xs, sts = List.map (fun q -> runHelper q |> run { queue = [ q ] }) queue |> List.unzip
+    //     let stQueue st = st.queue
+    //     List.map stQueue sts
+    //     |> fun xs  ->  for x in xs do printfn $"sssssssssssss {x}"
+    //     go (acc @ xs) (List.map stQueue sts |> List.concat)
         
-    go [] queue
+    // go [] queue
     //
+
+    fun x -> helper x 
 
 let rec solver
   adtDecs
@@ -2142,16 +2190,16 @@ let rec solver
       @ funDecls
       @ asserts)
   
-  // // for x in cmds do printfn $"{program2originalCommand x}"
-  //
+  // for x in cmds do printfn $"{program2originalCommand x}"
+  
   // let l =  ImpliesWalker.walker cmds 
   // // let a = fmap (fun (e, ns) -> (toString <| expr2smtExpr e, ns)) l
   // printfn $" *******************************"
   // for x in l do  printfn $" dsf0{x}"
   // // printfn $"ANS {a}"
   // // for x in l do printfn $"{program2originalCommand x}"
-  //
-  //
+  
+  
   // Environment.Exit(0)
   
   let funDecls, asserts =
