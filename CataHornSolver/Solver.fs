@@ -1232,6 +1232,9 @@ let resolvent defConsts decFuns hyperProof asserts =
     proofTree hyperProof
     |> assertsTreeNew asserts defConsts decFuns
     |> treeOfExprs
+    // |> fun x ->
+      // printfn $"{x}"
+      // x
     |> uniqVarNames
     |> foldTreeResolvent
     |> List.toArray
