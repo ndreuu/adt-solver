@@ -66,7 +66,8 @@ let notAppRestrictions =
     | Le _
     | Ge _
     | Not _ as c -> c :: acc
-    | Apply (name, [ x; y ]) as c when name = "distinct" -> Not (Eq (x, y)) :: acc
+    | Apply (name, [ x; y ]) as c when name = "distinct" ->
+      Not (Eq (x, y)) :: acc
     | And exprs -> Array.fold helper acc exprs
     | Or exprs -> Array.fold helper acc exprs
     | ForAll (_, expr)
@@ -505,10 +506,14 @@ let argsBinds appsOfParents kids =
 
 let rec foldTreeResolvent =
   function
-  | Node (_, []) -> []
-  | Node (xs, ts) ->
+  | Node (xs, []) ->
+    // for x in xs  do printfn $"--- {x}" 
+    List.map notAppRestrictions xs |> List.concat
+  | Node (xs, ts) as cur ->
+    // printfn $"CUR \n {cur}"
     let kids = List.map Tree.value ts
     let notAppRestrictions = List.collect notAppRestrictions xs |> Expr.And
+    // printfn $"notAppRestrictions {expr2smtExpr notAppRestrictions}"
     let appRestrictions = List.map appRestrictions xs
 
     argsBinds appRestrictions kids
@@ -1231,12 +1236,18 @@ let resolvent defConsts decFuns hyperProof asserts =
   let resolvent' =
     proofTree hyperProof
     |> assertsTreeNew asserts defConsts decFuns
+    // |> fun x ->
+      // printfn $"{x}"
+      // x
     |> treeOfExprs
     // |> fun x ->
       // printfn $"{x}"
       // x
     |> uniqVarNames
     |> foldTreeResolvent
+    // |> fun xs ->
+      // for x in xs do printfn $"folded: {x}"
+      // xs
     |> List.toArray
 
   let resolvent = resolvent' |> And |> Simplifier.normalize 
