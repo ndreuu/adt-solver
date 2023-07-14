@@ -53,7 +53,7 @@ jobs:
         run: |
           ls
           cd ./CataHornSolver
-          python ./CataHornSolver/build-table.py > output.csv
+          python ./build-table.py > output.csv
       - uses: actions/upload-artifact@v3
         with:
           run: ls
