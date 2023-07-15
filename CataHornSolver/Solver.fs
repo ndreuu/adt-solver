@@ -1497,9 +1497,9 @@ let rec learner
         | Error e -> return Error e
 
     | a ->
-      printfn $"ERR PROOF_FORMAT {a}"
+      printfn $"ERR-PROOF_FORMAT"
       Environment.Exit(0)
-      return Error $"PROOF_FORMAT {a}"
+      return Error $"PROOF_FORMAT"
   }
 
 let tst () =

@@ -54,8 +54,18 @@ jobs:
           ls
           cd ./CataHornSolver
           python ./build-table.py > output.csv
+      - name: Cross-validation
+        run: |
+          ls
+          cd ./CataHornSolver
+          python ./compare.py > validation.txt
       - uses: actions/upload-artifact@v3
         with:
           run: ls
-          name: artifact
+          name: table
           path: ./CataHornSolver/output.csv
+      - uses: actions/upload-artifact@v3
+        with:
+          run: ls
+          name: validation
+          path: ./CataHornSolver/validation.txt

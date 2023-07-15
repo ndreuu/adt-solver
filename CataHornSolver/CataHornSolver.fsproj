@@ -355,6 +355,9 @@
         <Compile Include="Processssss.fs" />
         <Compile Include="Program.fs" />
         <Content Include="build-table.py" />
+        <Content Include="eldarica.csv" />
+        <Content Include="spacer.csv" />
+        <Content Include="compare.py" />
     </ItemGroup>
 
     <ItemGroup>
