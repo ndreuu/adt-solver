@@ -1810,14 +1810,20 @@ let rec teacher
     match! Debug.Duration.go (lazy teacherRes) "HORN.LIA" with
     | SAT _ -> return "SAT"
     | UNSAT proof ->
+      
       let proof, dbgProof =
-        z3Process.z3proof
-          (toOrigCmds funDefs)
-          (toOrigCmds constDefs)
-          (toOrigCmds constrDefs)
-          (toOrigCmds funDecls)
-          (toOrigCmds asserts)
-
+        try 
+          z3Process.z3proof
+            (toOrigCmds funDefs)
+            (toOrigCmds constDefs)
+            (toOrigCmds constrDefs)
+            (toOrigCmds funDecls)
+            (toOrigCmds asserts)
+        with _ ->
+          printfn "ERR-PROOF"
+          Environment.Exit 0
+          [], ""
+          
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
 
@@ -2149,7 +2155,6 @@ module ImpliesWalker =
                  | [], is -> List.map (collect' (name :: used)) (assertBodies is)
                  | fs, _ -> List.map Leaf (assertBodies fs)))
              
-    for x in queue do printfn $"{collect' [  ] x}"  
     List.map (collect' []) queue
   
   let eqs = List.map Eq
@@ -2164,11 +2169,6 @@ module ImpliesWalker =
       let restrictions = notAppRestrictions b
       let appRestrictions = appRestrictions b 
       List.zip appRestrictions kids
-      |> fun x ->
-          printfn $">>>>"
-          for x in x do printfn $"{x}"
-          printfn $"<<<<"
-          x
       |> List.choose (function
         | App (_, args), xs 
         | ForAll (_, App (_, args)), xs ->
@@ -2209,7 +2209,7 @@ module ImpliesWalker =
          (fun (b, h) ->
             Implies (andVal (notAppRestrictions b @ bodyArgs b) , h) |> forAll |> Assert)
     |> fun xs ->
-      xs @ (List.filter (flip List.contains toRm) cmds)
+      xs @ (List.filter (not << flip List.contains toRm) cmds)
     
     
 let rec solver
@@ -2222,7 +2222,7 @@ let rec solver
   (asserts: Program list)
   =
   
-  // let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
+  let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
   
   // let l =  ImpliesWalker.collect cmds
   // let aa = List.map ImpliesWalker.formula (List.map ImpliesWalker.uniqVars l)
@@ -2245,13 +2245,12 @@ let rec solver
       HenceNormalization.mkSingleQuery funDecls asserts
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     
-    funDecls,
-    AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
-    // |> HenceNormalization.normalizeAsserts funDecls'
-    
+    funDecls',
+    cmds |> ImpliesWalker.recoverFacts
+    // |> fun x -> AssertsMinimization.assertsMinimize x (queryAssert List.head asserts')
+    |> HenceNormalization.normalizeAsserts funDecls'
     // |> HenceNormalization.substTrivialImpls funDecls'
-    |> ImpliesWalker.recoverFacts
-    |> List.map HenceNormalization.restoreVarNames
+    |> List.map HenceNormalization.restoreVarNames 
     
     
     
@@ -2285,6 +2284,7 @@ let rec solver
 
   solverLearner.Push ()
 
+  
   state {
     do! Solver.setCommands startCmds
     let! setSofts = Solver.setSoftConsts constDefs
@@ -2301,7 +2301,10 @@ let rec solver
       )
 
     match! Debug.Duration.go (lazy Solver.evalModel constDefs) "(INIT)SMT.NIA" with
-    | Ok x -> return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+    | Ok x ->
+      
+        return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+
     | Error _ -> return "UNKNOWN"
   }
   |> run (statement.Init envLearner solverLearner)
