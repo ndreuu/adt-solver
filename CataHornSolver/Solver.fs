@@ -252,7 +252,7 @@ let decConst =
   | Def (n, _, _, _) -> DeclIntConst n
   | otherwise -> otherwise
 
-let mapTreeOfLists f = Tree.fmap (List.map f)
+let mapTreeOfLists f = fmap (List.map f)
 
 let rec assertsTreeNew asserts consts decs =
   function
