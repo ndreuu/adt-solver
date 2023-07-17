@@ -1,14 +1,17 @@
+def nonEmpty(xs):
+    return list(filter(lambda x: x.__contains__(".smt2"), xs))
+
 cata = open("output.csv", "r")
-cata = cata.readlines()
+cata = nonEmpty(cata.readlines())
 spacer = open("spacer.csv", "r")
-spacer = spacer.readlines()
+spacer = nonEmpty(spacer.readlines())
 eldarica = open("eldarica.csv", "r")
-eldarica = eldarica.readlines()
+eldarica = nonEmpty(eldarica.readlines())
 
 def split(xs):
     return list(map(lambda x: x.split(","), xs))
 
-def compare(contentName: str, content: str, otherName: str, other: str): 
+def compare(contentName: str, content: str, otherName: str, other: str):
     _content = list(map(lambda x: x if x[1].__contains__("SAT") or x[1].__contains__("UNKNOWN") else ([ x[0], "-"]), split(content)))
     _other = list(map(lambda x: x if x[1].__contains__("SAT") or x[1].__contains__("UNKNOWN") else ([ x[0].__str__(), "-"]), split(other) ))
 
