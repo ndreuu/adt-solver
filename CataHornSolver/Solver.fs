@@ -76,19 +76,6 @@ let notAppRestrictions =
 
   helper []
 
-// let appRestrictions =
-//   let rec helper acc =
-//     function
-//     | App _ as app -> app :: acc
-//     | And exprs -> Array.fold helper acc exprs
-//     | Or exprs -> Array.fold helper acc exprs
-//     | Not expr
-//     | ForAll (_, expr)
-//     | Implies (expr, _) -> helper acc expr
-//     | _ -> acc
-//
-//   helper []
-
 let appRestrictions =
   let rec helper acc =
     function
@@ -982,7 +969,7 @@ module Simplifier =
 
           List.map (fun x -> (helper eqs' x |> fst)) xs
           |> fun xs -> ([ var ] :: [ value ] :: xs) |> List.concat, []
-        | None -> [ from ], []
+        | _ -> [ from ], []
 
     let heads = heads eqs |> Set.ofList |> Set.toList
 

@@ -21,9 +21,9 @@ def compare(contentName: str, content: str, otherName: str, other: str):
     xs = list(zip((_content), (_other)))
 
     for ([name, cataRes], [_, otherRes]) in xs:
-        if (cataRes.__contains__("UNSAT") and (not otherRes.__contains__("UNSAT") and otherRes.__contains__("SAT"))):
+        if (cataRes.__contains__(" UNSAT") and (otherRes.__contains__(" SAT") and (not otherRes.__contains__("-")) )):
             print(name + "\n" + contentName + cataRes + otherName + ":" + otherRes)
-        elif (cataRes.__contains__("SAT") and (not otherRes.__contains__("SAT") and otherRes.__contains__("UNSAT"))):
+        elif (cataRes.__contains__(" SAT") and (otherRes.__contains__(" UNSAT") and (not otherRes.__contains__("-")))):
             print(name + "\n" + contentName + cataRes + otherName + ":" + otherRes)
 
 
