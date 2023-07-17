@@ -35,20 +35,23 @@ jobs:
           git submodule update --init --recursive
           sudo apt install gdebi
           sudo gdebi --n ./d/reduce.deb
-          cd ./z3
-          python3 ./scripts/mk_make.py 
-          cd build; make
-      - name: Move-Z3
-        run: |
-          cp z3/build/z3 ${{ runner.temp }}/z3
-      - name: Cache-Z3
-        uses: actions/cache@v2
-        with:
-          path: ${{ runner.temp }}/z3
-          key: ${{ runner.os }}-z3
+#          cd ./z3
+#          python3 ./scripts/mk_make.py 
+#          cd build; make
       - name: Use cached file
         run: |
           cp ${{ runner.temp }}/z3 z3/build/
+#      - name: Move-Z3
+#        run: |
+#          cp z3/build/z3 ${{ runner.temp }}/z3
+#      - name: Cache-Z3
+#        uses: actions/cache@v2
+#        with:
+#          path: ${{ runner.temp }}/z3
+#          key: ${{ runner.os }}-z3
+#      - name: Use cached file
+#        run: |
+#          cp ${{ runner.temp }}/z3 z3/build/
       - name: Build
         run: |
           dotnet restore ./ADTsolver.sln
