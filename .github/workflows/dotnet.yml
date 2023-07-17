@@ -39,6 +39,18 @@ jobs:
           cd ./z3
           python3 ./scripts/mk_make.py 
           cd build; make
+      - name: Move-Z3
+        run: |
+          cp z3/build/z3 ${{ runner.temp }}/z3
+      - name: Cache-Z3
+        uses: actions/cache@v2
+        with:
+          path: ${{ runner.temp }}/z3
+          key: ${{ runner.os }}-z3
+      - name: Use cached file
+        run: |
+          # Replace 'path/to/destination' with the actual path where you want to copy the file
+          cp ${{ runner.temp }}/z3 z3/build/
       - name: Build
         run: |
           dotnet restore ./ADTsolver.sln
