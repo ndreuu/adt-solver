@@ -2246,8 +2246,11 @@ let rec solver
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     
     funDecls',
-    asserts' |> ImpliesWalker.recoverFacts
-    // |> fun x -> AssertsMinimization.assertsMinimize x (queryAssert List.head asserts')
+    cmds |> ImpliesWalker.recoverFacts
+    |> fun xs ->
+        // for x in xs do printfn $"{x}"
+        List.filter (function Assert _ -> true | _ -> false) xs
+    |> fun x -> AssertsMinimization.assertsMinimize x (queryAssert List.head asserts')
     |> HenceNormalization.normalizeAsserts funDecls'
     // |> HenceNormalization.substTrivialImpls funDecls'
     |> List.map HenceNormalization.restoreVarNames 
