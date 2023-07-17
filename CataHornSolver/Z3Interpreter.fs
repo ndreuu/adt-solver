@@ -86,6 +86,7 @@ module AST =
     let Or = function
       | [ expr ] -> expr
       | exprs -> Or (Array.ofList exprs)
+
   let rec expr2smtExpr =
     function
     | Int i -> Number i

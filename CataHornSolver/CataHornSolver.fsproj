@@ -352,7 +352,6 @@
         <Content Include="..\z3\build\z3">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
-        <Compile Include="Processssss.fs" />
         <Compile Include="Program.fs" />
         <Content Include="build-table.py" />
         <Content Include="eldarica.csv" />
