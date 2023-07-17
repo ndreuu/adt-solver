@@ -33,7 +33,6 @@ jobs:
         run: |
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
-          ls
           sudo apt install gdebi
           sudo gdebi --n ./d/reduce.deb
           cd ./z3
@@ -49,7 +48,6 @@ jobs:
           key: ${{ runner.os }}-z3
       - name: Use cached file
         run: |
-          # Replace 'path/to/destination' with the actual path where you want to copy the file
           cp ${{ runner.temp }}/z3 z3/build/
       - name: Build
         run: |
@@ -61,23 +59,19 @@ jobs:
           for v in ./Tests/Source/TIP-no-NAT/*.smt2
           do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
           done;
-      - name: BuildingTable
+      - name: Building-table
         run: |
-          ls
           cd ./CataHornSolver
           python ./build-table.py > output.csv
       - name: Cross-validation
         run: |
-          ls
           cd ./CataHornSolver
           python ./compare.py > validation.txt
       - uses: actions/upload-artifact@v3
         with:
-          run: ls
           name: table
           path: ./CataHornSolver/output.csv
       - uses: actions/upload-artifact@v3
         with:
-          run: ls
           name: validation
           path: ./CataHornSolver/validation.txt
