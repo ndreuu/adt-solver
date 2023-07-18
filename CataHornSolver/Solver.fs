@@ -2226,34 +2226,44 @@ let rec solver
   //
   // printfn $" *******************************"
   //
+  
+  
+  // for x in adtDecs@funDefs@constDefs@constrDefs@funDecls do printfn $"{program2originalCommand x}"
+  // let min = AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
+  // for x in min do printfn $"{program2originalCommand x}"
+  
   // Environment.Exit(0)
 
-  let funDecls, asserts =
-    let funDecls', asserts' =
-      HenceNormalization.mkSingleQuery funDecls asserts
-      |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
+  
+  
+  // let funDecls, asserts =
+  //   let funDecls', asserts' =
+  //     HenceNormalization.mkSingleQuery funDecls asserts
+  //     |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     
-    let a, b =
-      List.filter (function Decl _ -> true | _ -> false) cmds ,
-      cmds |> ImpliesWalker.recoverFacts
-      |> fun xs ->
-          // for x in xs do printfn $"{program2originalCommand x}"
-          List.filter (function Assert _ -> true | _ -> false) xs
+    // let a, b =
+    //   funDecls,
+    //   cmds |> ImpliesWalker.recoverFacts
+    //   |> fun xs ->
+    //       // for x in xs do printfn $"{program2originalCommand x}"
+    //       List.filter (function Assert _ -> true | _ -> false) xs
     // let a, b =
     //   HenceNormalization.mkSingleQuery a b
     //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     //
     //
-    // printfn $"------------------------------------{b}---------------------------"
-    // for x in AssertsMinimization.assertsMinimize a (queryAssert List.head b) do printfn $"{x}"
     // printfn $"---------------"
     // for x in b do printfn $"{program2originalCommand x}"
     // printfn $"---------------"
-    a, b
+    // a, b
     // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
     // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b) 
         
-    // |> fun x -> AssertsMinimization.assertsMinimize x (queryAssert List.head asserts')
+    // a, AssertsMinimization.assertsMinimize b (queryAssert List.head b)
+    
+    // AssertsMinimization.assertsMinimize b (queryAssert List.head b)
+    
+    
     // |> HenceNormalization.normalizeAsserts funDecls'
     // |> HenceNormalization.substTrivialImpls funDecls'
     // |> List.map HenceNormalization.restoreVarNames 
