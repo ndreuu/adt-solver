@@ -1,6 +1,7 @@
 def nonEmpty(xs):
     return list(filter(lambda x: x.__contains__(".smt2"), xs))
-
+old = open("old.csv", "r")
+old = nonEmpty(old.readlines())
 cata = open("output.csv", "r")
 cata = nonEmpty(cata.readlines())
 spacer = open("spacer.csv", "r")
@@ -26,12 +27,15 @@ def compare(contentName: str, content: str, otherName: str, other: str):
         elif (cataRes.__contains__(" SAT") and (otherRes.__contains__(" UNSAT") and (not otherRes.__contains__("-")))):
             print(name + "\n" + contentName + cataRes + otherName + ":" + otherRes)
 
+print("Compare with old")
+compare("Cata", cata, "old", old)
 
-print("Compare with Spacer")
-compare("Cata", cata, "Spacer", spacer)
 
-print("Compare with Eldarica")
-compare("Cata", cata, "Eldarica", eldarica)
+# print("Compare with Spacer")
+# compare("Cata", cata, "Spacer", spacer)
+# 
+# print("Compare with Eldarica")
+# compare("Cata", cata, "Eldarica", eldarica)
 
 
 

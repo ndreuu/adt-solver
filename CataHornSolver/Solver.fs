@@ -2187,17 +2187,18 @@ module ImpliesWalker =
     helper
     
   let recoverFacts cmds =
-    let collected = List.map uniqVars (collect cmds)
-    let toRm = List.choose (function Node (Leaf x, _) -> Some (Assert x) | _ -> None)  collected 
-    let heads = List.choose (function Node (Leaf (Implies (_, h)), _) | Node (Leaf (ForAll (_, Implies (_, h))), _) -> Some h | _ -> None ) collected  
-    List.map (formula >> Expr.And) collected
+    let collected = collect cmds
+    let collected' = List.map uniqVars (collect cmds)
+    let toRm = List.choose (function Node (Leaf x, _) -> Some (Assert x) | _ -> None) collected 
+    let heads = List.choose (function Node (Leaf (Implies (_, h)), _) | Node (Leaf (ForAll (_, Implies (_, h))), _) -> Some h | _ -> None ) collected'  
+    List.map (formula >> Expr.And) collected'
     |> flip List.zip heads
     |> List.map
          (fun (b, h) ->
             Implies (andVal (notAppRestrictions b @ bodyArgs b) , h) |> forAll |> Assert)
     |> fun xs ->
       xs @ (List.filter (not << flip List.contains toRm) cmds)
-    
+      // xs
     
 let rec solver
   adtDecs
@@ -2232,12 +2233,26 @@ let rec solver
       HenceNormalization.mkSingleQuery funDecls asserts
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     
-    funDecls,
-    cmds |> ImpliesWalker.recoverFacts
-    |> fun xs ->
-        // for x in xs do printfn $"{x}"
-        List.filter (function Assert _ -> true | _ -> false) xs
-
+    let a, b =
+      List.filter (function Decl _ -> true | _ -> false) cmds ,
+      cmds |> ImpliesWalker.recoverFacts
+      |> fun xs ->
+          // for x in xs do printfn $"{program2originalCommand x}"
+          List.filter (function Assert _ -> true | _ -> false) xs
+    // let a, b =
+    //   HenceNormalization.mkSingleQuery a b
+    //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
+    //
+    //
+    // printfn $"------------------------------------{b}---------------------------"
+    // for x in AssertsMinimization.assertsMinimize a (queryAssert List.head b) do printfn $"{x}"
+    // printfn $"---------------"
+    // for x in b do printfn $"{program2originalCommand x}"
+    // printfn $"---------------"
+    a, b
+    // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
+    // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b) 
+        
     // |> fun x -> AssertsMinimization.assertsMinimize x (queryAssert List.head asserts')
     // |> HenceNormalization.normalizeAsserts funDecls'
     // |> HenceNormalization.substTrivialImpls funDecls'
