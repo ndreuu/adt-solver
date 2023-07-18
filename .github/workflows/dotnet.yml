@@ -39,7 +39,7 @@ jobs:
       - name: Using-cached-Z3
         run: |
           mkdir z3/build/
-          cd ${{ runner.os }}
+          cd ${{ runner.temp }}
           ls
           cp ${{ runner.os }}/z3 z3/build/
       - name: Redlog-installing
