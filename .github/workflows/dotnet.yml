@@ -41,7 +41,7 @@ jobs:
           mkdir z3/build/
           cd ${{ runner.temp }}
           ls
-          cp ${{ runner.os }}/z3 z3/build/
+          cp ${{ runner.temp }}/z3 z3/build/
       - name: Redlog-installing
         run: |
           sudo apt install gdebi
