@@ -29,7 +29,7 @@ let runZ3 funDefs constDefs constrDefs funDecls asserts =
 """
   File.WriteAllText(file, content)
   // let result = executeZ3 file
-  let result = execute "./z3" $"fp.spacer.global=true fp.xform.inline_eager=true fp.xform.inline_linear=true {file}"
+  let result = execute "./z3" $"fp.datalog.subsumption=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=true {file}"
   
   result.StdOut
 
@@ -58,7 +58,11 @@ let z3proof funDefs constDefs constrDefs funDecls asserts =
     |> Utils.balancedBracket
     |> function
       | Some s ->
+        // printfn $"{s}\n---------------------------------------------------------\\\\------------"
         s.Replace ("mp", "proof mp")
+        |> fun s ->
+          // printfn $"{s}"
+          s
         |> p.ParseLine 
       | None -> []
   

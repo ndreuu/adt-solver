@@ -1799,17 +1799,17 @@ let rec teacher
     | UNSAT proof ->
       
       let proof, dbgProof =
-        try 
+        // try 
           z3Process.z3proof
             (toOrigCmds funDefs)
             (toOrigCmds constDefs)
             (toOrigCmds constrDefs)
             (toOrigCmds funDecls)
             (toOrigCmds asserts)
-        with _ ->
-          printfn "ERR-PROOF"
-          Environment.Exit 0
-          [], ""
+        // with _ ->
+          // printfn "ERR-PROOF"
+          // Environment.Exit 0
+          // [], ""
           
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
@@ -2236,10 +2236,17 @@ let rec solver
 
   
   
-  // let funDecls, asserts =
-  //   let funDecls', asserts' =
-  //     HenceNormalization.mkSingleQuery funDecls asserts
-  //     |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
+  let funDecls, asserts =
+    let funDecls', asserts' =
+      HenceNormalization.mkSingleQuery funDecls asserts
+      |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
+    
+    // funDecls', asserts  
+    // printfn $"---------------"
+    // for x in AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts') do printfn $"{program2originalCommand x}"
+    // printfn $"---------------"
+    
+    funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
     
     // let a, b =
     //   funDecls,
@@ -2252,9 +2259,6 @@ let rec solver
     //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
     //
     //
-    // printfn $"---------------"
-    // for x in b do printfn $"{program2originalCommand x}"
-    // printfn $"---------------"
     // a, b
     // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
     // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b) 
