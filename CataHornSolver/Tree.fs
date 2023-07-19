@@ -16,3 +16,8 @@ module Tree =
     | Node (v, ts) -> f (List.fold (fold f) x ts) v
 
   let value (Node (v, _)) = v
+
+  let kids =
+    function
+      | Node (_, []) -> []
+      | Node (_, xs) -> xs

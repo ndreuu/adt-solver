@@ -6,6 +6,7 @@ open CataHornSolver
 open Microsoft.FSharp.Core
 open Microsoft.VisualStudio.TestPlatform.TestHost
 open Microsoft.Z3
+open NUnit.Framework
 open Process
 open Tree
 open Z3Interpreter.AST
@@ -49,13 +50,7 @@ let emptyEnv argss =
     actives = []
     ctxDataType = Map.empty }
 
-let proofTree hProof =
-  let rec helper (HyperProof (_, hyperProofs, head)) =
-    match hyperProofs with
-    | [] -> head |> smtExpr2expr |> (fun x -> Node (x, []))
-    | _ -> Node (head |> smtExpr2expr, hyperProofs |> List.map helper)
 
-  helper hProof
 
 let notAppRestrictions =
   let rec helper acc =
@@ -241,201 +236,6 @@ let decConst =
 
 let mapTreeOfLists f = fmap (List.map f)
 
-let rec assertsTreeNew asserts consts decs =
-  function
-  | Node (Apply (name, _), []) ->
-    let axioms = axiomAsserts id asserts name
-    Node (axioms, [])
-  | Node (Apply (name, _), ts) ->
-    let value = name |> impliesAsserts id asserts
-
-    let appRestrictions =
-      List.choose
-        (function
-        | Assert (ForAll (_, x))
-        | Assert x ->
-          appRestrictions x
-          |> List.choose (function
-            | App (n, _) -> Some n
-            | _ -> None)
-          |> Some
-        | _ -> None)
-        value
-      |> List.concat
-
-    let kidNames =
-      ts
-      |> List.choose (function
-        | Node (Apply (name, _), _) -> Some name
-        | _ -> None)
-
-    let countOf x =
-      List.filter (fun y -> y = x) >> List.length
-
-    let genVals src diff =
-      List.choose (fun x -> countOf x src |> flip List.replicate x |> Some) diff
-      |> List.concat
-
-    let restoreExistsKids (kidNames: _ list) (source: _ list) =
-      let rec helper acc =
-        function
-        | [] -> acc
-        | x :: xs -> helper (acc @ List.replicate (countOf x source - countOf x kidNames) x) xs
-
-      helper kidNames []
-
-    let recoveredKids =
-      List.except kidNames appRestrictions
-      |> genVals appRestrictions
-      |> List.append (restoreExistsKids appRestrictions kidNames)
-      |> List.map (fun n -> Node (Apply (n, []), []))
-      |> List.append ts
-
-    Node (value, recoveredKids |> List.map (assertsTreeNew asserts consts decs))
-  | Node (Bool false, ts) ->
-    let query = queryAssert (List.head >> List.singleton) asserts
-
-    let appRestrictions =
-      List.choose
-        (function
-        | Assert (ForAll (_, x))
-        | Assert x ->
-          x
-          |> appRestrictions
-          |> List.choose (function
-            | App (n, _) -> Some n
-            | _ -> None)
-          |> Some
-        | _ -> None)
-        query
-      |> List.concat
-
-    let kidNames =
-      ts
-      |> List.choose (function
-        | Node (Apply (name, _), _) -> Some name
-        | _ -> None)
-
-    let countOf x =
-      List.filter (fun y -> y = x) >> List.length
-
-    let genVals src diff =
-      List.choose (fun x -> countOf x src |> flip List.replicate x |> Some) diff
-      |> List.concat
-
-    let restoreExistsKids (kidNames: _ list) (source: _ list) =
-      let rec helper acc =
-        function
-        | [] -> acc
-        | x :: xs -> helper (acc @ List.replicate (countOf x source - countOf x kidNames) x) xs
-
-      helper kidNames []
-
-    let recoveredKids =
-      List.except kidNames appRestrictions
-      // |> fun x ->
-      // for x in appRestrictions do
-      // printfn $" appRestrictions:: {x}"
-
-      // for x in kidNames do
-      // printfn $" kidNames:: {x}"
-
-      // for x in x do
-      // printfn $" diff:: {x}"
-
-      // x
-      |> genVals appRestrictions
-      // |> fun x ->
-      // printfn $"{x}"
-      // x
-      |> List.append (restoreExistsKids appRestrictions kidNames)
-      // |> fun xs ->
-      // for x in xs do
-      // printfn $"REC {x}"
-
-      // xs
-      |> List.map (fun n -> Node (Apply (n, []), []))
-      // |> fun xs ->
-      // for x in xs do
-      // printfn $"NEW LEF {x}"
-
-      // xs
-      |> List.append ts
-    // |> fun xs ->
-    // for x in xs do
-    // printfn $"BRANCH {x}"
-
-    // xs
-
-    Node (query, List.map (assertsTreeNew asserts consts decs) recoveredKids)
-  | _ -> __unreachable__ ()
-
-let treeOfExprs =
-  Tree.fmap (
-    List.choose (function
-      | Assert (ForAll (_, x)) -> Some x
-      | Assert x -> Some x
-      | _ -> None)
-  )
-
-let uniqVarNames =
-  let rec varNames acc =
-    function
-    | Var name -> acc |> Set.add name
-    | Int _
-    | Bool _ -> acc
-    | Eq (expr1, expr2)
-    | Lt (expr1, expr2)
-    | Gt (expr1, expr2)
-    | Le (expr1, expr2)
-    | Ge (expr1, expr2)
-    | Add (expr1, expr2)
-    | Subtract (expr1, expr2)
-    | Mul (expr1, expr2)
-    | Mod (expr1, expr2)
-    | Subtract (expr1, expr2)
-    | Implies (expr1, expr2) -> varNames (varNames acc expr1) expr2
-    | ForAll (_, expr)
-    | Neg expr
-    | Not expr -> varNames acc expr
-    | App (_, exprs) -> List.fold varNames acc exprs
-    | And exprs
-    | Or exprs -> Array.fold varNames acc exprs
-    | Apply (_, exprs) -> List.fold varNames acc exprs
-    | Ite (expr1, expr2, expr3) -> List.fold varNames acc [ expr1; expr2; expr3 ]
-
-  let varNamesMany (exprs: Expr list) = List.map (varNames Set.empty) exprs
-
-  let rename i exprs =
-    Set.fold (fun (acc, i) n -> (renameVar n $"x{i}" acc, i + 1)) (exprs, i)
-
-  let renameMany idx (exprs: Expr list) (names: Set<Name> list) =
-    let exprsNames = List.zip exprs names
-
-    List.foldBack
-      (fun (expr, names) (acc, i) ->
-        let expr', i' = (rename i expr names)
-        (expr' :: acc), i')
-      exprsNames
-      ([], idx)
-
-  let rec numLine i (line: Expr list tree list) =
-    List.foldBack
-      (fun (x: Expr list tree) (acc, i) ->
-        match x with
-        | Node (v, ts) ->
-          varNamesMany v
-          |> renameMany i v
-          |> fun (e, i') ->
-              let ts', i'' = numLine i' ts
-              (Node (e, ts') :: acc, i''))
-      line
-      ([], i)
-
-  function
-  | Node (x, ts) ->
-    let x', i = varNamesMany x |> renameMany 0 x
-    Node (x', numLine i ts |> fst)
 
 let argsBind x ys =
   let bind = List.map2 (fun x y -> Eq (x, y))
@@ -477,11 +277,18 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
       // printfn $"{k}"
+
       (map |> Map.find k |> List.head,
        map
        |> Map.change k (function
          | Some (_ :: vs) -> Some vs
          | _ -> None))
+
+    // for x in appsOfSingleParent do
+      // printfn $"{expr2smtExpr x}"
+
+    // for x in kids do
+      // printfn $"{x}"
 
     appsOfSingleParent
     |> List.fold
@@ -1321,23 +1128,182 @@ let feasible adtDecs adtConstrs funDefs resolvent =
   }
   |> run (statement.Init env solver)
 
+module App =
+  let appNames =
+    List.choose (function
+      | App (n, _) -> Some n
+      | _ -> None)
+
+module Implies =
+  let bodyArgs' =
+    function
+    | And args -> List.ofArray args
+    | otherwise -> [ otherwise ]
+
+  let bodyArgs =
+    function
+    | Implies (b, _) -> Some (bodyArgs' b)
+    | _ -> None
+
+module Assert =
+  let asserts =
+    List.filter (function
+      | Assert _ -> true
+      | _ -> false)
+
+  let bodies =
+    List.choose (function
+      | Assert x -> Some x
+      | _ -> None)
+
+module Resolvent =
+  let proofTree proof =
+    let rec helper (HyperProof (_, hyperProofs, head)) =
+      match hyperProofs with
+      | [] -> head |> smtExpr2expr |> (fun x -> Node (x, []))
+      | _ -> Node (head |> smtExpr2expr, hyperProofs |> List.map helper)
+
+    helper proof
+
+  let implsWhichContains appNames cmds name =
+    let impls = impliesAsserts id cmds name |> Assert.bodies |> List.choose Expr.forallBody
+    let bodyAppNames = Implies.bodyArgs' >> App.appNames
+    let isContainsApps =
+      bodyAppNames >> List.sort >> (appNames |> List.sort |> (=))
+
+    List.filter
+      (function
+      | Implies (b, _) -> isContainsApps b
+      | _ -> false)
+      impls
+
+  let kidVals: Expr Tree.tree -> Expr list = Tree.kids >> List.map Tree.value
+  
+  let rec assertsTree asserts consts decs =
+    function
+    | Node (Bool false, ts) ->
+      let query =
+        queryAssert
+          (Assert.bodies >> List.choose Expr.forallBody >> List.head >> List.singleton)
+          asserts
+      Node (query, List.map (assertsTree asserts consts decs) ts)
+    | Node (Apply (name, _), []) ->
+      let axioms = axiomAsserts (Assert.bodies >> List.choose Expr.forallBody) asserts name
+      Node (axioms, [])
+    | Node (Apply (name, _), ts) ->
+      let from =
+        List.map Tree.value ts
+        |> List.choose (function Apply (n, _) -> Some n | _ -> None) 
+      
+      // printfn $"--------------------"
+      // printfn $"{Node (Apply (name, []), ts)}"
+      // for x in from do printfn $">> {x}"
+      // printfn $"--------------------"
+      
+      Node (implsWhichContains from asserts name, List.map (assertsTree asserts consts decs) ts)
+    | _ -> __unreachable__ ()
+
+  let treeOfExprs =
+    Tree.fmap (
+      List.choose (function
+        | Assert (ForAll (_, x)) -> Some x
+        | Assert x -> Some x
+        | _ -> None)
+    )
+
+  let uniqVarNames =
+    let rec varNames acc =
+      function
+      | Var name -> acc |> Set.add name
+      | Int _
+      | Bool _ -> acc
+      | Eq (expr1, expr2)
+      | Lt (expr1, expr2)
+      | Gt (expr1, expr2)
+      | Le (expr1, expr2)
+      | Ge (expr1, expr2)
+      | Add (expr1, expr2)
+      | Subtract (expr1, expr2)
+      | Mul (expr1, expr2)
+      | Mod (expr1, expr2)
+      | Subtract (expr1, expr2)
+      | Implies (expr1, expr2) -> varNames (varNames acc expr1) expr2
+      | ForAll (_, expr)
+      | Neg expr
+      | Not expr -> varNames acc expr
+      | App (_, exprs) -> List.fold varNames acc exprs
+      | And exprs
+      | Or exprs -> Array.fold varNames acc exprs
+      | Apply (_, exprs) -> List.fold varNames acc exprs
+      | Ite (expr1, expr2, expr3) -> List.fold varNames acc [ expr1; expr2; expr3 ]
+
+    let varNamesMany (exprs: Expr list) = List.map (varNames Set.empty) exprs
+
+    let rename i exprs =
+      Set.fold (fun (acc, i) n -> (renameVar n $"x{i}" acc, i + 1)) (exprs, i)
+
+    let renameMany idx (exprs: Expr list) (names: Set<Name> list) =
+      let exprsNames = List.zip exprs names
+
+      List.foldBack
+        (fun (expr, names) (acc, i) ->
+          let expr', i' = (rename i expr names)
+          (expr' :: acc), i')
+        exprsNames
+        ([], idx)
+
+    let rec numLine i (line: Expr list tree list) =
+      List.foldBack
+        (fun (x: Expr list tree) (acc, i) ->
+          match x with
+          | Node (v, ts) ->
+            varNamesMany v
+            |> renameMany i v
+            |> fun (e, i') ->
+                let ts', i'' = numLine i' ts
+                (Node (e, ts') :: acc, i''))
+        line
+        ([], i)
+
+    function
+    | Node (x, ts) ->
+      let x', i = varNamesMany x |> renameMany 0 x
+      Node (x', numLine i ts |> fst)
+
+
+
+
+
+
+
+
 let resolvent defConsts decFuns hyperProof asserts =
   let resolvent' =
-    proofTree hyperProof
-    |> assertsTreeNew asserts defConsts decFuns
-    // |> fun x ->
-    // printfn $"{x}"
-    // x
-    |> treeOfExprs
-    // |> fun x ->
-    // printfn $"{x}"
-    // x
-    |> uniqVarNames
-    |> foldTreeResolvent
-    // |> fun xs ->
-    // for x in xs do printfn $"folded: {x}"
-    // xs
-    |> List.toArray
+    Resolvent.proofTree hyperProof
+    |> fun x ->
+      // printfn $"{x}"
+
+      x
+      |> Resolvent.assertsTree asserts defConsts decFuns
+      |> fun x ->
+          // printfn $"{x}"
+
+          x
+          // |> Resolvent.treeOfExprs
+          // |> fun x ->
+              // printfn $"{x}"
+
+              // x
+              |> Resolvent.uniqVarNames
+              |> fun x ->
+                  // printfn $"{x}"
+
+                  x
+                  |> foldTreeResolvent
+                  |> fun xs ->
+                  // for x in xs do printfn $"folded: {expr2smtExpr x}"
+                  xs
+                  |> List.toArray
 
   let resolvent = resolvent' |> And |> Simplifier.normalize
 
@@ -1797,20 +1763,20 @@ let rec teacher
     match! Debug.Duration.go (lazy teacherRes) "HORN.LIA" with
     | SAT _ -> return "SAT"
     | UNSAT proof ->
-      
+
       let proof, dbgProof =
-        // try 
-          z3Process.z3proof
-            (toOrigCmds funDefs)
-            (toOrigCmds constDefs)
-            (toOrigCmds constrDefs)
-            (toOrigCmds funDecls)
-            (toOrigCmds asserts)
-        // with _ ->
-          // printfn "ERR-PROOF"
-          // Environment.Exit 0
-          // [], ""
-          
+        // try
+        z3Process.z3proof
+          (toOrigCmds funDefs)
+          (toOrigCmds constDefs)
+          (toOrigCmds constrDefs)
+          (toOrigCmds funDecls)
+          (toOrigCmds asserts)
+      // with _ ->
+      // printfn "ERR-PROOF"
+      // Environment.Exit 0
+      // [], ""
+
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
 
@@ -2011,6 +1977,7 @@ module HenceNormalization =
     | otherwise -> otherwise
 
 
+
 module ImpliesWalker =
   let assertBodies =
     List.choose (function
@@ -2031,11 +1998,6 @@ module ImpliesWalker =
     List.filter (function
       | Assert _ -> true
       | _ -> false)
-
-  let appNames =
-    List.choose (function
-      | App (n, _) -> Some n
-      | _ -> None)
 
   let declNames =
     List.choose (function
@@ -2070,106 +2032,119 @@ module ImpliesWalker =
     |> List.concat
     |> List.filter (not << isRecClause)
 
-  type kids<'a> = 'a tree list list 
+  type kids<'a> = 'a tree list list
+
   and tree<'a> =
     | Node of 'a tree * 'a kids
-    | Leaf of 'a 
+    | Leaf of 'a
 
   let tst =
     Node (
       Leaf "B A -> P",
-        [ [ Leaf "B"; Leaf "B'"; Leaf "B''" ]
-          [ Node (
-              Leaf "C B -> A",
-                [ [Node (Leaf "x x -> C",
-                         [[Leaf "X"; Leaf "X'"]; [Leaf "X"; Leaf "X'"]])]
-                  [Node (Leaf "y -> B", [[Leaf "y"; Leaf "y'"; Leaf "y''"]])]
-                  [Leaf "B"] ]
-              )
-            Node (Leaf "B B -> A",
-                  [ [ Leaf "B"; Leaf "B'" ]; [ Leaf "B"; Leaf "B'" ] ]) ] ])
-  
-  let uniqVars  =
+      [ [ Leaf "B"; Leaf "B'"; Leaf "B''" ]
+        [ Node (
+            Leaf "C B -> A",
+            [ [ Node (Leaf "x x -> C", [ [ Leaf "X"; Leaf "X'" ]; [ Leaf "X"; Leaf "X'" ] ]) ]
+              [ Node (Leaf "y -> B", [ [ Leaf "y"; Leaf "y'"; Leaf "y''" ] ]) ]
+              [ Leaf "B" ] ]
+          )
+          Node (Leaf "B B -> A", [ [ Leaf "B"; Leaf "B'" ]; [ Leaf "B"; Leaf "B'" ] ]) ] ]
+    )
+
+  let uniqVars =
     let rec helper i =
       function
-        | Leaf e ->
-          let e, i = List.fold (fun (e, i) var -> substituteVar var (Var $"fld-{i}-{expr2smtExpr var}") e, i + 1) (e, i) (vars e)
-          Leaf e, i
-        | Node (x, xs) ->
-          let x, i = helper i x
-          let xs, i =
-            List.fold
-              (fun (acc: _ tree list list, i) (xs: _ tree list) ->
-                let x, i =
-                  List.fold
-                    (fun (acc, i) x ->
-                      let xs, i = helper i x
-                      (acc @ [ xs ], i + 1))
-                    ([], i)
-                    xs
-                (acc @ [ x ] , i))
-              ([], i)
-              xs
-          Node (x, xs), i
+      | Leaf e ->
+        let e, i =
+          List.fold (fun (e, i) var -> substituteVar var (Var $"fld-{i}-{expr2smtExpr var}") e, i + 1) (e, i) (vars e)
+
+        Leaf e, i
+      | Node (x, xs) ->
+        let x, i = helper i x
+
+        let xs, i =
+          List.fold
+            (fun (acc: _ tree list list, i) (xs: _ tree list) ->
+              let x, i =
+                List.fold
+                  (fun (acc, i) x ->
+                    let xs, i = helper i x
+                    (acc @ [ xs ], i + 1))
+                  ([], i)
+                  xs
+
+              (acc @ [ x ], i))
+            ([], i)
+            xs
+
+        Node (x, xs), i
+
     helper 0 >> fst
-  
-  let bodyArgs =
-      function
-      | And args -> List.ofArray args  
-      | otherwise -> [ otherwise ]
-  
-  let collect cmds = 
+
+  let collect cmds =
     let queue = roots cmds |> assertBodies
+
     let rec collect' used =
       function
-        | ForAll (_, Implies (body, App (name, _))) as value | (Implies (body, App (name, _)) as value) ->
-          let appNames' = bodyArgs body |> appNames 
-          let facts = List.map (axioms cmds) appNames'
-          let impls =
-            List.map
-              (implications cmds
-               >> List.filter
-                    (function
-                    | Assert (ForAll (_, Implies (body, App (n, _))))
-                    | Assert (Implies (body, App (n, _))) ->
-                      appNames (bodyArgs body) |> List.fold (fun acc b -> acc && not <| List.contains b (n :: name :: used)) true
-                    | _ -> false))
-               appNames' 
-          Node (Leaf value, 
-            List.zip facts impls
-            |> List.map
-                 (function
-                 | [], is -> List.map (collect' (name :: used)) (assertBodies is)
-                 | fs, _ -> List.map Leaf (assertBodies fs)))
-             
+      | ForAll (_, Implies (body, App (name, _))) as value
+      | (Implies (body, App (name, _)) as value) ->
+        let appNames' = Implies.bodyArgs' body |> App.appNames
+        let facts = List.map (axioms cmds) appNames'
+
+        let impls =
+          List.map
+            (implications cmds
+             >> List.filter (function
+               | Assert (ForAll (_, Implies (body, App (n, _))))
+               | Assert (Implies (body, App (n, _))) ->
+                 App.appNames (Implies.bodyArgs' body)
+                 |> List.fold (fun acc b -> acc && not <| List.contains b (n :: name :: used)) true
+               | _ -> false))
+            appNames'
+
+        Node (
+          Leaf value,
+          List.zip facts impls
+          |> List.map (function
+            | [], is -> List.map (collect' (name :: used)) (assertBodies is)
+            | fs, _ -> List.map Leaf (assertBodies fs))
+        )
+
     List.map (collect' []) queue
-  
+
   let eqs = List.map Eq
-  
-  let andVal = function [ x ] -> x | xs -> Expr.And xs
-  let orVal = function [ x ] -> x | xs -> Expr.Or xs
-  
-  let rec bind x (kids: 'a tree list list)  =
+
+  let andVal =
+    function
+    | [ x ] -> x
+    | xs -> Expr.And xs
+
+  let orVal =
+    function
+    | [ x ] -> x
+    | xs -> Expr.Or xs
+
+  let rec bind x (kids: 'a tree list list) =
     match x with
     | Leaf (Implies (b, App _))
     | Leaf (ForAll (_, Implies (b, App _))) ->
       let restrictions = notAppRestrictions b
-      let appRestrictions = appRestrictions b 
+      let appRestrictions = appRestrictions b
+
       List.zip appRestrictions kids
       |> List.choose (function
-        | App (_, args), xs 
+        | App (_, args), xs
         | ForAll (_, App (_, args)), xs ->
           List.choose
             (function
             | Leaf (App (_, args'))
-            | Leaf (ForAll (_, App (_, args'))) ->
-              Some (List.zip args args' |> eqs )
+            | Leaf (ForAll (_, App (_, args'))) -> Some (List.zip args args' |> eqs)
             | Leaf (Implies (restriction, App (_, args')))
             | Leaf (ForAll (_, Implies (restriction, App (_, args')))) ->
-              Some (List.zip args args' |> eqs |> List.append (bodyArgs restriction) )
-            | Node (Leaf (Implies (_, App (_, args'))) , _)  
-            | Node (Leaf (ForAll (_, Implies (_, App (_, args')))) , _) as x ->
-              Some (List.zip args args' |> eqs |> List.append (formula x) )
+              Some (List.zip args args' |> eqs |> List.append (Implies.bodyArgs' restriction))
+            | Node (Leaf (Implies (_, App (_, args'))), _)
+            | Node (Leaf (ForAll (_, Implies (_, App (_, args')))), _) as x ->
+              Some (List.zip args args' |> eqs |> List.append (formula x))
             | _ -> None)
             xs
           |> List.map (List.append restrictions >> andVal)
@@ -2177,29 +2152,43 @@ module ImpliesWalker =
           |> Some
         | _ -> None)
     | _ -> []
-        
+
   and formula =
     let rec helper =
       function
-        | Node (impl, kids) ->
-          bind impl kids
-        | _ -> []
+      | Node (impl, kids) -> bind impl kids
+      | _ -> []
+
     helper
-    
+
   let recoverFacts cmds =
     let collected = collect cmds
     let collected' = List.map uniqVars (collect cmds)
-    let toRm = List.choose (function Node (Leaf x, _) -> Some (Assert x) | _ -> None) collected 
-    let heads = List.choose (function Node (Leaf (Implies (_, h)), _) | Node (Leaf (ForAll (_, Implies (_, h))), _) -> Some h | _ -> None ) collected'  
+
+    let toRm =
+      List.choose
+        (function
+        | Node (Leaf x, _) -> Some (Assert x)
+        | _ -> None)
+        collected
+
+    let heads =
+      List.choose
+        (function
+        | Node (Leaf (Implies (_, h)), _)
+        | Node (Leaf (ForAll (_, Implies (_, h))), _) -> Some h
+        | _ -> None)
+        collected'
+
     List.map (formula >> Expr.And) collected'
     |> flip List.zip heads
-    |> List.map
-         (fun (b, h) ->
-            Implies (andVal (notAppRestrictions b @ bodyArgs b) , h) |> forAll |> Assert)
-    |> fun xs ->
-      xs @ (List.filter (not << flip List.contains toRm) cmds)
-      // xs
-    
+    |> List.map (fun (b, h) ->
+      Implies (andVal (notAppRestrictions b @ Implies.bodyArgs' b), h)
+      |> forAll
+      |> Assert)
+    |> fun xs -> xs @ (List.filter (not << flip List.contains toRm) cmds)
+// xs
+
 let rec solver
   adtDecs
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -2209,16 +2198,16 @@ let rec solver
   funDecls
   (asserts: Program list)
   =
-  
+
   let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
-  
+
   // let l =  ImpliesWalker.collect cmds
   // let aa = List.map ImpliesWalker.formula (List.map ImpliesWalker.uniqVars l)
   //
   // for ll, xs in List.zip l aa do
   //   printfn $"---------------------------------"
   //   printfn $"TTT {ll}"
-  //   for x in xs do 
+  //   for x in xs do
   //     printfn $"{expr2smtExpr x}"
   //
   // for x in ImpliesWalker.recoverFacts cmds do
@@ -2226,85 +2215,87 @@ let rec solver
   //
   // printfn $" *******************************"
   //
-  
-  
+
+
   // for x in adtDecs@funDefs@constDefs@constrDefs@funDecls do printfn $"{program2originalCommand x}"
   // let min = AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
   // for x in min do printfn $"{program2originalCommand x}"
-  
+
   // Environment.Exit(0)
 
-  
-  
+
+
   let funDecls, asserts =
     let funDecls', asserts' =
       HenceNormalization.mkSingleQuery funDecls asserts
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
-    
-    // funDecls', asserts  
+
+    // funDecls', asserts
     // printfn $"---------------"
     // for x in AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts') do printfn $"{program2originalCommand x}"
     // printfn $"---------------"
-    
+
+    // funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
+
     funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
-    
-    // let a, b =
-    //   funDecls,
-    //   cmds |> ImpliesWalker.recoverFacts
-    //   |> fun xs ->
-    //       // for x in xs do printfn $"{program2originalCommand x}"
-    //       List.filter (function Assert _ -> true | _ -> false) xs
-    // let a, b =
-    //   HenceNormalization.mkSingleQuery a b
-    //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
-    //
-    //
-    // a, b
-    // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
-    // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b) 
-        
-    // a, AssertsMinimization.assertsMinimize b (queryAssert List.head b)
-    
-    // AssertsMinimization.assertsMinimize b (queryAssert List.head b)
-    
-    
-    // |> HenceNormalization.normalizeAsserts funDecls'
-    // |> HenceNormalization.substTrivialImpls funDecls'
-    // |> List.map HenceNormalization.restoreVarNames 
-    
-    
-    
-    // funDecls,
-    
-    // ImpliesWalker.recoverFacts cmds
-    // |> fun xs ->
-        // List.filter (function Assert _ -> true | _ -> false) xs
-    
-    // AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
-    // |> HenceNormalization.normalizeAsserts funDecls
-    //
-    // |> HenceNormalization.substTrivialImpls funDecls
-    //
-    // |> List.map HenceNormalization.restoreVarNames
-    // |> fun x ->
-    //     printfn "----------"
-    //     for x in x do printfn $"{program2originalCommand x}"
-    //     x
-    
-        
-    // cmds |> ImpliesWalker.recoverFacts
-    // |> fun xs ->
-        // printfn $"Adter"
-        // for x in xs do printfn $"{program2originalCommand x}"
-        // xs
-        
+
+  // let a, b =
+  //   funDecls,
+  //   cmds |> ImpliesWalker.recoverFacts
+  //   |> fun xs ->
+  //       // for x in xs do printfn $"{program2originalCommand x}"
+  //       List.filter (function Assert _ -> true | _ -> false) xs
+  // let a, b =
+  //   HenceNormalization.mkSingleQuery a b
+  //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
+  //
+  //
+  // a, b
+  // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
+  // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b)
+
+  // a, AssertsMinimization.assertsMinimize b (queryAssert List.head b)
+
+  // AssertsMinimization.assertsMinimize b (queryAssert List.head b)
+
+
+  // |> HenceNormalization.normalizeAsserts funDecls'
+  // |> HenceNormalization.substTrivialImpls funDecls'
+  // |> List.map HenceNormalization.restoreVarNames
+
+
+
+  // funDecls,
+
+  // ImpliesWalker.recoverFacts cmds
+  // |> fun xs ->
+  // List.filter (function Assert _ -> true | _ -> false) xs
+
+  // AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
+  // |> HenceNormalization.normalizeAsserts funDecls
+  //
+  // |> HenceNormalization.substTrivialImpls funDecls
+  //
+  // |> List.map HenceNormalization.restoreVarNames
+  // |> fun x ->
+  //     printfn "----------"
+  //     for x in x do printfn $"{program2originalCommand x}"
+  //     x
+
+
+  // cmds |> ImpliesWalker.recoverFacts
+  // |> fun xs ->
+  // printfn $"Adter"
+  // for x in xs do printfn $"{program2originalCommand x}"
+  // xs
+
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
   let startCmds = funDefs @ decConsts @ (notZeroFunConsts constrDefs)
 
   solverLearner.Push ()
 
-  
+
   state {
     do! Solver.setCommands startCmds
     let! setSofts = Solver.setSoftConsts constDefs
@@ -2322,8 +2313,8 @@ let rec solver
 
     match! Debug.Duration.go (lazy Solver.evalModel constDefs) "(INIT)SMT.NIA" with
     | Ok x ->
-      
-        return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+
+      return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
 
     | Error _ -> return "UNKNOWN"
   }

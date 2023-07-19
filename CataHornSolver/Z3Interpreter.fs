@@ -80,6 +80,11 @@ module AST =
       helper (x, y)
   
   module Expr =
+    let forallBody =
+      function
+        | ForAllTyped (_, x) | ForAll (_, x) -> Some x
+        | x -> Some x
+        
     let And = function
       | [ expr ] -> expr
       | exprs -> And (Array.ofList exprs)
