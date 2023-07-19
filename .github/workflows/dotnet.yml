@@ -34,6 +34,7 @@ jobs:
         id: playwright-cache
         with:
           path: cache-path
+          key: cache
       - name: Preparing
         run: |
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
