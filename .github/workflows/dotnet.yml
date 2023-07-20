@@ -29,54 +29,32 @@ jobs:
         uses: actions/setup-dotnet@v3
         with:
           dotnet-version: 6.0.x
-      - name: Cache
-        uses: actions/cache@v2
-        id: playwright-cache
-        with:
-          path: cache-path
-          key: cache
+#      - name: Cache
+#        uses: actions/cache@v2
+#        id: playwright-cache
+#        with:
+#          path: cache-path
+#          key: cache
       - name: Preparing
         run: |
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
       - name: Z3-build
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
+#        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: |
           cd ./z3
           python3 ./scripts/mk_make.py 
           cd build; make
-          cp -r z3 ~/cache-path 
-      - name: Z3-cp
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        run: |
-          mkdir ./z3/build
-          cp ~/cache-path/z3 ./z3/build  
-#          cd ./z3
-#          python3 ./scripts/mk_make.py 
-#          cd build; make
+#          cp -r z3 ~/cache-path 
+#      - name: Z3-cp
+#        if: steps.playwright-cache.outputs.cache-hit == 'true'
+#        run: |
+#          mkdir ./z3/build
+#          cp ~/cache-path/z3 ./z3/build  
       - name: Redlog
         run: |
           sudo apt install gdebi
           sudo gdebi --n ./d/reduce.deb
-
-#          cd ./z3
-#          python3 ./scripts/mk_make.py 
-#          cd build; make
-        
-#      - name: Cache
-        
-
-      #      - name: Move-Z3
-      #        run: |
-      #          cp z3/build/z3 ${{ runner.temp }}/z3
-      #      - name: Cache-Z3
-      #        uses: actions/cache@v2
-      #        with:
-      #          path: ${{ runner.temp }}/z3
-      #          key: ${{ runner.os }}-z3
-      #      - name: Use cached file
-      #        run: |
-      #          cp ${{ runner.temp }}/z3 z3/build/
       - name: Build
         run: |
           dotnet restore ./ADTsolver.sln
