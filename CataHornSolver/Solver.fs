@@ -276,7 +276,7 @@ let collectApps (kids: Expr list list) =
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
-      printfn $"{k}"
+      // printfn $"{k}"
 
       (map |> Map.find k |> List.head,
        map
@@ -1285,12 +1285,12 @@ let resolvent defConsts decFuns hyperProof asserts =
     Resolvent.proofTree hyperProof
     |> rmQueryChain
     |> fun x ->
-      printfn $"{x}"
+      // printfn $"{x}"
 
       x
       |> Resolvent.assertsTree asserts defConsts decFuns
       |> fun x ->
-          printfn $"{x}"
+          // printfn $"{x}"
 
           x
           // |> Resolvent.treeOfExprs
@@ -2001,32 +2001,6 @@ let rec solver
   funDecls
   (asserts: Program list)
   =
-
-  let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
-
-  // let l =  ImpliesWalker.collect cmds
-  // let aa = List.map ImpliesWalker.formula (List.map ImpliesWalker.uniqVars l)
-  //
-  // for ll, xs in List.zip l aa do
-  //   printfn $"---------------------------------"
-  //   printfn $"TTT {ll}"
-  //   for x in xs do
-  //     printfn $"{expr2smtExpr x}"
-  //
-  // for x in ImpliesWalker.recoverFacts cmds do
-  //   printfn $"{x}"
-  //
-  // printfn $" *******************************"
-  //
-
-
-  // for x in adtDecs@funDefs@constDefs@constrDefs@funDecls do printfn $"{program2originalCommand x}"
-  // let min = AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
-  // for x in min do printfn $"{program2originalCommand x}"
-
-  // Environment.Exit(0)
-
-
 
   let funDecls, asserts =
     let funDecls', asserts' =
