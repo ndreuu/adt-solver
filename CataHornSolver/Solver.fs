@@ -276,7 +276,7 @@ let collectApps (kids: Expr list list) =
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
-      // printfn $"{k}"
+      printfn $"{k}"
 
       (map |> Map.find k |> List.head,
        map
@@ -1275,18 +1275,22 @@ module Resolvent =
 
 
 
-
+let rmQueryChain =
+  function
+    | Node (Bool false, [Node (Apply ("query!0", []), tl)]) -> Node (Bool false, tl)
+    | otherwise -> otherwise 
 
 let resolvent defConsts decFuns hyperProof asserts =
   let resolvent' =
     Resolvent.proofTree hyperProof
+    |> rmQueryChain
     |> fun x ->
-      // printfn $"{x}"
+      printfn $"{x}"
 
       x
       |> Resolvent.assertsTree asserts defConsts decFuns
       |> fun x ->
-          // printfn $"{x}"
+          printfn $"{x}"
 
           x
           // |> Resolvent.treeOfExprs
@@ -1299,6 +1303,8 @@ let resolvent defConsts decFuns hyperProof asserts =
                   // printfn $"{x}"
 
                   x
+                  // |>
+                  // moveTree
                   |> foldTreeResolvent
                   |> fun xs ->
                   // for x in xs do printfn $"folded: {expr2smtExpr x}"
@@ -1475,43 +1481,11 @@ let rec learner
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
-      // let before =
-      // resolvent constDefs funDecls hyperProof asserts
-
       let resolvent =
         resolvent constDefs funDecls hyperProof asserts |> Simplifier.simplify
 
-
-      // printfn $"after {expr2smtExpr (forAll resolvent) }\n-------------------"
-
-      // let aaaa, bbbb = resolvent |> Simplifier.cutLayer
-      // printfn $">>>>>>>{aaaa.Length}"
-      // do for x in aaaa do printfn $"{x}"
-      // let ee = Simplifier.equals aaaa
-      // let a = Simplifier.transitiveEqs ee
-      // do for x in a do printfn $"! {x} "
-      // printfn $"OIOOUOUO {expr2smtExpr <| Simplifier.simplify resolvent}"
-      // for b in b do
-      // printfn $"---------------"
-      // for v in Set.toList b do printfn $"{v}"
-
-      // Environment.Exit(1)
-
-      // let! (_, BBBBBBb), _ =
-      // Debug.Duration.go
-      //   (lazy state.Return (feasible adtDecs adtConstrs funDefs before))
-      //   "Z3.ADT(LIA)BBBB"
-
-      // do! Debug.Print.smtADTLIABBB
-      //       (let content = List.map (program2originalCommand >> toString) BBBBBBb |> join "\n" in
-      //         $"(set-option :produce-proofs true)\n{content}\n(check-sat)")
-
-
       let! (feasible, smtADTLIAcContent), _ =
         Debug.Duration.go (lazy state.Return (feasible adtDecs adtConstrs funDefs resolvent)) "Z3.ADT(LIA)"
-
-
-
 
       do!
         Debug.Print.smtADTLIA (
@@ -1520,9 +1494,6 @@ let rec learner
 
           $"(set-option :produce-proofs true)\n{content}\n(check-sat)"
         )
-
-
-
 
       match feasible with
       | Ok _ -> return Error "UNSAT"
@@ -1554,173 +1525,11 @@ let rec learner
         | Ok defConsts' -> return Ok (defConsts', constrDefs, pushed')
         | Error e -> return Error e
 
-    | a ->
+    | _ ->
       printfn $"ERR-PROOF_FORMAT"
-      Environment.Exit (0)
+      Environment.Exit 0
       return Error $"PROOF_FORMAT"
   }
-
-let tst () =
-  let envTeacher = emptyEnv [| ("proof", "true") |]
-  let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
-  teacherSolver.Set ("fp.spacer.global", true)
-  teacherSolver.Set ("fp.xform.inline_eager", false)
-  teacherSolver.Set ("fp.xform.inline_linear", false)
-
-  let cmds =
-    [ Def ("Z_2017", [], Integer, Int 0L)
-      Def ("S_457", [ "x" ], Integer, Add (Var "x", Int 1L))
-      Def ("Z_2013", [], Integer, Int 0L)
-      Def ("S_456", [ "x" ], Integer, Add (Var "x", Int 1L))
-      Def ("c_5", [], Integer, Int 1L)
-      Def ("c_4", [], Integer, Int 0L)
-      Def ("c_3", [], Integer, Int 0L)
-      Def ("c_2", [], Integer, Int 0L)
-      Def ("c_1", [], Integer, Int 0L)
-      Def ("c_0", [], Integer, Int 1L)
-      Def ("false_334", [], Integer, Apply ("c_0", []))
-      Def ("true_334", [], Integer, Apply ("c_1", []))
-      Def ("nil_268", [], Integer, Apply ("c_2", []))
-      Def (
-        "cons_238",
-        [ "head_476"; "tail_476" ],
-        Integer,
-        Add (Add (Apply ("c_3", []), Mul (Apply ("c_4", []), Var "head_476")), Mul (Apply ("c_5", []), Var "tail_476"))
-      )
-      Decl ("unS_669", 2)
-      Decl ("isZ_424", 1)
-      Decl ("isS_424", 1)
-      Decl ("add_360", 3)
-      Decl ("minus_355", 3)
-      Decl ("le_334", 2)
-      Decl ("ge_334", 2)
-      Decl ("lt_354", 2)
-      Decl ("gt_337", 2)
-      Decl ("mult_334", 3)
-      Decl ("div_334", 3)
-      Decl ("mod_336", 3)
-      Decl ("diseqBool_154", 2)
-      Decl ("isfalse_154", 1)
-      Decl ("istrue_154", 1)
-      Decl ("and_334", 3)
-      Decl ("or_341", 3)
-      Decl ("hence_334", 3)
-      Decl ("not_339", 2)
-      Decl ("diseqlist_238", 2)
-      Decl ("head_477", 2)
-      Decl ("tail_477", 2)
-      Decl ("isnil_268", 1)
-      Decl ("iscons_238", 1)
-      Decl ("projS_179", 2)
-      Decl ("isZ_423", 1)
-      Decl ("isS_423", 1)
-      Decl ("length_47", 2)
-      Decl ("even_3", 2)
-      Decl ("x_54976", 3)
-      Decl ("x_54978", 3)
-      Assert (
-        ForAll (
-          [| "x_54980"
-             "x_54994"
-             "x_54995"
-             "x_54996"
-             "x_54997"
-             "x_54998"
-             "x_54999"
-             "x_55000"
-             "y_2253" |],
-          Implies (
-            And
-              [| App ("diseqBool_154", [ Var "x_54996"; Var "x_55000" ])
-                 App ("x_54978", [ Var "x_54994"; Var "x_54980"; Var "y_2253" ])
-                 App ("length_47", [ Var "x_54995"; Var "x_54994" ])
-                 App ("even_3", [ Var "x_54996"; Var "x_54995" ])
-                 App ("length_47", [ Var "x_54997"; Var "y_2253" ])
-                 App ("length_47", [ Var "x_54998"; Var "x_54980" ])
-                 App ("x_54976", [ Var "x_54999"; Var "x_54997"; Var "x_54998" ])
-                 App ("even_3", [ Var "x_55000"; Var "x_54999" ]) |],
-            Bool false
-          )
-        )
-      )
-      Assert (ForAll ([| "x_54990" |], App ("x_54976", [ Var "x_54990"; Apply ("Z_2013", []); Var "x_54990" ])))
-      Assert (ForAll ([| "x_54993" |], App ("x_54978", [ Var "x_54993"; Apply ("nil_268", []); Var "x_54993" ])))
-      Assert (
-        ForAll (
-          [| "x_54984"; "z_2014" |],
-          Implies (
-            App ("even_3", [ Var "x_54984"; Var "z_2014" ]),
-            App ("even_3", [ Var "x_54984"; Apply ("S_456", [ Apply ("S_456", [ Var "z_2014" ]) ]) ])
-          )
-        )
-      )
-      Assert (
-        ForAll (
-          [| "x_54982"; "xs_645"; "y_2249" |],
-          Implies (
-            App ("length_47", [ Var "x_54982"; Var "xs_645" ]),
-            App (
-              "length_47",
-              [ Apply ("S_456", [ Var "x_54982" ])
-                Apply ("cons_238", [ Var "y_2249"; Var "xs_645" ]) ]
-            )
-          )
-        )
-      )
-      Assert (
-        ForAll (
-          [| "x_54989"; "y_2251"; "z_2015" |],
-          Implies (
-            App ("x_54976", [ Var "x_54989"; Var "z_2015"; Var "y_2251" ]),
-            App (
-              "x_54976",
-              [ Apply ("S_456", [ Var "x_54989" ])
-                Apply ("S_456", [ Var "z_2015" ])
-                Var "y_2251" ]
-            )
-          )
-        )
-      )
-      Assert (
-        ForAll (
-          [| "x_54992"; "xs_646"; "y_2252"; "z_2016" |],
-          Implies (
-            App ("x_54978", [ Var "x_54992"; Var "xs_646"; Var "y_2252" ]),
-            App (
-              "x_54978",
-              [ Apply ("cons_238", [ Var "z_2016"; Var "x_54992" ])
-                Apply ("cons_238", [ Var "z_2016"; Var "xs_646" ])
-                Var "y_2252" ]
-            )
-          )
-        )
-      )
-      Assert (App ("diseqBool_154", [ Apply ("false_334", []); Apply ("true_334", []) ]))
-      Assert (App ("diseqBool_154", [ Apply ("true_334", []); Apply ("false_334", []) ]))
-      Assert (App ("even_3", [ Apply ("false_334", []); Apply ("S_456", [ Apply ("Z_2013", []) ]) ]))
-      Assert (App ("even_3", [ Apply ("true_334", []); Apply ("Z_2013", []) ]))
-      Assert (App ("length_47", [ Apply ("Z_2013", []); Apply ("nil_268", []) ])) ]
-
-  let unsat env (solver: Solver) =
-    let p = Parser.Parser false
-
-    for d in env.ctxDecfuns.Values do
-      p.ParseLine <| d.ToString () |> ignore
-
-    p.ParseLine (proof (fun _ -> ()) (solver.Proof.ToString ()))
-
-  z3solve
-    { env = envTeacher
-      solver = teacherSolver
-      unsat = unsat
-      // unsat = fun env solver -> ()
-      cmds = cmds
-      sat = fun _ _ -> () }
-  |> function
-    | SAT _ -> failwith "SAT?"
-    | UNSAT proof -> printfn $"PROOF:\n{proof}"
-
-  ()
 
 let rec teacher
   adtDecs
@@ -1762,20 +1571,14 @@ let rec teacher
 
     match! Debug.Duration.go (lazy teacherRes) "HORN.LIA" with
     | SAT _ -> return "SAT"
-    | UNSAT proof ->
-
+    | UNSAT _ ->
       let proof, dbgProof =
-        // try
         z3Process.z3proof
           (toOrigCmds funDefs)
           (toOrigCmds constDefs)
           (toOrigCmds constrDefs)
           (toOrigCmds funDecls)
           (toOrigCmds asserts)
-      // with _ ->
-      // printfn "ERR-PROOF"
-      // Environment.Exit 0
-      // [], ""
 
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
@@ -2230,64 +2033,7 @@ let rec solver
       HenceNormalization.mkSingleQuery funDecls asserts
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
 
-    // funDecls', asserts
-    // printfn $"---------------"
-    // for x in AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts') do printfn $"{program2originalCommand x}"
-    // printfn $"---------------"
-
-    // funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
-
     funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
-
-  // let a, b =
-  //   funDecls,
-  //   cmds |> ImpliesWalker.recoverFacts
-  //   |> fun xs ->
-  //       // for x in xs do printfn $"{program2originalCommand x}"
-  //       List.filter (function Assert _ -> true | _ -> false) xs
-  // let a, b =
-  //   HenceNormalization.mkSingleQuery a b
-  //   |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
-  //
-  //
-  // a, b
-  // let a, b = HenceNormalization.mkSingleQuery a asserts |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames b
-  // a, AssertsMinimization.assertsMinimize a (queryAssert List.head b)
-
-  // a, AssertsMinimization.assertsMinimize b (queryAssert List.head b)
-
-  // AssertsMinimization.assertsMinimize b (queryAssert List.head b)
-
-
-  // |> HenceNormalization.normalizeAsserts funDecls'
-  // |> HenceNormalization.substTrivialImpls funDecls'
-  // |> List.map HenceNormalization.restoreVarNames
-
-
-
-  // funDecls,
-
-  // ImpliesWalker.recoverFacts cmds
-  // |> fun xs ->
-  // List.filter (function Assert _ -> true | _ -> false) xs
-
-  // AssertsMinimization.assertsMinimize asserts (queryAssert List.head asserts)
-  // |> HenceNormalization.normalizeAsserts funDecls
-  //
-  // |> HenceNormalization.substTrivialImpls funDecls
-  //
-  // |> List.map HenceNormalization.restoreVarNames
-  // |> fun x ->
-  //     printfn "----------"
-  //     for x in x do printfn $"{program2originalCommand x}"
-  //     x
-
-
-  // cmds |> ImpliesWalker.recoverFacts
-  // |> fun xs ->
-  // printfn $"Adter"
-  // for x in xs do printfn $"{program2originalCommand x}"
-  // xs
 
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
@@ -2357,9 +2103,6 @@ let approximation file =
     |> List.map Option.get
     |> List.concat
     |> Map
-
-
-
 
   let defConstants =
     let rec helper =
@@ -2433,11 +2176,9 @@ let run file dbg timeLimit =
       approximation file
     with _ ->
       printfn "ERR APPROXIMATION"
-      Environment.Exit (0)
+      Environment.Exit 0
       (Map.empty, [], [], [], [], [])
-
   let funDecls = List.map origCommand2program declFuns
-
   let adtDecs =
     adtConstrs
     |> Map.fold
@@ -2451,35 +2192,19 @@ let run file dbg timeLimit =
     |> List.sortBy (fun (_, (i, _)) -> i)
     |> List.map (fun (x, (_, y)) -> (x, y))
     |> List.map DeclDataType
-
-
   let adtConstrs = adtConstrs |> Map.map (fun k (n, _, ts) -> (n, ts))
-
   let asserts' = List.map origCommand2program asserts
-
   let appNames =
     funDecls
     |> List.choose (function
       | Decl (n, _) -> Some n
       | _ -> None)
-
   let asserts'' =
     asserts'
     |> List.choose (function
       | Assert x -> Some (Assert (apply2app appNames x))
       | _ -> None)
-
   let toPrograms = List.map origCommand2program
+  let v, _ = solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
 
-  let go () =
-    solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
-
-  // let v, st, curDuration =
-  // match runWithTimeout 60000 go with
-  // | Some (v, _) -> v, durations, ""
-  // | None -> "TIMEOUT", durations, $"\t{curDuration}\n"
-  //
-  // (v, st, curDuration)
-
-  let v, _ = go ()
   v, durations, ""
