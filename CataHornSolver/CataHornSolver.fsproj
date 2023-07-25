@@ -360,7 +360,6 @@
         <Content Include="eldarica.csv" />
         <Content Include="spacer.csv" />
         <Content Include="compare.py" />
-        <Content Include="output.csv" />
     </ItemGroup>
 
     <ItemGroup>
