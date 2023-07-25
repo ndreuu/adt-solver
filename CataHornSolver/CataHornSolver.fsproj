@@ -10,10 +10,7 @@
         <PlatformTarget>x64</PlatformTarget>
         <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
     </PropertyGroup>
-
-    <PropertyGroup>
-        <ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>None</ResolveAssemblyWarnOrErrorOnTargetArchitectureMismatch>
-    </PropertyGroup>
+    
     
     <ItemGroup>
         <Compile Include="Process.fs" />
