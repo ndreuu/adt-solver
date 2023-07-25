@@ -3,6 +3,9 @@ module ProofBased.Solver
 open System
 open System.Diagnostics
 open CataHornSolver
+open CataHornSolver.z3Process
+open CataHornSolver.z3Process.Instances
+open CataHornSolver.z3Process.Interpreter
 open Microsoft.FSharp.Core
 open Microsoft.VisualStudio.TestPlatform.TestHost
 open Microsoft.Z3
@@ -28,19 +31,25 @@ open State
 let mutable durations: (string * int64) list = []
 let mutable curDuration = ""
 
+let kek cmds =
+  let content = List.map ( toString) cmds |> join "\n" 
+  File.AppendAllText ($"/home/andrew/Downloads/jjj/shiza.smt2", $"\n\n{content}")
+
 let state = StateBuilder ()
 
 type statement =
   { iteration: int
     env: Env
     solver: Solver
-    stopwatch: Stopwatch }
+    stopwatch: Stopwatch
+    context: z3Process.context }
 
   static member Init env solver =
     { iteration = 0
       env = env
       solver = solver
-      stopwatch = Stopwatch () }
+      stopwatch = Stopwatch ()
+      context = context.Init () }
 
 let emptyEnv argss =
   { ctxSlvr = new Context (argss |> dict |> Dictionary)
@@ -212,15 +221,13 @@ let forAll expr =
 let defFunBody args i =
   List.zip args [ i + 1 .. i + 1 + args.Length - 1 ]
   |> List.map (fun (n, i) -> Mul (Apply ($"c_{i}", []), Var n))
-  |> List.fold (fun (acc, i) arg -> (Add (acc, arg), i + 1)) ((Apply ($"c_{i}", [])), i)
+  |> List.fold (fun (acc, i) arg -> (Add (acc, arg), i + 1)) (Apply ($"c_{i}", []), i)
 
 let branch i =
   function
   | Def (n, args, _, body) when args.Length > 0 ->
     let cond, i' = defFunBody args i |> fun (e, i) -> (Eq (e, Int 0), i)
-
     let elseBody, _ = defFunBody args (i' + 1)
-
     Def (n, args, Integer, Ite (cond, body, elseBody))
   | otherwise -> otherwise
 
@@ -303,25 +310,33 @@ let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
     |> Expr.And
   with _ ->
     printfn "ERR NO_SIMPLEST"
-    Environment.Exit (0)
+    Environment.Exit 0
 
     Expr.Int 1
 
 let argsBinds appsOfParents kids =
   appsOfParents |> List.map (fun parent -> singleArgsBinds parent kids) |> Expr.Or
 
+module Implies =
+  let bodyArgs' =
+    function
+    | And args -> List.ofArray args
+    | otherwise -> [ otherwise ]
+
+  let bodyArgs =
+    function
+    | Implies (b, _) -> Some (bodyArgs' b)
+    | _ -> None
+    
 let rec foldTreeResolvent =
   function
   | Node (xs, []) ->
-    // for x in xs  do printfn $"--- {x}"
     List.map notAppRestrictions xs |> List.concat
-  | Node (xs, ts) as cur ->
-    // printfn $"CUR \n {cur}"
+  | Node (xs, ts) ->
     let kids = List.map Tree.value ts
     let notAppRestrictions = List.collect notAppRestrictions xs |> Expr.And
-    // printfn $"notAppRestrictions {expr2smtExpr notAppRestrictions}"
     let appRestrictions = List.map appRestrictions xs
-
+    
     argsBinds appRestrictions kids
     :: notAppRestrictions
     :: List.collect foldTreeResolvent ts
@@ -903,11 +918,22 @@ module Solver =
     State (fun st ->
       (), let env, solver, _ = SoftSolver.setCommands st.env st.solver cmds in { st with env = env; solver = solver })
 
+  let setCommandsKEK (cmds: Program list) =
+    State (fun st ->
+      (),
+      { st with context = { st.context with cmds = st.context.cmds @ cmds } })
+  
   let setSoftConsts cmds =
     State (fun st ->
       let env, solver, cmds' = SoftSolver.setSoftAsserts st.env st.solver cmds
       cmds', { st with env = env; solver = solver })
 
+  let setSoftConstsKEK cmds =
+      State (fun st ->
+        let cmds' = SoftSolver.setSoftAssertsKEK cmds
+        cmds', { st with context = { st.context with softConsts = cmds' } } )
+  
+  
   //deprecated should use setC...; solve;
   let evalModel cmds =
     State (fun st ->
@@ -921,6 +947,20 @@ module Solver =
       | Ok _ -> { st with env = env; solver = solver }
       | Error _ -> st)
 
+
+  
+  let solveFeasible =
+    State (fun st ->
+      match Interpreter.solve instance.Checker st.context.cmds [] with
+      | Interpreter.SAT _ -> Ok (), st
+      | _ ->  Error (), st)
+  
+  let solveLearner defConsts =
+    State (fun st ->
+      match Interpreter.solve instance.Learner st.context.cmds defConsts with
+      | Interpreter.SAT (Some xs) -> Ok xs, st
+      | Interpreter.UNSAT (Some _) ->  Error "UNKNEONWOWN", st)
+  
   let solve =
     State (fun st ->
       let m, env, solver =
@@ -932,123 +972,6 @@ module Solver =
       match m with
       | Ok _ -> { st with env = env; solver = solver }
       | Error _ -> st)
-
-
-let sykablyat () =
-  let cmds =
-    [ DeclDataType ("Bin_1", [ ("ZeroAnd_1", [ ADT "Bin_1" ]); ("One_1", []); ("OneAnd_1", [ ADT "Bin_1" ]) ])
-      DeclConst ("x0", ADT "Bin_1")
-      DeclConst ("x1", ADT "Bin_1")
-      DeclConst ("x12", ADT "Bin_1")
-      DeclConst ("x13", ADT "Bin_1")
-      DeclConst ("x14", ADT "Bin_1")
-      DeclConst ("x15", ADT "Bin_1")
-      DeclConst ("x16", ADT "Bin_1")
-      DeclConst ("x17", ADT "Bin_1")
-      DeclConst ("x18", ADT "Bin_1")
-      DeclConst ("x19", ADT "Bin_1")
-      DeclConst ("x2", ADT "Bin_1")
-      DeclConst ("x3", ADT "Bin_1")
-      DeclConst ("x34", ADT "Bin_1")
-      DeclConst ("x35", ADT "Bin_1")
-      DeclConst ("x36", ADT "Bin_1")
-      DeclConst ("x37", ADT "Bin_1")
-      DeclConst ("x38", ADT "Bin_1")
-      DeclConst ("x39", ADT "Bin_1")
-      DeclConst ("x40", ADT "Bin_1")
-      DeclConst ("x41", ADT "Bin_1")
-      DeclConst ("x42", ADT "Bin_1")
-      DeclConst ("x43", ADT "Bin_1")
-      DeclConst ("x44", ADT "Bin_1")
-      DeclConst ("x45", ADT "Bin_1")
-      DeclConst ("x46", ADT "Bin_1")
-      DeclConst ("x47", ADT "Bin_1")
-      Assert (
-        And
-          [| Or
-               [| And
-                    [| Eq (Var "x1", App ("One_1", []))
-                       Eq (Var "x2", App ("ZeroAnd_1", [ Var "x19" ])) |]
-                  And
-                    [| Eq (Var "x1", App ("One_1", []))
-                       Eq (Var "x2", App ("OneAnd_1", [ Var "x18" ])) |]
-                  And
-                    [| Eq (Var "x1", App ("ZeroAnd_1", [ Var "x17" ]))
-                       Eq (Var "x2", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("OneAnd_1", [ Var "x16" ]))
-                       Eq (Var "x2", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("ZeroAnd_1", [ Var "x14" ]))
-                       Eq (Var "x2", App ("OneAnd_1", [ Var "x15" ])) |]
-                  And
-                    [| Eq (Var "x1", App ("OneAnd_1", [ Var "x12" ]))
-                       Eq (Var "x2", App ("ZeroAnd_1", [ Var "x13" ])) |] |]
-             Or
-               [| And
-                    [| Eq (Var "x1", App ("OneAnd_1", [ Var "x40" ]))
-                       Eq (Var "x0", App ("One_1", []))
-                       Eq (Var "x3", App ("ZeroAnd_1", [ Var "x40" ])) |]
-                  And
-                    [| Eq (Var "x1", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x0", App ("One_1", []))
-                       Eq (Var "x3", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("OneAnd_1", [ Var "x38" ]))
-                       Eq (Var "x0", App ("ZeroAnd_1", [ Var "x39" ]))
-                       Eq (Var "x3", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x0", App ("ZeroAnd_1", [ Var "x37" ]))
-                       Eq (Var "x3", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("OneAnd_1", [ Var "x36" ]))
-                       Eq (Var "x0", App ("OneAnd_1", [ Var "x35" ]))
-                       Eq (Var "x3", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x1", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x0", App ("OneAnd_1", [ Var "x34" ]))
-                       Eq (Var "x3", App ("One_1", [])) |] |]
-             Or
-               [| And
-                    [| Eq (Var "x2", App ("OneAnd_1", [ Var "x47" ]))
-                       Eq (Var "x3", App ("One_1", []))
-                       Eq (Var "x0", App ("ZeroAnd_1", [ Var "x47" ])) |]
-                  And
-                    [| Eq (Var "x2", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x3", App ("One_1", []))
-                       Eq (Var "x0", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x2", App ("OneAnd_1", [ Var "x45" ]))
-                       Eq (Var "x3", App ("ZeroAnd_1", [ Var "x46" ]))
-                       Eq (Var "x0", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x2", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x3", App ("ZeroAnd_1", [ Var "x44" ]))
-                       Eq (Var "x0", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x2", App ("OneAnd_1", [ Var "x43" ]))
-                       Eq (Var "x3", App ("OneAnd_1", [ Var "x42" ]))
-                       Eq (Var "x0", App ("One_1", [])) |]
-                  And
-                    [| Eq (Var "x2", App ("ZeroAnd_1", [ App ("One_1", []) ]))
-                       Eq (Var "x3", App ("OneAnd_1", [ Var "x41" ]))
-                       Eq (Var "x0", App ("One_1", [])) |] |] |]
-      ) ]
-
-  let env = emptyEnv [||]
-  let solver = env.ctxSlvr.MkSolver "HORN"
-  solver.Push ()
-
-  let env =
-    z3solve
-      { env = env
-        solver = solver
-        unsat = (fun _ _ -> ())
-        sat = (fun _ _ -> ())
-        cmds = cmds }
-
-  ()
 
 
 module Debug =
@@ -1105,25 +1028,27 @@ module Debug =
     let smtADTLIA = write "smt-ADT-LIA.smt2"
     let smtADTLIABBB = write "smt-ADT-LIABBBBBBBBBB.smt2"
     let proof = write "proof.smt2"
-
-
+  
+  
 let feasible adtDecs adtConstrs funDefs resolvent =
   let env = emptyEnv [||]
   let solver = env.ctxSlvr.MkSolver "ALL"
   solver.Push ()
-
+  
   state {
     let qNames =
       vars resolvent
       |> List.choose (function
         | Var n -> Some n
         | _ -> None)
-
+    
     let expr, vars = TypeClarification.clarify adtConstrs resolvent qNames
-
+    
     let q = unsatQuery funDefs adtDecs expr (Set.toList vars)
-    do! Solver.setCommands q
-    let! r = Solver.solve
+    // do! Solver.setCommands q
+    do! Solver.setCommandsKEK q
+    // let! r = Solver.solve
+    let! r = Solver.solveFeasible
     return (r, q)
   }
   |> run (statement.Init env solver)
@@ -1133,17 +1058,6 @@ module App =
     List.choose (function
       | App (n, _) -> Some n
       | _ -> None)
-
-module Implies =
-  let bodyArgs' =
-    function
-    | And args -> List.ofArray args
-    | otherwise -> [ otherwise ]
-
-  let bodyArgs =
-    function
-    | Implies (b, _) -> Some (bodyArgs' b)
-    | _ -> None
 
 module Assert =
   let asserts =
@@ -1162,7 +1076,7 @@ module Resolvent =
       match hyperProofs with
       | [] -> head |> smtExpr2expr |> (fun x -> Node (x, []))
       | _ -> Node (head |> smtExpr2expr, hyperProofs |> List.map helper)
-
+    
     helper proof
 
   let implsWhichContains appNames cmds name =
@@ -1170,13 +1084,13 @@ module Resolvent =
     let bodyAppNames = Implies.bodyArgs' >> App.appNames
     let isContainsApps =
       bodyAppNames >> List.sort >> (appNames |> List.sort |> (=))
-
+    
     List.filter
       (function
       | Implies (b, _) -> isContainsApps b
       | _ -> false)
       impls
-
+    
   let kidVals: Expr Tree.tree -> Expr list = Tree.kids >> List.map Tree.value
   
   let rec assertsTree asserts consts decs =
@@ -1270,20 +1184,26 @@ module Resolvent =
       let x', i = varNamesMany x |> renameMany 0 x
       Node (x', numLine i ts |> fst)
 
+  let rmQueryChain =
+    function
+      | Node (Bool false, [Node (Apply ("query!0", []), tl)]) -> Node (Bool false, tl)
+      | otherwise -> otherwise 
+
+  let resolvent defConsts decFuns hyperProof  asserts = 
+    proofTree hyperProof
+    |> rmQueryChain
+    |> assertsTree asserts defConsts decFuns
+    |> uniqVarNames
+    |> foldTreeResolvent
+    |> Set
+  
 
 
-
-
-
-let rmQueryChain =
-  function
-    | Node (Bool false, [Node (Apply ("query!0", []), tl)]) -> Node (Bool false, tl)
-    | otherwise -> otherwise 
 
 let resolvent defConsts decFuns hyperProof asserts =
   let resolvent' =
     Resolvent.proofTree hyperProof
-    |> rmQueryChain
+    |> Resolvent.rmQueryChain
     |> fun x ->
       // printfn $"{x}"
 
@@ -1303,8 +1223,6 @@ let resolvent defConsts decFuns hyperProof asserts =
                   // printfn $"{x}"
 
                   x
-                  // |>
-                  // moveTree
                   |> foldTreeResolvent
                   |> fun xs ->
                   // for x in xs do printfn $"folded: {expr2smtExpr x}"
@@ -1508,9 +1426,12 @@ let rec learner
         do! Debug.Print.redlogOutput $"{program2originalCommand redlogResult}"
 
         let setCmds = [ redlogResult; banOldValues constDefs ]
+        // let setCmds = [ redlogResult ]
 
-        do! Solver.setCommands setCmds
-
+        // printfn "A"
+        do kek <| setCmds
+        do! Solver.setCommandsKEK setCmds
+        
         do!
           Debug.Print.smtInput (
             let content =
@@ -1521,7 +1442,7 @@ let rec learner
 
         let pushed' = pushed @ setCmds
 
-        match! Debug.Duration.go (lazy Solver.solve) "Z3.NIA" with
+        match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
         | Ok defConsts' -> return Ok (defConsts', constrDefs, pushed')
         | Error e -> return Error e
 
@@ -1530,6 +1451,62 @@ let rec learner
       Environment.Exit 0
       return Error $"PROOF_FORMAT"
   }
+
+
+
+let tst () =
+  let p = Parser.Parser(false)
+  // let cmds =
+  //   p.ParseFile "/home/andrew/Downloads/jjj/smt-input.smt2"
+  //   |> List.filter (function originalCommand.Assert _ -> true | _ -> false)
+  //   |> List.map aboba
+  //   |> function [x1; x2; x3; x4 ;x5 ;x6] as l ->
+  //     printfn $"{x1}"
+  //     printfn $"{x2}"
+  //     printfn $"{x3}"
+  //     printfn $"{x4}"
+  //     printfn $"{x5}"
+  //     l
+  // let env = emptyEnv [| ("model", "true") |]
+  // let solver = env.ctxSlvr.MkSolver "NIA"
+  // state {
+  //   do! Solver.setCommands
+  //         ([ DeclIntConst "c_3"; DeclIntConst "c_0"
+  //            DeclIntConst "c_1"; DeclIntConst "c_2"
+  //            DeclConst ("soft_c_0", Boolean); DeclConst ("soft_c_1", Boolean)
+  //            DeclConst ("soft_c_2", Boolean); DeclConst ("soft_c_3", Boolean)  ] @ cmds)
+  //   let! _ =
+  //     Solver.setSoftConsts
+  //       [ Def ("c_2", [], Integer, Int 0); Def ("c_3", [], Integer, Int 0)
+  //         Def ("c_0", [], Integer, Int 0); Def ("c_1", [], Integer, Int 0) ]
+  //   return! Solver.evalModel []
+  // } |> run (statement.Init env solver)
+  // |> fst
+  // |> printfn "%O"
+  
+  let env = emptyEnv [| ("model", "true") |]
+  let solver = env.ctxSlvr.MkSolver "ALL"
+  state {
+    let cmds = 
+          ([ DeclConst ("c0", Integer)
+             DeclConst ("c1", Integer)
+             DeclConst ("c2", Integer)
+             DeclConst ("c3", Integer)
+             // Assert (Not (Implies (And ([|Eq (Int 1, Var "soft_c_3") ; Var "soft_c_0"|]), Var "soft_c_1")))
+             Assert
+              (ForAll ([|"x"; "y" |],
+                       Implies (
+                         Implies (And [| Gt (Var "x", Int 0); Lt (Var "y", Int 0) |], Bool true),
+                            ForAll ([||], Apply ("distinct", [Var "x"; Var "y"])) )))
+               // (Implies (Eq (Int 0, Var "c0"), (Implies (Eq (Int 2, Var "c2"), Eq (Int 2, Var "c1")) )  ))
+         ])
+    return! Solver.evalModel cmds 
+  } |> run (statement.Init env solver)
+  |> fst
+  |> function
+    | Ok ok ->
+      for x in ok do printfn "A %O" x
+    | Error e -> printfn "%O" e
 
 let rec teacher
   adtDecs
@@ -1549,36 +1526,56 @@ let rec teacher
   teacherSolver.Set ("fp.xform.inline_eager", false)
   teacherSolver.Set ("fp.xform.inline_linear", false)
 
+  // let teacherRes =
+  //   state {
+  //     return
+  //       z3solve
+  //         { env = envTeacher
+  //           solver = teacherSolver
+  //           unsat = fun _ _ -> ()
+  //           cmds = cmds
+  //           sat = fun _ _ -> () }
+  //   }
+
   let teacherRes =
     state {
       return
-        z3solve
-          { env = envTeacher
-            solver = teacherSolver
-            unsat = fun _ _ -> ()
-            cmds = cmds
-            sat = fun _ _ -> () }
+        Interpreter.solve
+          Instances.instance.Teacher
+          (funDefs
+          @ constDefs
+          @ constrDefs
+          @ funDecls
+          @ asserts)
+          constDefs
     }
-
-  let toOrigCmds = List.map program2originalCommand
+  
+  
+  // do for x in (funDefs
+          // @ constDefs
+          // @ constrDefs
+          // @ funDecls
+          // @ asserts) do
+       // printfn $"xxx {program2originalCommand x}"
+  
+  // let toOrigCmds = List.map program2originalCommand
 
   state {
     do!
       Debug.Print.hornInput (
         let content = List.map (program2originalCommand >> toString) cmds |> join "\n" in
-        $"(set-logic HORN)\n(set-option :produce-proofs true)\n{content}\n(check-sat)\n(get-proof)"
-      )
+        $"(set-logic HORN)\n(set-option :produce-proofs true)\n{content}\n(check-sat)\n(get-proof)")
 
     match! Debug.Duration.go (lazy teacherRes) "HORN.LIA" with
-    | SAT _ -> return "SAT"
-    | UNSAT _ ->
-      let proof, dbgProof =
-        z3Process.z3proof
-          (toOrigCmds funDefs)
-          (toOrigCmds constDefs)
-          (toOrigCmds constrDefs)
-          (toOrigCmds funDecls)
-          (toOrigCmds asserts)
+    | Interpreter.result.SAT _ -> return "SAT"
+    | Interpreter.result.UNSAT (Some (proof, dbgProof)) ->
+      // let proof, dbgProof =
+      //   z3Process.z3proof
+      //     (toOrigCmds funDefs)
+      //     (toOrigCmds constDefs)
+      //     (toOrigCmds constrDefs)
+      //     (toOrigCmds funDecls)
+      //     (toOrigCmds asserts)
 
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
@@ -1587,6 +1584,9 @@ let rec teacher
       | Ok (defConsts', defConstrs', pushed') ->
         return! teacher adtDecs adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
       | Error e -> return e
+    | o ->
+      failwith $"{o}"
+      return "failwith A"
   }
 
 
@@ -2017,8 +2017,13 @@ let rec solver
 
 
   state {
-    do! Solver.setCommands startCmds
-    let! setSofts = Solver.setSoftConsts constDefs
+    do kek startCmds
+    // do! Solver.setCommands startCmds
+    do! Solver.setCommandsKEK startCmds
+    // do for x in constDefs do printfn $"{x}"
+    // let! setSofts = Solver.setSoftConsts constDefs
+    let! setSofts = Solver.setSoftConstsKEK constDefs
+    do kek setSofts
     do! Debug.Print.redlogInput ""
     do! Debug.Print.redlogOutput ""
 
@@ -2031,9 +2036,9 @@ let rec solver
         $"(set-logic NIA)\n{content}"
       )
 
-    match! Debug.Duration.go (lazy Solver.evalModel constDefs) "(INIT)SMT.NIA" with
+    match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "(INIT)SMT.NIA" with
     | Ok x ->
-
+      // do for x in setSofts do printfn $"{program2originalCommand x}"
       return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
 
     | Error _ -> return "UNKNOWN"
@@ -2146,12 +2151,12 @@ let run file dbg timeLimit =
   dbgPath <- dbg
 
   let adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
-    try
+    // try
       approximation file
-    with _ ->
-      printfn "ERR APPROXIMATION"
-      Environment.Exit 0
-      (Map.empty, [], [], [], [], [])
+    // with _ ->
+      // printfn "ERR APPROXIMATION"
+      // Environment.Exit 0
+      // (Map.empty, [], [], [], [], [])
   let funDecls = List.map origCommand2program declFuns
   let adtDecs =
     adtConstrs

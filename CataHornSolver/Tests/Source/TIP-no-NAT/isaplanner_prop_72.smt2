@@ -107,7 +107,7 @@
 (assert (forall ((x_3158 Int) (x_3143 Int) (z_324 Int))
 	(=> (and (>= z_324 0) (>= x_3143 0) (x_3141 x_3158 z_324 x_3143)) (x_3141 x_3158 (S_114 z_324) (S_114 x_3143)))))
 (assert (forall ((z_324 Int) (z Int))
-	(=> (>= z_324 0) (<= z 0) (x_3141 (S_114 z_324) (S_114 z_324) z))))
+	(=> (and (>= z_324 0) (<= z 0)) (x_3141 (S_114 z_324) (S_114 z_324) z))))
 (assert (forall ((z Int) (y_256 Int))
 	(=> (and (>= y_256 0) (<= z 0))  (x_3141 z z y_256))))
 (declare-fun x_3144 (list_53 list_53 list_53) Bool)

@@ -17,7 +17,6 @@ let parsePower (power: RedTraceParser.PowerContext) =
   | :? RedTraceParser.IdContext as id, (:? RedTraceParser.NumberContext as number) ->
     let app = Expr.makeConst (id.GetText()) IntSort
     let number = parseNumberRaw number
-    assert(number >= 1)
     Seq.init number (fun _ -> app) |> Seq.reduce mult
   | _ -> __unreachable__ ()
 

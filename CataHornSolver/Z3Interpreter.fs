@@ -2,6 +2,7 @@ module Z3Interpreter
 
 open System
 open System.Collections.Generic
+open System.IO
 open Microsoft.FSharp.Collections
 open Microsoft.Z3
 open ProofBased
@@ -185,7 +186,8 @@ module AST =
     
   let rec smtExpr2expr =
     function
-    | Number i -> Int i
+    | Number i when i >= 0 -> Int i
+    | Number i when i < 0 -> Neg (Int (-1L * i))
     | BoolConst b -> Bool b
     | Ident (ident, _) -> Var ident
     | smtExpr.Apply (operation, exprs) ->
@@ -213,7 +215,8 @@ module AST =
 
   let rec smtExpr2expr' =
     function
-    | Number i -> Int i
+    | Number i when i >= 0 -> Int i
+    | Number i when i < 0 -> Neg (Int (-1L * i))
     | BoolConst b -> Bool b
     | Ident (ident, _) -> Var ident
     | smtExpr.Apply (operation, exprs) ->
@@ -245,9 +248,21 @@ module AST =
         match sort with
         | IntSort -> Integer
         | _ -> Boolean
-      Def (name, List.map (fun (n, _) -> n) args, t, smtExpr2expr body)
+      Def (name, List.map fst args, t, smtExpr2expr body)
     | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
     | originalCommand.Assert expr -> Assert (smtExpr2expr expr)
+    | _ -> __notImplemented__()
+    
+  let rec aboba =
+    function
+    | Definition (DefineFun (name, args, sort, body)) ->
+      let t = 
+        match sort with
+        | IntSort -> Integer
+        | _ -> Boolean
+      Def (name, List.map fst args, t, smtExpr2expr' body)
+    | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
+    | originalCommand.Assert expr -> Assert (smtExpr2expr' expr)
     | _ -> __notImplemented__()
 
   let def2decVars =
@@ -386,6 +401,7 @@ module Interpreter =
           | Some v -> v
           | None -> evalExpr env (App (x, []))
       | App (name, expr) ->
+        // printfn $"{name}"
         let decFun = env.ctxDecfuns |> Map.find name in
         let args = List.map (evalExpr env) expr
         env.ctxSlvr.MkApp (decFun, Array.ofList args)
@@ -435,27 +451,34 @@ module Interpreter =
         (fun (env, solver: Solver, expr) cmd ->
           match cmd with
           | DeclDataType (name, constructors) ->
-            let ids, names, constructors' =
+            let pCtx = ref env.ctxSlvr
+            
+            let names, constructors' =
               constructors
-              |> List.mapi
-                   (fun id (n: String, ts) ->
+              |> List.map
+                   (fun (n: String, ts) ->
                       let mkSort: Type -> Sort = 
                         function
                           | Boolean -> env.ctxSlvr.MkBoolSort ()  
                           | Integer -> env.ctxSlvr.MkIntSort ()  
                           | ADT n when n <> name ->
-                            (env.ctxDataType |> Map.find n) :> Sort
+                            env.ctxDataType |> Map.tryFind n
+                            |> function
+                              | Some s -> s :> Sort
+                              | None -> env.ctxSlvr.MkUninterpretedSort n
                           | ADT _ -> null
-                      let tester = $"tester_{n}"
                       let names, sorts = ts |> List.mapi (fun i t -> ($"x{i}", mkSort t)) |> List.toArray |> Array.unzip
-                      (id, n, env.ctxSlvr.MkConstructor (n, tester, names, sorts)) )
-              |> List.unzip3
+                      (n, env.ctxSlvr.MkConstructor (n, $"tester_{n}", names, sorts)) )
+              |> List.unzip
             
-            let adt = env.ctxSlvr.MkDatatypeSort (name, List.toArray constructors')             
+            let adt = env.ctxSlvr.MkDatatypeSort (name, List.toArray constructors')
             
-            let ctxDecfuns' = List.fold2 (fun ctx id n -> ctx |> Map.add n adt.Constructors[id]) env.ctxDecfuns ids names  
+            let ctxDecfuns' =
+              List.fold2 (fun ctx id n -> ctx |> Map.add n adt.Constructors[id])
+                env.ctxDecfuns (seq { 0 .. names.Length - 1 } |> List.ofSeq)
+                names
             
-            ({env with ctxDecfuns = ctxDecfuns'; ctxDataType = env.ctxDataType |> Map.add name adt }, solver, expr)
+            ({ env with ctxDecfuns = ctxDecfuns'; ctxDataType = env.ctxDataType |> Map.add name adt }, solver, expr)
             
           | DeclConst (n, t) ->
             match t with
@@ -555,24 +578,36 @@ module Interpreter =
 
     let z3softSolver (x: z3SoftSolve<_, _>) =
       let env, solver, _ = evalCmds x.env x.solver x.cmds
-
+      
       let softVars =
         env.actives |> List.map (fun n -> Map.find n env.ctxVars) |> List.toArray
-
+      // printfn "HERE"
+      // for x in env.actives do printfn $"s {x}"
+      // for x in softVars do printfn $" {x}"
+      
       match x.solver.Check softVars with
-      | Status.SATISFIABLE -> SAT <| x.sat env solver
-      | Status.UNSATISFIABLE -> UNSAT <| x.unsat env solver
+      // match x.solver.Check () with
+      | Status.SATISFIABLE ->
+        // printfn "!!!!!!!!!!! SATISFIABLE"
+        SAT <| x.sat env solver
+      | Status.UNSATISFIABLE ->
+        // printfn "UNSATISFIABLE"
+        UNSAT <| x.unsat env solver
       | _ -> failwith "UNKNOWN"
 
     let softUnsat env (solver: Solver) =
       let unsatCoreNames = solver.UnsatCore |> Array.map string |> Set
       let intersection = Set env.actives |> Set.intersect unsatCoreNames
-
+      
+      
+      // printfn $"{unsatCoreNames}"
+      // printfn $"{intersection}"
+      
       if intersection.IsEmpty then
         None // UNKNONW
       else
         Some ({ env with
-            actives = env.actives |> List.tail },
+            actives = env.actives |> List.tail  },
          solver)
 
     let setCommands env (solver: Solver) cmds =
@@ -602,21 +637,32 @@ module Interpreter =
           sat = fun env solver -> (env, solver, model env solver)
           cmds = [] }
       |> function
-        | SAT x -> Ok x
-        | UNSAT (Some (env', solver')) -> solve env' solver'
+        | SAT x -> printfn "Ok"; Ok x
+        | UNSAT (Some (env', solver')) -> printfn "UNSAT"; solve env' solver'
         | UNSAT None -> Error "!!!!!UNKNOWN"
 
     let setSoftAsserts env (solver: Solver) (constants: Program list) =
       let constNames = constants |> List.choose (function Def(n, [], _, _) -> Some n | _ -> None)
       let softNames = constNames |> List.map (fun n -> $"soft_{n}")
-
+      
       constNames
       |> List.map2
         (fun softn n -> Assert (Implies (Var softn, Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |])))
         softNames
       |> List.append (softNames |> List.map (fun n -> DeclConst (n, Boolean)))
       |> setCommands { env with actives = softNames } solver
+      // setCommands { env with actives = softNames } solver []
 
+    let setSoftAssertsKEK (constants: Program list) =
+      let constNames = constants |> List.choose (function Def(n, [], _, _) -> Some n | _ -> None)
+      let softNames = constNames |> List.map (fun n -> $"soft_{n}")
+      
+      constNames
+      |> List.map2
+        (fun softn n -> Assert (Implies (Var softn, Or [| Eq (Var n, Int 0); Eq (Var n, Int 1) |])))
+        softNames
+      |> List.append (softNames |> List.map (fun n -> DeclConst (n, Boolean)))
+      
 
   let emptyEnv argss =
     { ctxSlvr = new Context (argss |> dict |> Dictionary)
@@ -630,16 +676,104 @@ module Interpreter =
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+let test () =
+  let emptyEnv argss =
+    { ctxSlvr = new Context (argss |> dict |> Dictionary)
+      ctxVars = Map.empty
+      ctxFuns = Map.empty
+      ctxDecfuns = Map.empty
+      actives = []
+      ctxDataType = Map.empty }
+  let env = emptyEnv [||]
+  let solver = env.ctxSlvr.MkSolver "ALL"
+  solver.Push ()
+  
+  Interpreter.evalCmds env solver
+    [
+     DeclDataType
+      ("list_407", [("nil_468", []); ("cons_401", [Integer; ADT "list_407"])])
+     DeclDataType
+       ("E_62",
+        [("V_32", [Integer]); ("N_120", [Integer]);
+         ("Mul_13", [ADT "E_62"; ADT "E_62"]); ("Eq_0", [ADT "E_62"; ADT "E_62"]);
+         ("Add_480", [ADT "E_62"; ADT "E_62"])])
+     DeclDataType
+       ("P_616",
+        [("x_126870", [Integer; ADT "E_62"]);
+         ("While_0", [ADT "E_62"; ADT "list_408"]); ("Print_0", [ADT "E_62"]);
+         ("If_0", [ADT "E_62"; ADT "list_408"; ADT "list_408"])])
+     DeclDataType
+       ("list_408", [("nil_469", []); ("cons_402", [ADT "P_616"; ADT "list_408"])])
+     Def ("Z_2776", [], Integer, Int 0L)
+     Def ("S_640", ["x"], Integer, Add (Var "x", Int 1L))
+     // DeclConst ("x0", ADT "P_616")
+     // DeclConst ("x1", ADT "list_407")
+     // DeclConst ("x10", Integer)
+     // DeclConst ("x11", ADT "list_407")
+     // DeclConst ("x12", Integer)
+     // DeclConst ("x13", ADT "E_62")
+     // DeclConst ("x14", ADT "E_62")
+     // DeclConst ("x15", ADT "list_408")
+     // DeclConst ("x16", ADT "list_408")
+     // DeclConst ("x17", ADT "E_62")
+     // DeclConst ("x2", ADT "P_616")
+     // DeclConst ("x3", ADT "list_407")
+     // DeclConst ("x4", Integer)
+     // DeclConst ("x5", ADT "list_407")
+     // DeclConst ("x6", Integer)
+     // DeclConst ("x7", ADT "list_407")
+     // DeclConst ("x8", Integer)
+     // DeclConst ("x9", ADT "list_407")
+     // Assert
+     //   (And
+     //      [|Eq
+     //          (App ("cons_402", [Var "x0"; App ("nil_469", [])]), App ("nil_469", []));
+     //        Eq
+     //          (App ("cons_402", [Var "x2"; App ("nil_469", [])]), App ("nil_469", []));
+     //        Not (Eq (Var "x4", Var "x6"));
+     //        Or
+     //          [|And
+     //              [|Eq (App ("nil_468", []), App ("nil_468", []));
+     //                Eq
+     //                  (App ("nil_468", []), App ("cons_401", [Var "x10"; Var "x11"]))|];
+     //            And
+     //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x8"; Var "x9"]));
+     //                Eq (App ("nil_468", []), App ("nil_468", []))|];
+     //            And
+     //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x4"; Var "x5"]));
+     //                Eq (App ("nil_468", []), App ("cons_401", [Var "x6"; Var "x7"]))|]|];
+     //        Or
+     //          [|And
+     //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
+     //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
+     //            And
+     //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
+     //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
+     //            And
+     //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
+     //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|];
+     //        Or
+     //          [|And
+     //              [|Eq (Var "x1", App ("nil_468", []));
+     //                Eq (Var "x3", App ("cons_401", [Var "x10"; Var "x11"]))|];
+     //            And
+     //              [|Eq (Var "x1", App ("cons_401", [Var "x8"; Var "x9"]));
+     //                Eq (Var "x3", App ("nil_468", []))|];
+     //            And
+     //              [|Eq (Var "x1", App ("cons_401", [Var "x4"; Var "x5"]));
+     //                Eq (Var "x3", App ("cons_401", [Var "x6"; Var "x7"]))|]|];
+     //        Or
+     //          [|And
+     //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
+     //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
+     //            And
+     //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
+     //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
+     //            And
+     //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
+     //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|]|])
+     ]
+  |> fun (env, solver, e) ->
+    printfn $"{env}"
+    for x in env.ctxDecfuns do printfn $"{x}"
+    printfn $"{e}"

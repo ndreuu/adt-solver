@@ -121,10 +121,6 @@ let assertedPos str =
       | None -> failwith "Wrong proof format")
   |> Array.fold (fun (acc: string) a -> acc.Replace (a, "(asserted (=> false false))")) str
 
-
-
-
-
 let proof dbg str =
   dbg ()
   assertedPos str |> fun str -> varsIdxs str |> substituteVars str |> clean
