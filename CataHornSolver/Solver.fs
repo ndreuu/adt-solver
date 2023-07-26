@@ -550,8 +550,8 @@ module TypeClarification =
   let clarify (adts: Map<ident, (symbol * Type list)>) expr varNames =
     let appConstrExpr = constrFuns2apps adts expr
     let typedVars = constrFuns2apps adts appConstrExpr |> argTypes adts
-    let ss = farmTypes adts typedVars appConstrExpr
-    let vars = typedVars |> Map.toList |> Set |> Set.union ss
+    // let ss = farmTypes adts typedVars appConstrExpr
+    let vars = typedVars |> Map.toList |> Set |> Set.union <| farmTypes adts typedVars appConstrExpr
 
     (appConstrExpr, transitiveEqs (eqs appConstrExpr) vars |> appendIntVars varNames)
 
@@ -1030,10 +1030,19 @@ module Debug =
     let proof = write "proof.smt2"
   
   
-let feasible adtDecs adtConstrs funDefs resolvent =
+let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
   let env = emptyEnv [||]
   let solver = env.ctxSlvr.MkSolver "ALL"
   solver.Push ()
+  
+  let nonRec = List.filter (function DeclDataType [n, _] when (not <| List.contains n (List.concat recs)) -> true | _ -> false) adtDecs 
+  let recs =
+    List.map
+      (List.map (fun n -> List.find (function DeclDataType [n', _] when n = n' -> true | _ -> false) adtDecs)) recs
+    |> List.map (fun ds -> DeclDataType (List.choose (function DeclDataType [n', b] -> Some (n', b) | _ -> None) ds))
+  let adtDecs = recs @ nonRec    
+  // List.map (fun n -> ) recs
+  // let adtDecs = 
   
   state {
     let qNames =
@@ -1386,7 +1395,7 @@ let banOldValues constDefs =
 
 
 let rec learner
-  adtDecs
+  (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
   asserts
@@ -1403,7 +1412,7 @@ let rec learner
         resolvent constDefs funDecls hyperProof asserts |> Simplifier.simplify
 
       let! (feasible, smtADTLIAcContent), _ =
-        Debug.Duration.go (lazy state.Return (feasible adtDecs adtConstrs funDefs resolvent)) "Z3.ADT(LIA)"
+        Debug.Duration.go (lazy state.Return (feasible (adtDecs, recs) adtConstrs funDefs resolvent)) "Z3.ADT(LIA)"
 
       do!
         Debug.Print.smtADTLIA (
@@ -1509,7 +1518,7 @@ let tst () =
     | Error e -> printfn "%O" e
 
 let rec teacher
-  adtDecs
+  (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
   constDefs
@@ -1518,13 +1527,13 @@ let rec teacher
   (asserts: Program list)
   pushed
   =
-  let envTeacher = emptyEnv [| ("proof", "true") |]
-  let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
+  // let envTeacher = emptyEnv [| ("proof", "true") |]
+  // let teacherSolver = envTeacher.ctxSlvr.MkSolver "HORN"
   let cmds = (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
 
-  teacherSolver.Set ("fp.spacer.global", true)
-  teacherSolver.Set ("fp.xform.inline_eager", false)
-  teacherSolver.Set ("fp.xform.inline_linear", false)
+  // teacherSolver.Set ("fp.spacer.global", true)
+  // teacherSolver.Set ("fp.xform.inline_eager", false)
+  // teacherSolver.Set ("fp.xform.inline_linear", false)
 
   // let teacherRes =
   //   state {
@@ -1580,9 +1589,9 @@ let rec teacher
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
 
-      match! learner adtDecs adtConstrs funDefs asserts constDefs constrDefs funDecls proof pushed with
+      match! learner (adtDecs, recs) adtConstrs funDefs asserts constDefs constrDefs funDecls proof pushed with
       | Ok (defConsts', defConstrs', pushed') ->
-        return! teacher adtDecs adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
+        return! teacher (adtDecs, recs) adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
       | Error e -> return e
     | o ->
       failwith $"{o}"
@@ -1993,7 +2002,7 @@ module ImpliesWalker =
 // xs
 
 let rec solver
-  adtDecs
+  (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
   constDefs
@@ -2039,7 +2048,7 @@ let rec solver
     match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "(INIT)SMT.NIA" with
     | Ok x ->
       // do for x in setSofts do printfn $"{program2originalCommand x}"
-      return! teacher adtDecs adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
 
     | Error _ -> return "UNKNOWN"
   }
@@ -2052,7 +2061,7 @@ let sort2type =
   | _ -> Integer
 
 let approximation file =
-  let _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
+  let recs, _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
   let p = Parser.Parser false
   let cmds = p.ParseFile file
 
@@ -2116,7 +2125,7 @@ let approximation file =
       | Definition _ as x -> Some x
       | _ -> None)
 
-  (adtDecs, defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
+  (recs, adtDecs, defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
 
 let apply2app appNames =
   let rec helper =
@@ -2150,7 +2159,7 @@ let apply2app appNames =
 let run file dbg timeLimit =
   dbgPath <- dbg
 
-  let adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
+  let recs, adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
     // try
       approximation file
     // with _ ->
@@ -2170,7 +2179,8 @@ let run file dbg timeLimit =
     |> Map.toList
     |> List.sortBy (fun (_, (i, _)) -> i)
     |> List.map (fun (x, (_, y)) -> (x, y))
-    |> List.map DeclDataType
+    |> List.map (List.singleton >> DeclDataType)
+    
   let adtConstrs = adtConstrs |> Map.map (fun k (n, _, ts) -> (n, ts))
   let asserts' = List.map origCommand2program asserts
   let appNames =
@@ -2184,6 +2194,6 @@ let run file dbg timeLimit =
       | Assert x -> Some (Assert (apply2app appNames x))
       | _ -> None)
   let toPrograms = List.map origCommand2program
-  let v, _ = solver adtDecs adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
+  let v, _ = solver (adtDecs, recs) adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
 
   v, durations, ""

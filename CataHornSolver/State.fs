@@ -9,9 +9,6 @@ type State<'st, 'a> = State of ('st -> 'a * 'st)
 
 let run state (State f) = f state
 
-let onTimedEvent source (e: ElapsedEventArgs) =
-
-  printfn $"""The Elapsed event was raised at {e.SignalTime.ToString "HH:mm:ss.fff"}"""
 
 let bind binder stateful =
   State (fun state ->

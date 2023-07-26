@@ -110,7 +110,7 @@ module Instances =
     [ Teacher,
       (Horn,
        Proof,
-       "fp.datalog.subsumption=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false")
+       "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
       Learner, (NIA, Model, "fp.spacer.global=true") ]
     |> Map
@@ -122,6 +122,7 @@ module Instances =
   let run instance cmds =
     let _, _, flags = instances |> Map.find instance
     let file = Path.GetTempPath () + ".smt2"
+    // printfn $"{content instance cmds}"
     File.WriteAllText (file, content instance cmds)
     let result = execute "./z3" $"{flags} {file}"
 
@@ -188,6 +189,9 @@ module Interpreter =
       
       let rec helper assumings =
         let out = run <| setAssuming content assumings
+        // printfn $"{setAssuming content assumings}"
+        // printfn $"{out}"
+        // let out = run <| setAssuming content []
         let rSat = (Regex @"\bsat\b\n").Matches out
         let rUnknown = (Regex "unknown").Matches out
         let r =
@@ -197,6 +201,7 @@ module Interpreter =
         match r with
         | SAT _ ->
           let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
+          // for x in model constDefs out do printfn $"> {x}"
           SAT (Some <| model constDefs out) 
         | UNSAT _ -> 
           (Regex @"soft_c_\d+").Matches out
@@ -204,6 +209,10 @@ module Interpreter =
           |> List.tryHead
           |> function
             | Some x ->
+              // printfn $"{assumings}"
+              // match assumings with
+              // | _::tl -> helper tl
+              // | _ -> helper []
               List.filter (fun a -> a <> x.Value) assumings
               |> helper
             | None ->
@@ -211,6 +220,7 @@ module Interpreter =
               Environment.Exit(0)
               failwith ""
       helper (softAsserts constDefs |> snd)
+      // helper []
 
 
   let proof cmds content =
@@ -259,23 +269,28 @@ module Interpreter =
 
 
   let solve instance cmds constDefs =
+    // printfn $"--------------{instance}--------------"
     match instance with
     | Instances.instance.Learner -> SoftSolver.solve constDefs cmds
     | _ ->
       let _, option, _ = Instances.instances |> Map.find instance
 
-      let content =
-        Instances.run instance
-        <| List.map (AST.program2originalCommand >> toString) cmds
-
-      let rUnsat = (Regex "unsat").Matches content
-      let rSat = (Regex "sat").Matches content
+      let input = List.map (AST.program2originalCommand >> toString) cmds
+      
+      let output =
+        Instances.run instance input
+      
+      // printfn $"{output}"
+      
+      let rUnsat = (Regex "unsat").Matches output
+      let rSat = (Regex "sat").Matches output
 
       let r =
         if rUnsat.Count = 1 then UNSAT ()
         elif rSat.Count = 1 then SAT ()
         else UNKNOWN
-
+      
+      // printfn $"{r}"
       // for x in List.map (AST.program2originalCommand >> toString) cmds do
       // printfn $">> {x}"
 
@@ -284,10 +299,10 @@ module Interpreter =
       match option, r with
       | Instances.option.None, UNSAT _ -> UNSAT None
       | Instances.option.Model, UNSAT _ -> UNSAT None
-      | Instances.option.Proof, UNSAT _ -> UNSAT (Some <| proof cmds content)
+      | Instances.option.Proof, UNSAT _ -> UNSAT (Some <| proof cmds output)
       | Instances.option.None, SAT _ -> SAT None
       | Instances.option.Proof, SAT _ -> SAT None
-      | Instances.option.Model, SAT _ -> SAT (Some <| model constDefs content)
+      | Instances.option.Model, SAT _ -> SAT (Some <| model constDefs output)
       | _ -> UNKNOWN
 
 

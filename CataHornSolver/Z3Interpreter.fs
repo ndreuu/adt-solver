@@ -156,7 +156,7 @@ module AST =
     | DeclConst of Name * Type
     | Decl of Name * ArgsNum
     | Assert of Expr
-    | DeclDataType of Name * Constructor list 
+    | DeclDataType of (Name * Constructor list) list 
 
   let program2originalCommand = function
     | Def (n, ns, t, e) ->
@@ -172,17 +172,24 @@ module AST =
     | Decl (n, num) ->
       Command (DeclareFun (n, List.init num (fun _ -> IntSort), BoolSort))
     | Assert e -> originalCommand.Assert (expr2smtExpr e)
-    | DeclDataType (n, cs) as k ->
-      let constructor name argSorts adtName =
-        ElementaryOperation (name, argSorts, ADTSort adtName),
-        ElementaryOperation ($"is-{name}", [ADTSort adtName], BoolSort),
-        List.mapi (fun i s -> ElementaryOperation ($"{n}x{i}", [ADTSort n], s)) argSorts 
+    | DeclDataType (*n, cs*) ds as k ->
+      Command (command.DeclareDatatypes
+        (ds |> List.map ( fun (n, cs) ->
+        let constructor p name argSorts adtName =
+          ElementaryOperation (name, argSorts, ADTSort adtName),
+          ElementaryOperation ($"is-{name}", [ADTSort adtName], BoolSort),
+          List.mapi (fun i s -> ElementaryOperation ($"{n}x{i + p}", [ADTSort n], s)) argSorts 
+        
+        let args = List.map (fun (t: Type) -> t.toSort)
+        (n,
+            (0, cs) ||> List.mapFold (fun acc (n', t) -> constructor acc n' (args t) n, List.length t + acc)
+            |> fst)
+        )))
       
-      let args = List.map (fun (t: Type) -> t.toSort)
-
-      Command (command.DeclareDatatype
-           (n, List.map (fun (n', t) -> constructor n' (args t) n) cs))  
-    
+      // Command (command.DeclareDatatype
+           // (n,
+            // (0, cs) ||> List.mapFold (fun acc (n', t) -> constructor acc n' (args t) n, List.length t + acc)
+            // |> fst)) 
     
   let rec smtExpr2expr =
     function
@@ -450,35 +457,36 @@ module Interpreter =
       List.fold
         (fun (env, solver: Solver, expr) cmd ->
           match cmd with
-          | DeclDataType (name, constructors) ->
-            let pCtx = ref env.ctxSlvr
-            
-            let names, constructors' =
-              constructors
-              |> List.map
-                   (fun (n: String, ts) ->
-                      let mkSort: Type -> Sort = 
-                        function
-                          | Boolean -> env.ctxSlvr.MkBoolSort ()  
-                          | Integer -> env.ctxSlvr.MkIntSort ()  
-                          | ADT n when n <> name ->
-                            env.ctxDataType |> Map.tryFind n
-                            |> function
-                              | Some s -> s :> Sort
-                              | None -> env.ctxSlvr.MkUninterpretedSort n
-                          | ADT _ -> null
-                      let names, sorts = ts |> List.mapi (fun i t -> ($"x{i}", mkSort t)) |> List.toArray |> Array.unzip
-                      (n, env.ctxSlvr.MkConstructor (n, $"tester_{n}", names, sorts)) )
-              |> List.unzip
-            
-            let adt = env.ctxSlvr.MkDatatypeSort (name, List.toArray constructors')
-            
-            let ctxDecfuns' =
-              List.fold2 (fun ctx id n -> ctx |> Map.add n adt.Constructors[id])
-                env.ctxDecfuns (seq { 0 .. names.Length - 1 } |> List.ofSeq)
-                names
-            
-            ({ env with ctxDecfuns = ctxDecfuns'; ctxDataType = env.ctxDataType |> Map.add name adt }, solver, expr)
+          | DeclDataType (_) -> failwith ""
+          // | DeclDataType (name, constructors) ->
+          //   let pCtx = ref env.ctxSlvr
+          //   
+          //   let names, constructors' =
+          //     constructors
+          //     |> List.map
+          //          (fun (n: String, ts) ->
+          //             let mkSort: Type -> Sort = 
+          //               function
+          //                 | Boolean -> env.ctxSlvr.MkBoolSort ()  
+          //                 | Integer -> env.ctxSlvr.MkIntSort ()  
+          //                 | ADT n when n <> name ->
+          //                   env.ctxDataType |> Map.tryFind n
+          //                   |> function
+          //                     | Some s -> s :> Sort
+          //                     | None -> env.ctxSlvr.MkUninterpretedSort n
+          //                 | ADT _ -> null
+          //             let names, sorts = ts |> List.mapi (fun i t -> ($"x{i}", mkSort t)) |> List.toArray |> Array.unzip
+          //             (n, env.ctxSlvr.MkConstructor (n, $"tester_{n}", names, sorts)) )
+          //     |> List.unzip
+          //   
+          //   let adt = env.ctxSlvr.MkDatatypeSort (name, List.toArray constructors')
+          //   
+          //   let ctxDecfuns' =
+          //     List.fold2 (fun ctx id n -> ctx |> Map.add n adt.Constructors[id])
+          //       env.ctxDecfuns (seq { 0 .. names.Length - 1 } |> List.ofSeq)
+          //       names
+          //   
+          //   ({ env with ctxDecfuns = ctxDecfuns'; ctxDataType = env.ctxDataType |> Map.add name adt }, solver, expr)
             
           | DeclConst (n, t) ->
             match t with
@@ -637,8 +645,8 @@ module Interpreter =
           sat = fun env solver -> (env, solver, model env solver)
           cmds = [] }
       |> function
-        | SAT x -> printfn "Ok"; Ok x
-        | UNSAT (Some (env', solver')) -> printfn "UNSAT"; solve env' solver'
+        | SAT x -> Ok x
+        | UNSAT (Some (env', solver')) -> solve env' solver'
         | UNSAT None -> Error "!!!!!UNKNOWN"
 
     let setSoftAsserts env (solver: Solver) (constants: Program list) =
@@ -676,104 +684,104 @@ module Interpreter =
 
 
 
-let test () =
-  let emptyEnv argss =
-    { ctxSlvr = new Context (argss |> dict |> Dictionary)
-      ctxVars = Map.empty
-      ctxFuns = Map.empty
-      ctxDecfuns = Map.empty
-      actives = []
-      ctxDataType = Map.empty }
-  let env = emptyEnv [||]
-  let solver = env.ctxSlvr.MkSolver "ALL"
-  solver.Push ()
-  
-  Interpreter.evalCmds env solver
-    [
-     DeclDataType
-      ("list_407", [("nil_468", []); ("cons_401", [Integer; ADT "list_407"])])
-     DeclDataType
-       ("E_62",
-        [("V_32", [Integer]); ("N_120", [Integer]);
-         ("Mul_13", [ADT "E_62"; ADT "E_62"]); ("Eq_0", [ADT "E_62"; ADT "E_62"]);
-         ("Add_480", [ADT "E_62"; ADT "E_62"])])
-     DeclDataType
-       ("P_616",
-        [("x_126870", [Integer; ADT "E_62"]);
-         ("While_0", [ADT "E_62"; ADT "list_408"]); ("Print_0", [ADT "E_62"]);
-         ("If_0", [ADT "E_62"; ADT "list_408"; ADT "list_408"])])
-     DeclDataType
-       ("list_408", [("nil_469", []); ("cons_402", [ADT "P_616"; ADT "list_408"])])
-     Def ("Z_2776", [], Integer, Int 0L)
-     Def ("S_640", ["x"], Integer, Add (Var "x", Int 1L))
-     // DeclConst ("x0", ADT "P_616")
-     // DeclConst ("x1", ADT "list_407")
-     // DeclConst ("x10", Integer)
-     // DeclConst ("x11", ADT "list_407")
-     // DeclConst ("x12", Integer)
-     // DeclConst ("x13", ADT "E_62")
-     // DeclConst ("x14", ADT "E_62")
-     // DeclConst ("x15", ADT "list_408")
-     // DeclConst ("x16", ADT "list_408")
-     // DeclConst ("x17", ADT "E_62")
-     // DeclConst ("x2", ADT "P_616")
-     // DeclConst ("x3", ADT "list_407")
-     // DeclConst ("x4", Integer)
-     // DeclConst ("x5", ADT "list_407")
-     // DeclConst ("x6", Integer)
-     // DeclConst ("x7", ADT "list_407")
-     // DeclConst ("x8", Integer)
-     // DeclConst ("x9", ADT "list_407")
-     // Assert
-     //   (And
-     //      [|Eq
-     //          (App ("cons_402", [Var "x0"; App ("nil_469", [])]), App ("nil_469", []));
-     //        Eq
-     //          (App ("cons_402", [Var "x2"; App ("nil_469", [])]), App ("nil_469", []));
-     //        Not (Eq (Var "x4", Var "x6"));
-     //        Or
-     //          [|And
-     //              [|Eq (App ("nil_468", []), App ("nil_468", []));
-     //                Eq
-     //                  (App ("nil_468", []), App ("cons_401", [Var "x10"; Var "x11"]))|];
-     //            And
-     //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x8"; Var "x9"]));
-     //                Eq (App ("nil_468", []), App ("nil_468", []))|];
-     //            And
-     //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x4"; Var "x5"]));
-     //                Eq (App ("nil_468", []), App ("cons_401", [Var "x6"; Var "x7"]))|]|];
-     //        Or
-     //          [|And
-     //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
-     //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
-     //            And
-     //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
-     //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
-     //            And
-     //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
-     //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|];
-     //        Or
-     //          [|And
-     //              [|Eq (Var "x1", App ("nil_468", []));
-     //                Eq (Var "x3", App ("cons_401", [Var "x10"; Var "x11"]))|];
-     //            And
-     //              [|Eq (Var "x1", App ("cons_401", [Var "x8"; Var "x9"]));
-     //                Eq (Var "x3", App ("nil_468", []))|];
-     //            And
-     //              [|Eq (Var "x1", App ("cons_401", [Var "x4"; Var "x5"]));
-     //                Eq (Var "x3", App ("cons_401", [Var "x6"; Var "x7"]))|]|];
-     //        Or
-     //          [|And
-     //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
-     //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
-     //            And
-     //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
-     //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
-     //            And
-     //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
-     //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|]|])
-     ]
-  |> fun (env, solver, e) ->
-    printfn $"{env}"
-    for x in env.ctxDecfuns do printfn $"{x}"
-    printfn $"{e}"
+// let test () =
+//   let emptyEnv argss =
+//     { ctxSlvr = new Context (argss |> dict |> Dictionary)
+//       ctxVars = Map.empty
+//       ctxFuns = Map.empty
+//       ctxDecfuns = Map.empty
+//       actives = []
+//       ctxDataType = Map.empty }
+//   let env = emptyEnv [||]
+//   let solver = env.ctxSlvr.MkSolver "ALL"
+//   solver.Push ()
+//   
+//   Interpreter.evalCmds env solver
+//     [
+//      DeclDataType
+//       ("list_407", [("nil_468", []); ("cons_401", [Integer; ADT "list_407"])])
+//      DeclDataType
+//        ("E_62",
+//         [("V_32", [Integer]); ("N_120", [Integer]);
+//          ("Mul_13", [ADT "E_62"; ADT "E_62"]); ("Eq_0", [ADT "E_62"; ADT "E_62"]);
+//          ("Add_480", [ADT "E_62"; ADT "E_62"])])
+//      DeclDataType
+//        ("P_616",
+//         [("x_126870", [Integer; ADT "E_62"]);
+//          ("While_0", [ADT "E_62"; ADT "list_408"]); ("Print_0", [ADT "E_62"]);
+//          ("If_0", [ADT "E_62"; ADT "list_408"; ADT "list_408"])])
+//      DeclDataType
+//        ("list_408", [("nil_469", []); ("cons_402", [ADT "P_616"; ADT "list_408"])])
+//      Def ("Z_2776", [], Integer, Int 0L)
+//      Def ("S_640", ["x"], Integer, Add (Var "x", Int 1L))
+//      // DeclConst ("x0", ADT "P_616")
+//      // DeclConst ("x1", ADT "list_407")
+//      // DeclConst ("x10", Integer)
+//      // DeclConst ("x11", ADT "list_407")
+//      // DeclConst ("x12", Integer)
+//      // DeclConst ("x13", ADT "E_62")
+//      // DeclConst ("x14", ADT "E_62")
+//      // DeclConst ("x15", ADT "list_408")
+//      // DeclConst ("x16", ADT "list_408")
+//      // DeclConst ("x17", ADT "E_62")
+//      // DeclConst ("x2", ADT "P_616")
+//      // DeclConst ("x3", ADT "list_407")
+//      // DeclConst ("x4", Integer)
+//      // DeclConst ("x5", ADT "list_407")
+//      // DeclConst ("x6", Integer)
+//      // DeclConst ("x7", ADT "list_407")
+//      // DeclConst ("x8", Integer)
+//      // DeclConst ("x9", ADT "list_407")
+//      // Assert
+//      //   (And
+//      //      [|Eq
+//      //          (App ("cons_402", [Var "x0"; App ("nil_469", [])]), App ("nil_469", []));
+//      //        Eq
+//      //          (App ("cons_402", [Var "x2"; App ("nil_469", [])]), App ("nil_469", []));
+//      //        Not (Eq (Var "x4", Var "x6"));
+//      //        Or
+//      //          [|And
+//      //              [|Eq (App ("nil_468", []), App ("nil_468", []));
+//      //                Eq
+//      //                  (App ("nil_468", []), App ("cons_401", [Var "x10"; Var "x11"]))|];
+//      //            And
+//      //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x8"; Var "x9"]));
+//      //                Eq (App ("nil_468", []), App ("nil_468", []))|];
+//      //            And
+//      //              [|Eq (App ("nil_468", []), App ("cons_401", [Var "x4"; Var "x5"]));
+//      //                Eq (App ("nil_468", []), App ("cons_401", [Var "x6"; Var "x7"]))|]|];
+//      //        Or
+//      //          [|And
+//      //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
+//      //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
+//      //            And
+//      //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
+//      //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
+//      //            And
+//      //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
+//      //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|];
+//      //        Or
+//      //          [|And
+//      //              [|Eq (Var "x1", App ("nil_468", []));
+//      //                Eq (Var "x3", App ("cons_401", [Var "x10"; Var "x11"]))|];
+//      //            And
+//      //              [|Eq (Var "x1", App ("cons_401", [Var "x8"; Var "x9"]));
+//      //                Eq (Var "x3", App ("nil_468", []))|];
+//      //            And
+//      //              [|Eq (Var "x1", App ("cons_401", [Var "x4"; Var "x5"]));
+//      //                Eq (Var "x3", App ("cons_401", [Var "x6"; Var "x7"]))|]|];
+//      //        Or
+//      //          [|And
+//      //              [|Eq (Var "x2", App ("Print_0", [Var "x17"]));
+//      //                Eq (Var "x0", App ("Print_0", [Var "x17"]))|];
+//      //            And
+//      //              [|Eq (Var "x2", App ("If_0", [Var "x14"; Var "x16"; Var "x15"]));
+//      //                Eq (Var "x0", App ("If_0", [Var "x14"; Var "x15"; Var "x16"]))|];
+//      //            And
+//      //              [|Eq (Var "x2", App ("x_126870", [Var "x12"; Var "x13"]));
+//      //                Eq (Var "x0", App ("x_126870", [Var "x12"; Var "x13"]))|]|]|])
+//      ]
+//   |> fun (env, solver, e) ->
+//     printfn $"{env}"
+//     for x in env.ctxDecfuns do printfn $"{x}"
+//     printfn $"{e}"

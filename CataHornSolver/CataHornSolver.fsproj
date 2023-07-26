@@ -7,8 +7,6 @@
         <IsPackable>false</IsPackable>
         <GenerateProgramFile>false</GenerateProgramFile>
         <RootNamespace>CataHornSolver</RootNamespace>
-        <PlatformTarget>x64</PlatformTarget>
-        <RuntimeIdentifier>linux-x64</RuntimeIdentifier>
     </PropertyGroup>
     
     

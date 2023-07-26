@@ -50,7 +50,7 @@ module Program =
         //   let v, st, curDuration = run file.DirectoryName None None
         //   let content = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
         //   File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
-        try
+        // try
           let testName = Path.GetFileName path
           printfn $"{testName}"
           let result, st, curDurName = run path None None
@@ -59,8 +59,8 @@ module Program =
           // File.WriteAllText("./out.txt", content)
           printfn $"{testName} {result}"
           0
-        with _ ->
-          printfn "ERR-SMTH-ELSE"
-          0
+        // with _ ->
+          // printfn "ERR-SMTH-ELSE"
+          // 0
       | _ -> 
         1

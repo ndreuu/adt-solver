@@ -35,32 +35,32 @@ module Linearization =
            :: acc))
         (pdng, [])
 
-    let padding, dataTypes =
-      let pdng, defs =
+    let padding, dataTypes, recs =
+      let pdng, (defs, recs) =
         List.fold
-          (fun (pdng, acc) x ->
+          (fun (pdng, (acc, recs)) x ->
             match x with
-            | Command (DeclareDatatype (_, cs)) ->
+            | Command (DeclareDatatype (n, cs)) ->
               let pdng', def = pdng_defs cs pdng
-              (pdng', def @ acc)
-            | Command (DeclareDatatypes [ _, cs ]) ->
+              (pdng', (def @ acc, recs @ [[n, cs]]))
+            | Command (DeclareDatatypes [ n, cs ]) ->
               let pdng', def = pdng_defs cs pdng
-              (pdng', def @ acc)
+              (pdng', (def @ acc, recs @ [[n, cs]]))
             | Command (DeclareDatatypes ds) as v ->
               List.fold
-                (fun (pdng, acc) ->
+                (fun (pdng, (acc, recs)) ->
                   function
                   | _, cs ->
                     let pdng', def = pdng_defs cs pdng
-                    (pdng', def @ acc))
-                (pdng, acc)
+                    (pdng', (def @ acc, recs)))
+                (pdng, (acc, recs @ [ ds ]))
                 ds
             // failwith $"??? {v}"
-            | _ -> (pdng, acc))
-          (0, [])
+            | _ -> (pdng, (acc, recs)))
+          (0, ([], []))
           commands
 
-      (pdng, defs |> List.rev)
+      (pdng, defs |> List.rev, List.map (List.map fst) recs)
 
     let padding, functions =
       let padding, functions =
@@ -125,4 +125,4 @@ module Linearization =
         | Definition (DefineFun _) -> true
         | _ -> false)
 
-    (defFunctions, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
+    (recs, defFunctions, defConstants, decConstants, dataTypes, functions, asserts, skAsserts, notSkAsserts)
