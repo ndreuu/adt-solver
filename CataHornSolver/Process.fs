@@ -44,6 +44,8 @@ let execute timeout processName processArgs =
         StdOut = text |> trim
         StdErr = error |> trim }
     else
+      proc.Dispose ()
+      proc.Kill ()
       { ExitCode = 124
         StdOut = text |> trim
         StdErr = error |> trim }
@@ -251,3 +253,7 @@ let executeZ3 file =
 // let tst () =
     // execute "redcsl" "-w- /home/andrew/adt-solver/smr/upd/false_cfg5_unambig/dbg/lol/1/a.smt2"
     // |> printfn "%O"
+
+let sss () =
+  execute -1 "./z3" "-T:5 /home/andrew/Downloads/jjj/xyn/smt-input.smt2"
+  |> printfn "%O"

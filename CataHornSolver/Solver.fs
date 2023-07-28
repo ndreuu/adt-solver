@@ -237,12 +237,12 @@ let branch i =
 type timeout<'a> =
   | Timeout
   | Ok of 'a
-  
-  
+
+
 let redlog definitions formula =
-  match Redlog.runRedlog definitions formula |> Some with
+  match Redlog.runRedlog definitions formula with
   | Some (Result.Ok v) -> timeout.Ok (Assert (smtExpr2expr' v))
-  | None -> timeout.Timeout 
+  | None -> timeout.Timeout
   | Some (Error e) -> failwith $"redlog-output: {e}"
 
 let decConst =
@@ -927,17 +927,23 @@ module Solver =
       { st with
           context =
             { st.context with
-                snapshot = st.context.cmds
+                snapshot =
+                  { st.context.snapshot with
+                      cmds = st.context.cmds }
                 cmds = st.context.cmds @ cmds } })
 
   let unsetCommands =
     State (fun st ->
-      (),
+      st.context.snapshot.consts,
       { st with
           context =
             { st.context with
-                cmds = st.context.snapshot } })
+                cmds = st.context.snapshot.cmds } })
 
+  let curConsts =
+    State (fun st ->
+      st.context.snapshot.consts, st)
+  
   let setSoftConsts cmds =
     State (fun st ->
       let env, solver, cmds' = SoftSolver.setSoftAsserts st.env st.solver cmds
@@ -946,16 +952,22 @@ module Solver =
   let setSoftConstsKEK cmds =
     State (fun st ->
       let cmds' = SoftSolver.setSoftAssertsKEK cmds
-      
+
       // printfn $"........................"
       // for x in cmds' do
-        // printfn $"{x}"
+      // printfn $"{x}"
       // for x in List.choose (function Def (n, [], _, _) -> Some $"soft_{n}" | _ -> None) cmds' do
       //   printfn $"{x}"
       // printfn $"........................"
       cmds',
       { st with
-          context = { st.context with softConsts = cmds |> List.choose (function Def (n, _, _, _) -> Some $"{n}" | _ -> None) } })
+          context =
+            { st.context with
+                softConsts =
+                  cmds
+                  |> List.choose (function
+                    | Def (n, _, _, _) -> Some $"{n}"
+                    | _ -> None) } })
 
 
   //deprecated should use setC...; solve;
@@ -971,8 +983,6 @@ module Solver =
       | Result.Ok _ -> { st with env = env; solver = solver }
       | Error _ -> st)
 
-
-
   let solveFeasible =
     State (fun st ->
       match solve -1 instance.Checker st.context.cmds [] [] with
@@ -981,38 +991,22 @@ module Solver =
 
   let solveLearner defConsts =
     State (fun st ->
-        
-      // (5000, (fun _ -> solve instance.Learner st.context.cmds defConsts))
-      // ||> runWithTimeout
-      // let action =  async { return (solve instance.Learner st.context.cmds defConsts) } 
-      // let r = try Async.RunSynchronously ((withTimeout 30000 action), 30000) |> Some with _ -> None
-              // |> function Interpreter.SAT x -> x
-      // match r with
-      // | Some (Interpreter.SAT (Some xs)) -> timeout.Ok (Result.Ok xs), st
-      // | Some (Interpreter.UNSAT (Some _)) -> timeout.Ok (Result.Error "UNKNEONWOWN"), st 
-      //
-      // | None -> printfn "YYYYYYYYYYYYYYYY"; Timeout, st)
-      //
-      // let r =
-      //   Async.AwaitTask((Task.Delay 500)
-      //                         .ContinueWith(fun _ ->
-      //                           let r = solve instance.Learner st.context.cmds defConsts st.context.softConsts
-      //                          // execute "pkill" "z3" |> ignore
-      //                           r), 20000) |> Async.RunSynchronously
-      //
-      // Async.AwaitTask
-      //       ((Task.Delay 500)
-      //          .ContinueWith (fun _ -> execute "pkill" "z3"), 2000)
-      //     |> Async.RunSynchronously |> ignore
-          
-      
-      match solve 20 instance.Learner st.context.cmds defConsts st.context.softConsts  with
-      | Some (Interpreter.SAT (Some xs), softs) -> timeout.Ok (Result.Ok xs), { st with context = { st.context with softConsts = softs } }
-      | Some (Interpreter.UNSAT (Some _), softs) -> timeout.Ok (Result.Error "UNKNEONWOWN"), { st with context = { st.context with softConsts = softs } }
-      | None ->  Timeout, st)
-      // match solve instance.Learner st.context.cmds defConsts with
-      // | Interpreter.SAT (Some xs) -> timeout.Ok (Result.Ok xs), st
-      // | Interpreter.UNSAT (Some _) -> timeout.Ok (Result.Error "UNKNEONWOWN"), st)
+      match solve -1 instance.Learner st.context.cmds defConsts st.context.softConsts with
+      | Some (Interpreter.SAT (Some xs), softs) ->
+        timeout.Ok (Result.Ok xs),
+        { st with
+            context =
+              { st.context with
+                  softConsts = softs
+                  snapshot = { st.context.snapshot with consts = xs } } }
+      | Some (Interpreter.UNSAT (Some _), softs) ->
+        timeout.Ok (Result.Error "UNKNEONWOWN"),
+        { st with
+            context = { st.context with softConsts = softs } }
+      | None -> Timeout, st)
+  // match solve instance.Learner st.context.cmds defConsts with
+  // | Interpreter.SAT (Some xs) -> timeout.Ok (Result.Ok xs), st
+  // | Interpreter.UNSAT (Some _) -> timeout.Ok (Result.Error "UNKNEONWOWN"), st)
 
   let solve =
     State (fun st ->
@@ -1453,7 +1447,7 @@ let branching constDefs funDefs =
 let decConsts = List.map decConst
 
 
-let banOldValues constDefs =
+let banValues constDefs =
   Assert (
     Implies (
       And (
@@ -1510,38 +1504,61 @@ let rec learner
 
         match redlogResult with
         | Timeout ->
-          return
-            Result.Ok (randomValues (List.choose (function
-              | Def (n, _, _, _) -> Some n
-              | _ -> None) constDefs)
-                       |> List.map (fun (n, v) -> Def (n, [], Integer, Int v)), constrDefs, pushed)
-        | timeout.Ok redlogResult -> 
+          // let! curConsts = Solver.curConsts
+          // let ban
+          do! Solver.setCommandsKEK [ banValues constDefs ]
+          // do for x in curConsts do printfn $"CC {x}"
+          // do for x in constDefs do printfn $"CCCC {x}"
+
+          match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
+          | timeout.Timeout ->
+            let! predConsts = Solver.unsetCommands
+            let! predConsts = Solver.unsetCommands
+            do! Solver.setCommandsKEK [ banValues constDefs ]
+            
+            match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
+            | timeout.Timeout ->
+              failwith "?"
+              return Result.Ok ([], constrDefs, pushed)
+            | timeout.Ok (Result.Ok defConsts') ->
+              printfn "RRRRR"
+              do for x in defConsts' do printfn $"R {x}" 
+              return Result.Ok (defConsts', constrDefs, pushed)
+            | timeout.Ok (Error e) -> return Error e
+
+          | timeout.Ok (Result.Ok defConsts') ->
+            printfn "RRRRR2222"
+            do for x in defConsts' do printfn $"R2 {x}" 
+            return Result.Ok (defConsts', constrDefs, pushed)
+          | timeout.Ok (Error e) -> return Error e
+
+        | timeout.Ok redlogResult ->
           do! Debug.Print.redlogOutput $"{program2originalCommand redlogResult}"
-  
-          let setCmds = [ redlogResult; banOldValues constDefs ]
-          // let setCmds = [ redlogResult ]
-  
+
+          // let setCmds = [ redlogResult; banValues constDefs ]
+          let setCmds = [ redlogResult ]
+
           do kek <| setCmds
           do! Solver.setCommandsKEK setCmds
-  
+
           do!
             Debug.Print.smtInput (
               let content =
                 List.map (program2originalCommand >> toString) (pushed @ setCmds) |> join "\n" in
-  
+
               $"(set-logic NIA)\n{content}"
             )
-  
+
           let pushed' = pushed @ setCmds
-  
+
           match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
           | timeout.Timeout ->
-            do! Solver.unsetCommands
-            return
-              Result.Ok (randomValues (List.choose (function
-                | Def (n, _, _, _) -> Some n
-                | _ -> None) constDefs)
-                         |> List.map (fun (n, v) -> Def (n, [], Integer, Int v)), constrDefs, pushed)
+            let! predConsts = Solver.unsetCommands
+            do! Solver.setCommandsKEK [ banValues constDefs ]
+            match! Solver.solveLearner constDefs with
+            | timeout.Ok (Result.Ok xs) ->
+              for x in xs do printfn $"{x}"
+              return Result.Ok (xs, xs, pushed)
           | timeout.Ok (Result.Ok defConsts') -> return Result.Ok (defConsts', constrDefs, pushed')
           | timeout.Ok (Error e) -> return Error e
 
@@ -1550,6 +1567,26 @@ let rec learner
       Environment.Exit 0
       return Error $"PROOF_FORMAT"
   }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -1644,12 +1681,10 @@ let rec teacher
   //           sat = fun _ _ -> () }
   //   }
   let teacherRes =
-    state {
-      return
-        solve -1 instance.Teacher (funDefs @ constDefs @ constrDefs @ funDecls @ asserts) constDefs []
-    }
+    state { return solve -1 instance.Teacher (funDefs @ constDefs @ constrDefs @ funDecls @ asserts) constDefs [] }
 
-
+  printfn "TEACHER"
+  
   // do for x in (funDefs
   // @ constDefs
   // @ constrDefs
@@ -2121,7 +2156,7 @@ let rec solver
     // do! Solver.setCommands startCmds
     do! Solver.setCommandsKEK startCmds
     // let! setSofts = Solver.setSoftConsts constDefs
-    
+
     let! setSofts = Solver.setSoftConstsKEK constDefs
     do kek setSofts
     do! Debug.Print.redlogInput ""
@@ -2138,11 +2173,17 @@ let rec solver
 
     match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "(INIT)SMT.NIA" with
     | timeout.Timeout ->
-          let x = randomValues (List.choose (function
-              | Def (n, _, _, _) -> Some n
-              | _ -> None) constDefs)
-                       |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
-          return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      let x =
+        randomValues (
+          List.choose
+            (function
+            | Def (n, _, _, _) -> Some n
+            | _ -> None)
+            constDefs
+        )
+        |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
+
+      return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Result.Ok x) ->
       return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Error _) -> return "UNKNOWN"

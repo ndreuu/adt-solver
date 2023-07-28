@@ -72,22 +72,31 @@ debug_me()$
 
 quit;"""
 
+
+
+
 let runRedlog definitions formula =
   let file = Path.GetTempPath() + ".red"
   
   File.WriteAllText(file, redlogQuery definitions formula)
   
-  // let result = executeRedlog file
-  let result = execute 100000 "redcsl" $"-w- {file}"
-  let r = Regex "sth := "
-  let preambula = Seq.head <| r.Matches result.StdOut
-  let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
-
-  subStr
-  |> balancedBracket
-  |> function
-    | Some s -> translateToSmt s |> Ok 
-    | _ when result.StdOut.Contains "true" -> Ok (smtExpr.BoolConst true)
-    | _ when result.StdOut.Contains "false" -> Ok (smtExpr.BoolConst false)
-    | _ -> Error result
+  match execute -1 "timeout" $"30s redcsl -w- {file}" with
+  | x when x.ExitCode = 124 -> None 
+  | result -> 
+    // printfn $"{result}"
+    let r = Regex "sth := "
+    let preambula = Seq.head <| r.Matches result.StdOut
+    let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
+  
+    subStr
+    |> balancedBracket
+    |> function
+      | Some s -> translateToSmt s |> Ok |> Some
+      | _ when result.StdOut.Contains "true" ->
+        printfn "ERR-T-REDLOG"
+        System.Environment.Exit 0
+        None
+        // Ok (smtExpr.BoolConst true) |> Some
+      | _ when result.StdOut.Contains "false" -> Ok (smtExpr.BoolConst false) |> Some
+      | _ -> Error result |> Some
   

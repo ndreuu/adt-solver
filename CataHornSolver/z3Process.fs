@@ -46,7 +46,7 @@ module Instances =
        Proof,
        "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      Learner, (NIA, Model, "") ]
+      Learner, (NIA, Model, "-T:20") ]
     |> Map
 
   let content instance cmds =
@@ -58,9 +58,15 @@ module Instances =
     let file = Path.GetTempPath () + ".smt2"
     File.WriteAllText (file, content instance cmds)
     let result = execute timeout "./z3" $"{flags} {file}"
-    if result.ExitCode = 124 then
+    if result.StdOut.Contains "timeout" then
       Option.None
     else Some result.StdOut
+
+    
+    // if result.ExitCode = 124 then
+      // Option.None
+    // elif result.ExitCode = 0 then Some result.StdOut
+    // else failwith $"{result.StdErr}"
 
 
 module Interpreter =
@@ -92,7 +98,7 @@ module Interpreter =
           AST.Assert (
             AST.Implies (AST.Var s, AST.Or [| AST.Eq (AST.Var n, AST.Int 0); AST.Eq (AST.Var n, AST.Int 1) |])
           ))
-        (softs)
+        softs
         softNames,
       softNames
 
@@ -111,10 +117,16 @@ module Interpreter =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
+      printfn "HERE"
       let result = execute timeout "./z3" $"{flags} {file}"
-      if result.ExitCode = 124 then
+      printfn $"EREH\n{result.ExitCode}"
+      if result.StdOut.Contains "timeout" then
         Option.None
       else Some result.StdOut
+      // elif result.ExitCode = 0 || result.ExitCode = 1 then
+      //   Some result.StdOut
+      // else failwith $"{result.StdOut} {result.StdErr}"
+      //   
     
     let setAssuming (content: string) assumings =
       let assumings' = join " " assumings
@@ -123,12 +135,12 @@ module Interpreter =
     let solve timeout constDefs cmds softs =
       let content = content constDefs cmds softs
       let rec helper assumings =
+        printfn $"helperhelper"
         let out = run timeout <| setAssuming content assumings
         match out with
         | Some out -> 
           let rSat = (Regex @"\bsat\b\n").Matches out
           let rUnknown = (Regex "unknown").Matches out
-          // printfn $"outoutout \n{out}"
           let r =
             if rSat.Count = 1 then SAT ()
             elif rUnknown.Count = 1 then failwith "UNKNOWN?"
@@ -151,7 +163,6 @@ module Interpreter =
                 failwith ""
         | Option.None -> None
       helper (softAsserts softs |> snd)
-      // helper []
 
 
   let proof cmds content =
@@ -225,17 +236,19 @@ module Interpreter =
         | _ -> Some (UNKNOWN, [])
   
 
+type snapshot =
+  { cmds: AST.Program list
+    consts: AST.Program list }
 
 type context =
   { cmds: AST.Program list
-    snapshot: AST.Program list
+    snapshot: snapshot
     softConsts: AST.Name list }
 
   static member Init () =
     { cmds = []
-      snapshot =  []
+      snapshot = { cmds = []; consts = [] }
       softConsts = [] }
-
 
 let tst () =
   let contnet =
@@ -310,3 +323,5 @@ let tstpp () =
 let chc () =
   executeZ3 "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false /home/andrew/Downloads/jjj/dbg/lol/2/smt-input.smt2"
   |> printfn "%O"
+  
+
