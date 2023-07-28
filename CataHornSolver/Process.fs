@@ -12,48 +12,65 @@ type ProcessResult = {
 }
 
 
+open System
 
+let trim (s: string) = s.TrimEnd([| '\r'; '\n' |])
 
-let execute processName processArgs =
-    let get = function Some v -> v | _ -> ""
-    cli {
-      Exec $"{processName}"
-      Arguments $"{processArgs}"
-    }
-    |> Command.execute
-    |> fun x -> { StdErr = get x.Error; StdOut = get x.Text; ExitCode = x.ExitCode }
+let execute timeout processName processArgs =
+    // let get = function Some v -> v | _ -> ""
+    // cli {
+      // Exec $"{processName}"
+      // Arguments $"{processArgs}"
+    // }
+    // |> Command.execute
+    // |> fun x -> { StdErr = get x.Error; StdOut = get x.Text; ExitCode = x.ExitCode }
     
-    // let psi = Diagnostics.ProcessStartInfo(processName, processArgs) 
-    // psi.UseShellExecute <- false
-    // psi.RedirectStandardOutput <- true
-    // psi.RedirectStandardError <- true
-    // psi.CreateNoWindow <- true        
-    // let proc = Diagnostics.Process.Start(psi) 
-    // let output = Text.StringBuilder()
-    // let error = Text.StringBuilder()
-    // proc.OutputDataReceived.Add(fun args -> output.Append(args.Data) |> ignore)
-    // proc.ErrorDataReceived.Add(fun args -> error.Append(args.Data) |> ignore)
-    // proc.BeginErrorReadLine()
-    // proc.BeginOutputReadLine()
+    let psi = Diagnostics.ProcessStartInfo (processName, processArgs) 
+    psi.UseShellExecute <- false
+    psi.RedirectStandardOutput <- true
+    psi.RedirectStandardError <- true
+    psi.CreateNoWindow <- true
+    let proc = Diagnostics.Process.Start(psi) 
+    let output = Text.StringBuilder()
+    let error = Text.StringBuilder()
+    proc.OutputDataReceived.Add(fun args -> output.Append(args.Data) |> ignore)
+    proc.ErrorDataReceived.Add(fun args -> error.Append(args.Data) |> ignore)
+
+    let text = proc.StandardOutput.ReadToEnd()
+    let error = proc.StandardError.ReadToEnd()
+    
+    if proc.WaitForExit(timeout) then  
+      { ExitCode = proc.ExitCode
+        StdOut = text |> trim
+        StdErr = error |> trim }
+    else
+      { ExitCode = 124
+        StdOut = text |> trim
+        StdErr = error |> trim }
+
     // proc.WaitForExit()
-    // { ExitCode = proc.ExitCode; StdOut = output.ToString(); StdErr = error.ToString() }
+    // { ExitCode = proc.ExitCode
+    //   StdOut = text |> trim
+    //   StdErr = error |> trim }
 
 
 
 
 
-let runWithTimeout (timeout: int) (action: unit -> 'a) : 'a option =
-  let work = Task.Run (fun () -> Some (action ()))
-  let delay = Task.Delay(timeout).ContinueWith (fun _ -> None)
-  Task.WhenAny(work, delay).Result.Result
 
-let foreachFleTimeout timeout dir f g =
-  let files = Directory.GetFiles (dir, @"*.smt2")
+// let runWithTimeout (timeout: int) (action: unit -> 'a) : 'a option =
+//   let work = Task.Run (fun () -> Some (action ()))
+//   let delay = Task.Delay(timeout).ContinueWith (fun _ -> None)
+//   Task.WhenAny(work, delay).Result.Result
+//
+// let foreachFleTimeout timeout dir f g =
+//   let files = Directory.GetFiles (dir, @"*.smt2")
+//
+//   for file in files do
+//     runWithTimeout timeout f |> g file
 
-  for file in files do
-    runWithTimeout timeout f |> g file
-
-
+let executeTl timeout processName processArgs =
+    execute timeout $"{processName}" $"{processArgs}"
 
 open SMTLIB2
 open System
@@ -180,7 +197,7 @@ type ProgramRunner () =
             with _ -> false
         let child_solver = Process.GetProcesses() |> List.ofArray |> List.filter isChildProcess |> List.tryHead
 
-        let hasFinished = p.WaitForExit(-1)
+        let hasFinished = p.WaitForExit(100000)
         if hasFinished then p.WaitForExit() else
             try match child_solver with
                 | Some child_solver -> child_solver.Kill(true)
@@ -210,10 +227,11 @@ type RunRedlog () =
   override this.BinaryName = "redcsl"
   override this.RunOnFile var0 var1 = failwith "todo"
 
+
 let executeRedlog file =
     let r = RunRedlog ()
     let _, hasFinished, error, output = r.RunProcessOn file
-    { StdErr = error; StdOut = output; ExitCode = if hasFinished then 1 else 0 }
+    { StdErr = error; StdOut = output ; ExitCode = if hasFinished then 1 else 0 }
     
 
 type RunZ3 () = 
@@ -226,10 +244,10 @@ type RunZ3 () =
 let executeZ3 file =
     let r = RunZ3 ()
     let _, hasFinished, error, output = r.RunProcessOn file
-    { StdErr = error; StdOut = output; ExitCode = if hasFinished then 1 else 0 }
+    { StdErr = error; StdOut = output |> trim; ExitCode = if hasFinished then 1 else 0 }
     
     
     
-let tst () =
-    execute "redcsl" "-w- /home/andrew/adt-solver/smr/upd/false_cfg5_unambig/dbg/lol/1/a.smt2"
-    |> printfn "%O"
+// let tst () =
+    // execute "redcsl" "-w- /home/andrew/adt-solver/smr/upd/false_cfg5_unambig/dbg/lol/1/a.smt2"
+    // |> printfn "%O"

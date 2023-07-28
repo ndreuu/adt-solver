@@ -78,7 +78,7 @@ let runRedlog definitions formula =
   File.WriteAllText(file, redlogQuery definitions formula)
   
   // let result = executeRedlog file
-  let result = execute "redcsl" $"-w- {file}"
+  let result = execute 100000 "redcsl" $"-w- {file}"
   let r = Regex "sth := "
   let preambula = Seq.head <| r.Matches result.StdOut
   let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)

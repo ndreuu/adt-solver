@@ -2,6 +2,7 @@ module ProofBased.Utils
 
 open System
 open System.Text.RegularExpressions
+open System.Threading.Tasks
 
 
 let flip f a b = f b a
@@ -124,3 +125,101 @@ let assertedPos str =
 let proof dbg str =
   dbg ()
   assertedPos str |> fun str -> varsIdxs str |> substituteVars str |> clean
+
+let randomValues: string list -> _ list =
+  List.map (fun n -> (n, Random().NextInt64 (-10L, 10L)))
+  
+
+let taskChild() : Async<unit> =
+    async {
+        printfn "Starting Child"
+
+        let! ct = Async.CancellationToken
+        printfn $"Cancellation token child: {ct.GetHashCode()}"
+
+        use! c = Async.OnCancel(fun () -> printfn "Cancelled Task Child")
+
+        while (true) do
+            printfn "Waiting Child"
+
+            do! Async.Sleep(100)
+    }
+
+let task  : Async<_ option> =
+    async {
+        printfn "Starting"
+        let! ct = Async.CancellationToken
+        printfn $"Cancellation token: {ct.GetHashCode()}"
+        
+        use! c = Async.OnCancel(fun () -> printfn "Cancelled")
+        let foo = Some 1
+        while true
+          do Async.Sleep 60000 |> ignore
+        
+        return Some 1
+        // do! taskChild()
+    }
+
+
+
+let rec loop () = printfn "l"; loop ()
+
+
+
+let withTimeout timeout action =
+  async {
+    let! child = Async.StartChild (action, timeout)
+    return! child
+  }
+
+
+
+// type Microsoft.FSharp.Control.Async with
+//     static member AwaitTask (t : Task<'T>, timeout : int) =
+//         async {
+//             use cts = new CancellationTokenSource()
+//             use timer = Task.Delay (timeout, cts.Token)
+//             let! completed = Async.AwaitTask <| Task.WhenAny(t, timer)
+//             if completed = (t :> Task) then
+//                 cts.Cancel ()
+//                 let! result = Async.AwaitTask t
+//                 return Some result
+//             else return None
+//         }
+//
+// example
+
+let aa () =
+  // let work = async {
+  //   do loop ()
+  //   printfn "Done" }
+  //
+  // let workWithTimeOut timeOut = async {
+  //     let! comp = Async.StartChild (work, timeOut)
+  //     return! comp }
+  
+  // let mutable  c: Stopwatch = Stopwatch ()
+  // c.Start ()
+  
+  Async.AwaitTask((Task.Delay 500).ContinueWith(fun _ -> loop ()), 10000)
+  |> Async.RunSynchronously
+  |> function Some x -> printfn $"{x}" 
+  // let c = CancellationToken true
+  
+  // Async.RunSynchronously (async { return loop () }, 5000, c)
+  // while (c.ElapsedMilliseconds < 5000) do
+    // printfn "HERE"
+    // loop ()
+    // Task.Delay(1)
+  
+  // System.Threading.Timer.ActiveCount
+  // workWithTimeOut 1000000 |> Async.Start // prints "Done"
+  // workWithTimeOut 200 |> Async.Start // throws System.TimeoutException
+  
+  // let cts = new CancellationTokenSource()   
+  // Async.Start(workWithTimeOut 400 200, cts.Token)
+  // Thread.Sleep 100
+  // cts.Cancel() // throws System.OperationCanceledException
+  
+  
+    

@@ -9,72 +9,6 @@ open ProofBased
 open SMTLIB2
 open Z3Interpreter
 
-let runZ3 funDefs constDefs constrDefs funDecls asserts =
-  let file = Path.GetTempPath () + ".smt2"
-
-  let content =
-    let body =
-      (List.map toString funDefs)
-      @ (List.map toString constDefs)
-      @ (List.map toString constrDefs)
-      @ (List.map toString funDecls)
-      @ (List.map toString asserts)
-      |> join "\n"
-
-    $"""(set-logic HORN)
-(set-option :produce-proofs true)
-{body}
-(check-sat)
-(get-proof)
-"""
-
-  File.WriteAllText (file, content)
-
-  let result =
-    execute
-      "./z3"
-      $"fp.datalog.subsumption=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false {file}"
-
-  result.StdOut
-
-let z3proof funDefs constDefs constrDefs funDecls asserts =
-  let out = runZ3 funDefs constDefs constrDefs funDecls asserts
-
-  let queryDecs =
-    Regex(@"\(declare-fun query").Matches out
-    |> Seq.map (fun (m: Match) -> m.Index |> out.Substring |> Utils.balancedBracket |> Option.get)
-    |> Seq.toList
-
-  let p = Parser.Parser false
-
-  for x in queryDecs @ List.map toString funDecls do
-    p.ParseLine x |> ignore
-
-  let mp =
-    Regex(@"\(mp").Match out
-    |> fun mps -> mps.Index
-    |> out.Substring
-    |> Utils.balancedBracket
-    |> function
-      | Some s ->
-        s.Replace (
-          "mp ",
-          "proof mp
-                   
-                   "
-        )
-        |> fun s -> s |> p.ParseLine
-      | None -> []
-
-  (List.choose
-    (function
-    | Command (Proof (HyperProof (a, hs, _), x, _)) ->
-      Command ((Proof (HyperProof (a, hs, BoolConst false), x, BoolConst false)))
-      |> Some
-    | _ -> None)
-    mp,
-   out)
-
 module Instances =
   type instance =
     | Teacher
@@ -112,21 +46,21 @@ module Instances =
        Proof,
        "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      Learner, (NIA, Model, "fp.spacer.global=true") ]
+      Learner, (NIA, Model, "") ]
     |> Map
 
   let content instance cmds =
     let logic, option, _ = instances |> Map.find instance
     $"""{logic}{setOption (join "\n" cmds) option}"""
 
-  let run instance cmds =
+  let run timeout instance cmds =
     let _, _, flags = instances |> Map.find instance
     let file = Path.GetTempPath () + ".smt2"
-    // printfn $"{content instance cmds}"
     File.WriteAllText (file, content instance cmds)
-    let result = execute "./z3" $"{flags} {file}"
-
-    result.StdOut
+    let result = execute timeout "./z3" $"{flags} {file}"
+    if result.ExitCode = 124 then
+      Option.None
+    else Some result.StdOut
 
 
 module Interpreter =
@@ -150,76 +84,73 @@ module Interpreter =
       | _ -> None)
 
   module SoftSolver =
-    let softAsserts constDefs =
-      let softNames = List.map (fun n -> $"soft_{n}") (names constDefs)
+    let softAsserts softs =
+      let softNames = List.map (fun n -> $"soft_{n}") (softs)
 
       List.map2
         (fun n s ->
           AST.Assert (
             AST.Implies (AST.Var s, AST.Or [| AST.Eq (AST.Var n, AST.Int 0); AST.Eq (AST.Var n, AST.Int 1) |])
           ))
-        (names constDefs)
+        (softs)
         softNames,
       softNames
 
-    let content constDefs cmds =
+    let content constDefs cmds softs =
       let cmds = List.map (AST.program2originalCommand >> toString) cmds |> join "\n"
-      let softAsserts, softNames = softAsserts constDefs
+      let softAsserts, softNames = softAsserts softs
       let softNames' = softNames |> join " "
-      let softAsserts' = List.map (AST.program2originalCommand >> toString) softAsserts |> join "\n" 
+      let softAsserts' = List.map (AST.program2originalCommand >> toString) (List.sort softAsserts) |> join "\n" 
       let softDecls =
         List.map (fun n -> AST.DeclConst (n, AST.Boolean) |> AST.program2originalCommand |> toString) softNames
         |> join "\n" 
       
       $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
       
-    let run content =
+    let run timeout content =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      let result = execute "./z3" $"{flags} {file}"
-      result.StdOut
+      let result = execute timeout "./z3" $"{flags} {file}"
+      if result.ExitCode = 124 then
+        Option.None
+      else Some result.StdOut
     
     let setAssuming (content: string) assumings =
       let assumings' = join " " assumings
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
-    let solve constDefs cmds =
-      let content = content constDefs cmds
-      
+    let solve timeout constDefs cmds softs =
+      let content = content constDefs cmds softs
       let rec helper assumings =
-        let out = run <| setAssuming content assumings
-        // printfn $"{setAssuming content assumings}"
-        // printfn $"{out}"
-        // let out = run <| setAssuming content []
-        let rSat = (Regex @"\bsat\b\n").Matches out
-        let rUnknown = (Regex "unknown").Matches out
-        let r =
-          if rSat.Count = 1 then SAT ()
-          elif rUnknown.Count = 1 then failwith "UNKNOWN?"
-          else UNSAT ()
-        match r with
-        | SAT _ ->
-          let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-          // for x in model constDefs out do printfn $"> {x}"
-          SAT (Some <| model constDefs out) 
-        | UNSAT _ -> 
-          (Regex @"soft_c_\d+").Matches out
-          |> Seq.toList
-          |> List.tryHead
-          |> function
-            | Some x ->
-              // printfn $"{assumings}"
-              // match assumings with
-              // | _::tl -> helper tl
-              // | _ -> helper []
-              List.filter (fun a -> a <> x.Value) assumings
-              |> helper
-            | None ->
-              printfn "!!!!!UNKNOWN"
-              Environment.Exit(0)
-              failwith ""
-      helper (softAsserts constDefs |> snd)
+        let out = run timeout <| setAssuming content assumings
+        match out with
+        | Some out -> 
+          let rSat = (Regex @"\bsat\b\n").Matches out
+          let rUnknown = (Regex "unknown").Matches out
+          // printfn $"outoutout \n{out}"
+          let r =
+            if rSat.Count = 1 then SAT ()
+            elif rUnknown.Count = 1 then failwith "UNKNOWN?"
+            else UNSAT ()
+          match r with
+          | SAT _ ->
+            let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
+            Some (SAT (Some <| model constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)) 
+          | UNSAT _ -> 
+            (Regex @"soft_c_\d+").Matches out
+            |> Seq.toList
+            |> List.tryHead
+            |> function
+              | Some x ->
+                List.filter (fun a -> a <> x.Value) assumings
+                |> helper 
+              | None ->
+                printfn "!!!!!UNKNOWN"
+                Environment.Exit(0)
+                failwith ""
+        | Option.None -> None
+      helper (softAsserts softs |> snd)
       // helper []
 
 
@@ -261,66 +192,48 @@ module Interpreter =
      content)
 
 
-
-
-
-
-
-
-
-  let solve instance cmds constDefs =
-    // printfn $"--------------{instance}--------------"
+  let solve timeout instance cmds constDefs softs =
     match instance with
-    | Instances.instance.Learner -> SoftSolver.solve constDefs cmds
+    | Instances.instance.Learner ->
+      SoftSolver.solve timeout constDefs cmds softs
     | _ ->
       let _, option, _ = Instances.instances |> Map.find instance
 
       let input = List.map (AST.program2originalCommand >> toString) cmds
       
       let output =
-        Instances.run instance input
+        Instances.run timeout instance input
       
-      // printfn $"{output}"
-      
-      let rUnsat = (Regex "unsat").Matches output
-      let rSat = (Regex "sat").Matches output
-
-      let r =
-        if rUnsat.Count = 1 then UNSAT ()
-        elif rSat.Count = 1 then SAT ()
-        else UNKNOWN
-      
-      // printfn $"{r}"
-      // for x in List.map (AST.program2originalCommand >> toString) cmds do
-      // printfn $">> {x}"
-
-      // printfn $"contentcontentcontentcontentcontentcontentcontentcontentcontentcontentcontentcontentv\n{content}"
-
-      match option, r with
-      | Instances.option.None, UNSAT _ -> UNSAT None
-      | Instances.option.Model, UNSAT _ -> UNSAT None
-      | Instances.option.Proof, UNSAT _ -> UNSAT (Some <| proof cmds output)
-      | Instances.option.None, SAT _ -> SAT None
-      | Instances.option.Proof, SAT _ -> SAT None
-      | Instances.option.Model, SAT _ -> SAT (Some <| model constDefs output)
-      | _ -> UNKNOWN
-
-
-
-// let softAsserts =
-// List.map (fun n -> AST.Assert (AST.Implies (AST.Var n ))) (names constDefs)
-
-
+      match output with
+      | Option.None -> Option.None 
+      | Some output -> 
+        let rUnsat = (Regex "unsat").Matches output
+        let rSat = (Regex "sat").Matches output
+  
+        let r =
+          if rUnsat.Count = 1 then UNSAT ()
+          elif rSat.Count = 1 then SAT ()
+          else UNKNOWN
+        
+        match option, r with
+        | Instances.option.None, UNSAT _ -> Some (UNSAT None, [])
+        | Instances.option.Model, UNSAT _ -> Some (UNSAT None, [])
+        | Instances.option.Proof, UNSAT _ -> Some (UNSAT (Some <| proof cmds output), [])
+        | Instances.option.None, SAT _ -> Some (SAT None, [])
+        | Instances.option.Proof, SAT _ -> Some (SAT None, [])
+        | Instances.option.Model, SAT _ -> Some (SAT (Some <| model constDefs output), [])
+        | _ -> Some (UNKNOWN, [])
+  
 
 
 type context =
-  { logic: string
-    cmds: AST.Program list
-    softConsts: AST.Program list }
+  { cmds: AST.Program list
+    snapshot: AST.Program list
+    softConsts: AST.Name list }
 
   static member Init () =
-    { logic = "ALL"
-      cmds = []
+    { cmds = []
+      snapshot =  []
       softConsts = [] }
 
 
@@ -392,3 +305,8 @@ let tstpp () =
 
   for x in cs do
     printfn $"... {x}"
+
+
+let chc () =
+  executeZ3 "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false /home/andrew/Downloads/jjj/dbg/lol/2/smt-input.smt2"
+  |> printfn "%O"
