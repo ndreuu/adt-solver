@@ -39,21 +39,10 @@ let execute timeout processName processArgs =
     let text = proc.StandardOutput.ReadToEnd()
     let error = proc.StandardError.ReadToEnd()
     
-    if proc.WaitForExit(timeout) then  
-      { ExitCode = proc.ExitCode
-        StdOut = text |> trim
-        StdErr = error |> trim }
-    else
-      proc.Dispose ()
-      proc.Kill ()
-      { ExitCode = 124
-        StdOut = text |> trim
-        StdErr = error |> trim }
-
-    // proc.WaitForExit()
-    // { ExitCode = proc.ExitCode
-    //   StdOut = text |> trim
-    //   StdErr = error |> trim }
+    proc.WaitForExit()
+    { ExitCode = proc.ExitCode
+      StdOut = text |> trim
+      StdErr = error |> trim }
 
 
 
