@@ -75,15 +75,18 @@ quit;"""
 
 
 
-let runRedlog definitions formula =
+let runRedlog timeout definitions formula =
   let file = Path.GetTempPath() + ".red"
   
   File.WriteAllText(file, redlogQuery definitions formula)
   
-  match execute -1 "timeout" $"30s redcsl -w- {file}" with
-  | x when x.ExitCode = 124 -> None 
+  match execute -1 "timeout" $"{timeout}s redcsl -w- {file}" with
+  // match execute -1 "redcsl" $"-w- {file}" with
+  // | x when x.ExitCode = 124 -> None 
+  | x when x.ExitCode <> 0 -> None 
   | result -> 
-    // printfn $"{result}"
+    let out = Regex.Replace (result.StdOut, @"\t|\n|\r", "")
+    let result = { result with StdOut = out }
     let r = Regex "sth := "
     let preambula = Seq.head <| r.Matches result.StdOut
     let subStr = result.StdOut.Substring (preambula.Index + preambula.Length)
