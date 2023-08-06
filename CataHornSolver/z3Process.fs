@@ -14,6 +14,7 @@ module Instances =
     | Teacher
     | Checker
     | Learner
+    | TeacherModel
 
   type logic =
     | Horn
@@ -33,7 +34,7 @@ module Instances =
     | Proof
     | Model
     | None
-
+    
   let setOption x =
     function
     | Proof -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-proof)"
@@ -44,10 +45,27 @@ module Instances =
     [ Teacher,
       (Horn,
        Proof,
-       "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
+       "-T:10 fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      Learner, (NIA, Model, "-T:20") ]
+      Learner, (NIA, Model, "-T:25")
+      (TeacherModel, (Horn, Model, "fp.spacer.global=true")) ]
     |> Map
+// false_productive_use_of_failure_rot_inj00.smt2
+//  >> Def ("c_2", [], Integer, Int 1L)
+//  >> Def ("c_5", [], Integer, Int 1L)
+//  >> Def ("c_0", [], Integer, Int 0L)
+//  >> Def ("c_4", [], Integer, Int 0L)
+//  >> Def ("c_1", [], Integer, Int 1L)
+//  >> Def ("c_3", [], Integer, Int 1L)
+
+// isaplanner_prop_16.smt2
+//  >> Def ("c_2", [], Integer, Int 1L)
+
+
+
+
+
+  
 
   let content instance cmds =
     let logic, option, _ = instances |> Map.find instance
@@ -75,17 +93,13 @@ module Interpreter =
     | UNSAT of 'b
     | UNKNOWN
 
-  let names =
-    List.choose (function
-      | AST.Def (n, _, _, _) -> Some n
-      | _ -> None)
 
   let model consts (content: string) =
     let p = Parser.Parser false
     p.ParseModel (List.ofArray <| content.Split '\n')
     |> snd
     |> List.choose (function
-      | definition.DefineFun (n, _, _, _) as d when List.contains n (names consts) ->
+      | definition.DefineFun (n, _, _, _) as d when List.contains n ((*names*) consts) ->
         Some (AST.origCommand2program <| Definition d)
       | _ -> None)
 
@@ -102,7 +116,7 @@ module Interpreter =
         softNames,
       softNames
 
-    let content constDefs cmds softs =
+    let content cmds softs =
       let cmds = List.map (AST.program2originalCommand >> toString) cmds |> join "\n"
       let softAsserts, softNames = softAsserts softs
       let softNames' = softNames |> join " "
@@ -117,9 +131,7 @@ module Interpreter =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      printfn "HERE"
       let result = execute timeout "./z3" $"{flags} {file}"
-      printfn $"EREH\n{result.ExitCode}"
       if result.StdOut.Contains "timeout" then
         Option.None
       else Some result.StdOut
@@ -133,9 +145,9 @@ module Interpreter =
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
     let solve timeout constDefs cmds softs =
-      let content = content constDefs cmds softs
+      let content = content cmds softs
+      File.AppendAllText("/home/andrew/Downloads/jjj/BLYA.smt2", $"{content}\n---------------------")
       let rec helper assumings =
-        printfn $"helperhelper"
         let out = run timeout <| setAssuming content assumings
         match out with
         | Some out -> 
@@ -211,16 +223,24 @@ module Interpreter =
       let _, option, _ = Instances.instances |> Map.find instance
 
       let input = List.map (AST.program2originalCommand >> toString) cmds
-      
+
+      // printfn $"input"
+      // join "\n" input |> printfn "%O"
+      // printfn $"--------------------"
+
       let output =
         Instances.run timeout instance input
+
+      // printfn $"output"
+      // printfn $"{output}"
+      // printfn $"--------------------"
       
       match output with
       | Option.None -> Option.None 
       | Some output -> 
         let rUnsat = (Regex "unsat").Matches output
         let rSat = (Regex "sat").Matches output
-  
+        
         let r =
           if rUnsat.Count = 1 then UNSAT ()
           elif rSat.Count = 1 then SAT ()
@@ -234,8 +254,8 @@ module Interpreter =
         | Instances.option.Proof, SAT _ -> Some (SAT None, [])
         | Instances.option.Model, SAT _ -> Some (SAT (Some <| model constDefs output), [])
         | _ -> Some (UNKNOWN, [])
-  
-
+        
+        
 type snapshot =
   { cmds: AST.Program list
     consts: AST.Program list }
@@ -285,13 +305,7 @@ let tst () =
       3))))
 )"""
 
-  Interpreter.model
-    [ AST.Def ("c_0", [], AST.Integer, AST.Int 0)
-      AST.Def ("c_1", [], AST.Integer, AST.Int 0)
-      AST.Def ("c_2", [], AST.Integer, AST.Int 0)
-      AST.Def ("c_3", [], AST.Integer, AST.Int 0) ]
-    contnet
-
+  
   ()
 // printfn $"{Utils.balancedBracket contnet}"
 

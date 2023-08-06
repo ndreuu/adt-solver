@@ -239,8 +239,8 @@ type timeout<'a> =
   | Ok of 'a
 
 
-let redlog definitions formula =
-  match Redlog.runRedlog definitions formula with
+let redlog t definitions formula =
+  match Redlog.runRedlog t definitions formula with
   | Some (Result.Ok v) -> timeout.Ok (Assert (smtExpr2expr' v))
   | None -> timeout.Timeout
   | Some (Error e) -> failwith $"redlog-output: {e}"
@@ -920,6 +920,8 @@ module Solver =
     State (fun st ->
       (), let env, solver, _ = SoftSolver.setCommands st.env st.solver cmds in { st with env = env; solver = solver })
 
+  let cmds = State (fun st -> st.context.cmds, st)
+
 
   let setCommandsKEK (cmds: Program list) =
     State (fun st ->
@@ -940,14 +942,15 @@ module Solver =
             { st.context with
                 cmds = st.context.snapshot.cmds } })
 
-  let curConsts =
-    State (fun st ->
-      st.context.snapshot.consts, st)
-  
+  let curConsts = State (fun st -> st.context.snapshot.consts, st)
+
   let setSoftConsts cmds =
     State (fun st ->
       let env, solver, cmds' = SoftSolver.setSoftAsserts st.env st.solver cmds
       cmds', { st with env = env; solver = solver })
+
+  let softs = State (fun st -> st.context.softConsts, st)
+
 
   let setSoftConstsKEK cmds =
     State (fun st ->
@@ -990,8 +993,9 @@ module Solver =
       | _ -> Error (), st)
 
   let solveLearner defConsts =
+
     State (fun st ->
-      match solve -1 instance.Learner st.context.cmds defConsts st.context.softConsts with
+      match solve -1 instance.Learner st.context.cmds (defNames defConsts) st.context.softConsts with
       | Some (Interpreter.SAT (Some xs), softs) ->
         timeout.Ok (Result.Ok xs),
         { st with
@@ -1061,6 +1065,8 @@ module Debug =
 
     let next = State (fun st -> (), { st with iteration = st.iteration + 1 })
 
+    let iteration = State (fun st -> st.iteration, st)
+
     let private write file s =
       State (fun st -> (writeDbg file s st.iteration), st)
 
@@ -1075,6 +1081,35 @@ module Debug =
     let smtADTLIA = write "smt-ADT-LIA.smt2"
     let smtADTLIABBB = write "smt-ADT-LIABBBBBBBBBB.smt2"
     let proof = write "proof.smt2"
+
+
+let adtDecls (adtDecs, recs: symbol list list) =
+  let nonRec =
+    List.filter
+      (function
+      | DeclDataType [ n, _ ] when (not <| List.contains n (List.concat recs)) -> true
+      | _ -> false)
+      adtDecs
+
+  let recs =
+    List.map
+      (List.map (fun n ->
+        List.find
+          (function
+          | DeclDataType [ n', _ ] when n = n' -> true
+          | _ -> false)
+          adtDecs))
+      recs
+    |> List.map (fun ds ->
+      DeclDataType (
+        List.choose
+          (function
+          | DeclDataType [ n', b ] -> Some (n', b)
+          | _ -> None)
+          ds
+      ))
+
+  recs @ nonRec
 
 
 let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
@@ -1145,6 +1180,7 @@ module Assert =
     List.choose (function
       | Assert x -> Some x
       | _ -> None)
+
 
 module Resolvent =
   let proofTree proof =
@@ -1464,6 +1500,100 @@ let banValues constDefs =
 
 
 
+// r
+//   T nia
+//
+
+//  (ban)
+//   T nia
+//
+
+
+
+
+
+module NIA =
+  let rec nia constDefs constrDefs pushed' (cmdOps: Lazy<_>) =
+    state {
+      match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
+      | Timeout ->
+        do! cmdOps.Force ()
+
+        match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
+        | timeout.Ok (Result.Ok defConsts') ->
+          let! cs = Solver.cmds
+
+          do!
+            Debug.Print.smtInput (
+              let content = List.map (program2originalCommand >> toString) cs |> join "\n" in
+
+              $"(set-logic NIA)\n{content}"
+            )
+
+          return Result.Ok (defConsts', constrDefs, pushed')
+        | _ -> return Error "Z3.NIA"
+      | timeout.Ok (Result.Ok defConsts') ->
+        let! cs = Solver.cmds
+
+        do!
+          Debug.Print.smtInput (
+            let content = List.map (program2originalCommand >> toString) cs |> join "\n" in
+
+            $"(set-logic NIA)\n{content}"
+          )
+
+        return Result.Ok (defConsts', constrDefs, pushed')
+      | timeout.Ok (Error e) -> return Error e
+    }
+
+  let tlAfterRedlogTl constDefs constrDefs pushed' =
+    (lazy
+      state {
+        let! _ = Solver.unsetCommands
+        let! _ = Solver.unsetCommands
+        do! Solver.setCommandsKEK [ banValues constDefs ]
+      })
+    |> nia constDefs constrDefs pushed'
+
+  let tlAfterRedlog constDefs constrDefs pushed' =
+    (lazy
+      state {
+        let! _ = Solver.unsetCommands
+        do! Solver.setCommandsKEK [ banValues constDefs ]
+      })
+    |> nia constDefs constrDefs pushed'
+
+
+let anotherConsts funDefs constDefs constrDefs clause pushed =
+  state {
+    do! Debug.Print.redlogInput $"{Redlog.redlogQuery (funDefs @ def2decVars constrDefs) clause}"
+    let! softs = Solver.softs
+
+    // printfn $"<<<<<<<<<< {softs.Length}"
+    // for x in constDefs do printfn $"< {program2originalCommand x}"
+    // match! Debug.Duration.go (lazy state.Return (redlog (if List.length softs = List.length constDefs then 0.1 else 20) (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+    match! Debug.Duration.go (lazy state.Return (redlog 5 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+    | Timeout ->
+      do! Solver.setCommandsKEK [ banValues constDefs ]
+      // let x =
+      //   randomValues (
+      //     List.choose
+      //       (function
+      //       | Def (n, _, _, _) -> Some n
+      //       | _ -> None)
+      //       constDefs
+      //   )
+      //   |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
+      // return Result.Ok (x, constrDefs, pushed)
+
+      return! NIA.tlAfterRedlogTl constDefs constrDefs pushed
+    | timeout.Ok redlogResult ->
+      do! Solver.setCommandsKEK [ redlogResult ]
+      return! NIA.tlAfterRedlog constDefs constrDefs (pushed |> List.addLast redlogResult)
+  }
+
+
+
 let rec learner
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -1494,73 +1624,7 @@ let rec learner
 
       match feasible with
       | Result.Ok _ -> return Error "UNSAT"
-      | Error _ ->
-        let clause = Implies (resolvent, Bool false) |> forAll
-
-        do! Debug.Print.redlogInput $"{Redlog.redlogQuery (funDefs @ def2decVars constrDefs) clause}"
-
-        let! redlogResult =
-          Debug.Duration.go (lazy state.Return (redlog (funDefs @ def2decVars constrDefs) clause)) "REDLOG"
-
-        match redlogResult with
-        | Timeout ->
-          // let! curConsts = Solver.curConsts
-          // let ban
-          do! Solver.setCommandsKEK [ banValues constDefs ]
-          // do for x in curConsts do printfn $"CC {x}"
-          // do for x in constDefs do printfn $"CCCC {x}"
-
-          match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
-          | timeout.Timeout ->
-            let! predConsts = Solver.unsetCommands
-            let! predConsts = Solver.unsetCommands
-            do! Solver.setCommandsKEK [ banValues constDefs ]
-            
-            match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
-            | timeout.Timeout ->
-              failwith "?"
-              return Result.Ok ([], constrDefs, pushed)
-            | timeout.Ok (Result.Ok defConsts') ->
-              printfn "RRRRR"
-              do for x in defConsts' do printfn $"R {x}" 
-              return Result.Ok (defConsts', constrDefs, pushed)
-            | timeout.Ok (Error e) -> return Error e
-
-          | timeout.Ok (Result.Ok defConsts') ->
-            printfn "RRRRR2222"
-            do for x in defConsts' do printfn $"R2 {x}" 
-            return Result.Ok (defConsts', constrDefs, pushed)
-          | timeout.Ok (Error e) -> return Error e
-
-        | timeout.Ok redlogResult ->
-          do! Debug.Print.redlogOutput $"{program2originalCommand redlogResult}"
-
-          // let setCmds = [ redlogResult; banValues constDefs ]
-          let setCmds = [ redlogResult ]
-
-          do kek <| setCmds
-          do! Solver.setCommandsKEK setCmds
-
-          do!
-            Debug.Print.smtInput (
-              let content =
-                List.map (program2originalCommand >> toString) (pushed @ setCmds) |> join "\n" in
-
-              $"(set-logic NIA)\n{content}"
-            )
-
-          let pushed' = pushed @ setCmds
-
-          match! Debug.Duration.go (lazy Solver.solveLearner constDefs) "Z3.NIA" with
-          | timeout.Timeout ->
-            let! predConsts = Solver.unsetCommands
-            do! Solver.setCommandsKEK [ banValues constDefs ]
-            match! Solver.solveLearner constDefs with
-            | timeout.Ok (Result.Ok xs) ->
-              for x in xs do printfn $"{x}"
-              return Result.Ok (xs, xs, pushed)
-          | timeout.Ok (Result.Ok defConsts') -> return Result.Ok (defConsts', constrDefs, pushed')
-          | timeout.Ok (Error e) -> return Error e
+      | Error _ -> return! anotherConsts funDefs constDefs constrDefs (Implies (resolvent, Bool false) |> forAll) pushed
 
     | _ ->
       printfn $"ERR-PROOF_FORMAT"
@@ -1652,7 +1716,110 @@ let rec learner
 //         printfn "A %O" x
 //     | Error e -> printfn "%O" e
 
+
+module Model =
+  let alg =
+    List.choose (function
+      | Def (n, x, y, z) -> Some (Def ($"alg_{n}", x, y, z))
+      | _ -> None)
+
+  let fCata n x : smtExpr =
+    smtExpr.Apply (ElementaryOperation ($"cata_{n}", [], IntSort), [ Ident (x, IntSort) ])
+
+  let constr n args =
+    smtExpr.Apply (n, List.map (fun arg -> Ident (Operation.opName arg, IntSort)) args)
+
+  let appAlg n args =
+    smtExpr.Apply (
+      ElementaryOperation ($"alg_{n}", [], IntSort),
+      List.map
+        (fun arg ->
+          match Operation.toTuple arg with
+          | n, _, ADTSort adt -> fCata adt n
+          | n, _, _ -> Ident (n, IntSort))
+        args
+    )
+
+  let catas ts =
+    List.map program2originalCommand ts
+    |> List.choose (function
+      | Command (command.DeclareDatatypes [ n, xs ]) ->
+        originalCommand.Definition (
+          DefineFunRec (
+            $"cata_{n}",
+            [ "x", ADTSort n ],
+            IntSort,
+            Match (
+              Ident ("x", ADTSort n),
+              List.map
+                (function
+                | n', _, args -> (constr n' args, appAlg n' args))
+                xs
+            )
+          )
+        )
+        |> Some
+      | _ -> None)
+
+  let rec subst op name =
+    function
+    | Ident (n, _) as x when n = name -> smtExpr.Apply (op, [ x ])
+    | Ident (n, _) as x -> x
+    | smtExpr.Apply (x, exprs) -> smtExpr.Apply (x, List.map (subst op name) exprs)
+    | Let (xs, expr) -> Let (List.map (fun (var, e) -> (var, subst op name e)) xs, subst op name expr)
+    | Match (expr, exprs) ->
+      Match (subst op name expr, List.map (fun (e1, e2) -> (subst op name e1, subst op name e2)) exprs)
+    | smtExpr.Ite (expr1, expr2, expr3) -> smtExpr.Ite (subst op name expr1, subst op name expr2, subst op name expr3)
+    | smtExpr.And exprs -> smtExpr.And <| List.map (subst op name) exprs
+    | smtExpr.Or exprs -> smtExpr.Or <| List.map (subst op name) exprs
+    | smtExpr.Not expr -> smtExpr.Not <| subst op name expr
+    | Hence (expr1, expr2) -> Hence (subst op name expr1, subst op name expr2)
+    | QuantifierApplication (qs, expr) -> QuantifierApplication (qs, subst op name expr)
+    | smtExpr.Number _ | smtExpr.BoolConst _ as x -> x 
+
+  let lia2adt ps (m: _ list) =
+    List.choose
+      (function
+      | Def (n, args, _, SMTExpr e) -> Some (n, args, e)
+      | _ -> None)
+      m
+    |> List.sortBy (fun (x, _, _) -> x)
+    |> List.zip
+    <| List.choose
+      (function
+      | Command (DeclareFun (n, sorts, _)) -> Some sorts
+      | _ -> None)
+      ps
+    |> List.sort
+    |> List.map (fun ((n, vars, e), sorts) ->
+      let args = List.zip vars sorts
+      Definition (
+        DefineFun (
+          n,
+          args,
+          BoolSort,
+          List.choose
+            (function
+            | n, ADTSort adt -> Some (n, ElementaryOperation ($"cata_{adt}", [], BoolSort))
+            | _ -> None)
+            args
+          |> List.fold (fun e (n, f) -> subst f n e) e
+        )
+      ))
+
+
+
+
+  let model (ts, recs) ps constDefs constrDefs m =
+    $"""{join "\n" <| List.map (program2originalCommand >> toString) (adtDecls (ts, recs))}
+{join "\n" <| List.map (program2originalCommand >> toString) constDefs}
+{join "\n" <| List.map (program2originalCommand >> toString) (alg constrDefs)}
+{join "\n" <| List.map toString (catas ts)}
+{join "\n" <| List.map toString (lia2adt ps m)}"""
+    
+
 let rec teacher
+  origPs
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
@@ -1681,10 +1848,12 @@ let rec teacher
   //           sat = fun _ _ -> () }
   //   }
   let teacherRes =
-    state { return solve -1 instance.Teacher (funDefs @ constDefs @ constrDefs @ funDecls @ asserts) constDefs [] }
+    state {
+      return solve -1 instance.Teacher (funDefs @ constDefs @ constrDefs @ funDecls @ asserts) (defNames constDefs) []
+    }
 
-  printfn "TEACHER"
-  
+  // printfn "TEACHER"
+  // for x in constDefs do printfn $" >> {x}"
   // do for x in (funDefs
   // @ constDefs
   // @ constrDefs
@@ -1702,7 +1871,38 @@ let rec teacher
       )
 
     match! Debug.Duration.go (lazy teacherRes) "HORN.LIA" with
-    | Some (result.SAT _, _) -> return "SAT"
+    | Some (result.SAT _, _) ->
+      match
+        solve
+          -1
+          instance.TeacherModel
+          (funDefs @ constDefs @ constrDefs @ funDecls @ asserts)
+          (List.choose
+            (function
+            | Decl (n, _) -> Some n
+            | _ -> None)
+            funDecls)
+          []
+      with
+      | Some (result.SAT (Some model), _) ->
+        // printfn $"{model}"
+        // Model.model adtDecs origPs constDefs constrDefs model |> ignore
+        let! i = Debug.Print.iteration
+
+        // for x in constDefs do
+        //   printfn $"{program2originalCommand x}"
+        //
+        // for x in constrDefs do
+        //   printfn $"{program2originalCommand x}"
+
+        printfn $"________________________"
+        printfn $"{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
+        printfn $"________________________"
+        
+        return $"SAT, {i}"
+      | _ ->
+        failwith "!"
+        return ""
     | Some (result.UNSAT (Some (proof, dbgProof)), _) ->
       // let proof, dbgProof =
       //   z3Process.z3proof
@@ -1717,11 +1917,15 @@ let rec teacher
 
       match! learner (adtDecs, recs) adtConstrs funDefs asserts constDefs constrDefs funDecls proof pushed with
       | Result.Ok (defConsts', defConstrs', pushed') ->
-        return! teacher (adtDecs, recs) adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
-      | Error e -> return e
-    | o ->
-      failwith $"{o}"
-      return "failwith A"
+        return! teacher origPs (adtDecs, recs) adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
+      | Error e ->
+        let! i = Debug.Print.iteration
+        return e + $", {i - 1}"
+    | _ ->
+      do! Solver.setCommandsKEK [ banValues constDefs ]
+      return! teacher origPs (adtDecs, recs) adtConstrs funDefs constDefs constrDefs funDecls asserts pushed
+  // failwith $"{o}"
+  // return "failwith A"
   }
 
 
@@ -2128,6 +2332,7 @@ module ImpliesWalker =
 // xs
 
 let rec solver
+  declFuns
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
@@ -2143,6 +2348,7 @@ let rec solver
       |> fun (decs, asserts) -> decs, List.map HenceNormalization.restoreVarNames asserts
 
     funDecls', AssertsMinimization.assertsMinimize asserts' (queryAssert List.head asserts')
+  // funDecls', asserts'
 
   let envLearner, solverLearner = newLearner ()
   let decConsts = decConsts constDefs
@@ -2183,9 +2389,9 @@ let rec solver
         )
         |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
 
-      return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      return! teacher declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Result.Ok x) ->
-      return! teacher (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      return! teacher declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Error _) -> return "UNKNOWN"
   }
   |> run (statement.Init envLearner solverLearner)
@@ -2302,6 +2508,9 @@ let run file dbg timeLimit =
   // printfn "ERR APPROXIMATION"
   // Environment.Exit 0
   // (Map.empty, [], [], [], [], [])
+  for x in declFuns do
+    printfn $">>>>>>> {x}"
+
   let funDecls = List.map origCommand2program declFuns
 
   let adtDecs =
@@ -2336,6 +2545,14 @@ let run file dbg timeLimit =
   let toPrograms = List.map origCommand2program
 
   let v, _ =
-    solver (adtDecs, recs) adtConstrs (toPrograms defFuns) defConstants (toPrograms liaTypes) funDecls asserts''
+    solver
+      declFuns
+      (adtDecs, recs)
+      adtConstrs
+      (toPrograms defFuns)
+      defConstants
+      (toPrograms liaTypes)
+      funDecls
+      asserts''
 
   v, durations, ""

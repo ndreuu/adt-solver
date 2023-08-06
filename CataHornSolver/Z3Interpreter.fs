@@ -15,7 +15,7 @@ module AST =
 
   type ArgsNum = int
 
-  type Type =
+  type  Type =
     | Boolean
     | Integer
     | ADT of Name
@@ -48,7 +48,7 @@ module AST =
     | ForAll of Name array * Expr
     | App of Name * Expr list
     | Ite of Expr * Expr * Expr
-
+    | SMTExpr of smtExpr
     
     member x.StructEq y =
       let rec helper (x,y) = 
@@ -93,6 +93,7 @@ module AST =
       | [ expr ] -> expr
       | exprs -> Or (Array.ofList exprs)
 
+  
   let rec expr2smtExpr =
     function
     | Int i -> Number i
@@ -158,6 +159,13 @@ module AST =
     | Assert of Expr
     | DeclDataType of (Name * Constructor list) list 
 
+  let defNames =
+    List.choose (function
+      | Def (n, _, _, _) -> Some n
+      | _ -> None)
+
+  
+  
   let program2originalCommand = function
     | Def (n, ns, t, e) ->
       Definition (DefineFun (n, List.map (fun n -> (n, IntSort)) ns, t.toSort, expr2smtExpr e))
@@ -185,7 +193,7 @@ module AST =
             (0, cs) ||> List.mapFold (fun acc (n', t) -> constructor acc n' (args t) n, List.length t + acc)
             |> fst)
         )))
-      
+
       // Command (command.DeclareDatatype
            // (n,
             // (0, cs) ||> List.mapFold (fun acc (n', t) -> constructor acc n' (args t) n, List.length t + acc)
@@ -218,6 +226,8 @@ module AST =
     | Hence (e1, e2) -> Implies (smtExpr2expr e1, smtExpr2expr e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
       ForAll (List.map fst args |> List.toArray, smtExpr2expr expr)
+    | a -> SMTExpr a
+      // __notImplemented__()
     | _ -> __notImplemented__()
 
   let rec smtExpr2expr' =
