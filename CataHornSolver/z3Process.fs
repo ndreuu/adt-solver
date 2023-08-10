@@ -96,6 +96,7 @@ module Interpreter =
 
   let model consts (content: string) =
     let p = Parser.Parser false
+    // for x in content.Split '\n' do printfn $"< < < {x}" 
     p.ParseModel (List.ofArray <| content.Split '\n')
     |> snd
     |> List.choose (function
@@ -224,16 +225,16 @@ module Interpreter =
 
       let input = List.map (AST.program2originalCommand >> toString) cmds
 
-      // printfn $"input"
+      // printfn $"----------------------input for {instance}----------------------"
       // join "\n" input |> printfn "%O"
-      // printfn $"--------------------"
+      // printfn $"----------------------------------------------------------------"
 
       let output =
         Instances.run timeout instance input
 
-      // printfn $"output"
+      // printfn $"output of {instance}-----------------------------------------"
       // printfn $"{output}"
-      // printfn $"--------------------"
+      // printfn $"--------------------------------------------------------------|||||||||||||||||"
       
       match output with
       | Option.None -> Option.None 

@@ -40,24 +40,18 @@ module Program =
         for s in st do printfn $"{s}"
         0
       | [| path |] ->
-        
-        // let path = Path.Join(TestContext.CurrentContext.TestDirectory, @"Tests/Source/TIP-no-NAT")
-        // let path = @"./Tests/Source/TIP-no-NAT"
-        // printfn $"{Directory.Exists(path)}"
-        // let dir = DirectoryInfo(path);
-        // let files = dir.GetFiles("*.smt2"); 
-        // for file in files do
-        //   let v, st, curDuration = run file.DirectoryName None None
-        //   let content = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
-        //   File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
-        // try
+        // printfn $"{Shiza.pp path}"
+        // 0
           let testName = Path.GetFileName path
-          printfn $"{testName}"
+          // printfn $"{testName}"
+          
           let result, st, curDurName = run path None None
           let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
-          // let content = $"{result}\n{curDurName}{durations}"
-          // File.WriteAllText("./out.txt", content)
-          printfn $"{testName} {result}"
+          let content = $"{result}\n{curDurName}{durations}"
+          File.WriteAllText("./out.txt", content)
+          // printfn $"{testName} {result}"
+          
+          printfn $"{result}"
           0
         // with _ ->
           // printfn "ERR-SMTH-ELSE"

@@ -121,7 +121,7 @@ module AST =
         expr2smtExpr e
       )
     | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
-
+    | SMTExpr e -> e
 
   type Definition = Name * Name list * Type * Expr
 
