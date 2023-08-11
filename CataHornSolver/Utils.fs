@@ -6,6 +6,7 @@ open System.Threading.Tasks
 
 
 let flip f a b = f b a
+let swap (x, y) = y, x
 
 open SMTLIB2
 

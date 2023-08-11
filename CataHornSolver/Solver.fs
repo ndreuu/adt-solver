@@ -195,7 +195,7 @@ let getApp name (apps: apps) =
       | App (_, args) :: tl -> (args, apps' tl)
       | _ -> ([], apps)
 
-let forAll expr =
+let forAllInt expr =
   let rec helper acc =
     function
     | Int _
@@ -363,7 +363,7 @@ module TypeClarification =
       | Any, t
       | t, Any -> t
       | x, y when x = y -> x
-      | _ -> failwith "wrong types"
+      | _ -> failwith "wrong types {x} {y}"
 
   let rec constrFuns2apps (adts: Map<ident, (symbol * Type list)>) =
     function
@@ -380,7 +380,7 @@ module TypeClarification =
     | And exprs -> And (Array.map (constrFuns2apps adts) exprs)
     | Or exprs -> Or (Array.map (constrFuns2apps adts) exprs)
     | Not e -> Not (constrFuns2apps adts e)
-    | Implies (e1, e2) -> Subtract (constrFuns2apps adts e1, constrFuns2apps adts e2)
+    | Implies (e1, e2) -> Implies (constrFuns2apps adts e1, constrFuns2apps adts e2)
     | Apply (n, es) when adts |> Map.containsKey n -> App (n, List.map (constrFuns2apps adts) es)
     | App (n, es) -> App (n, List.map (constrFuns2apps adts) es)
     | ForAll (ns, e) -> ForAll (ns, constrFuns2apps adts e)
@@ -400,7 +400,7 @@ module TypeClarification =
             | Var n -> acc |> Set.add (n, t)
             | _ -> helper acc arg)
           acc
-          (args)
+          args
           argTypes
       | App (_, exprs) -> List.fold helper acc exprs
       | Apply (_, args) ->
@@ -573,6 +573,7 @@ module TypeClarification =
     |> Set.union vars
 
   let clarify (adts: Map<ident, (symbol * Type list)>) expr varNames =
+    printfn $"E EEE {expr}"
     let appConstrExpr = constrFuns2apps adts expr
     let typedVars = constrFuns2apps adts appConstrExpr |> argTypes adts
     let vars =
@@ -1348,8 +1349,17 @@ module Resolvent =
   let smtEQuery adtConstrs funDefs adtDecs resolvent =
     TypeClarification.clarify adtConstrs resolvent (varNames resolvent) ||> smtEQuery (funDefs @ adtDecs)
   
+// let 
 
-let resolvent defConsts decFuns hyperProof asserts =
+let forallTyped (origAsserts: ((symbol * Type) list * Expr) list) expr =
+  let map = List.map (fun (vars, e) -> (toString <| expr2smtExpr e, vars)) origAsserts |> Map
+  for x in map do printfn $"{x}" 
+  printfn $"{toString <| expr2smtExpr expr}"
+  match Map.tryFind (toString <| expr2smtExpr expr) map with
+  | Some ts -> Assert (ForAllTyped (ts, expr))
+  | None -> Assert expr  
+
+let resolvent (origAsserts: ((symbol * Type) list * Expr) list) defConsts decFuns hyperProof asserts =
   let assertsTree =
     Resolvent.proofTree hyperProof
     |> Resolvent.rmQueryChain
@@ -1359,24 +1369,24 @@ let resolvent defConsts decFuns hyperProof asserts =
     assertsTree
     |> Resolvent.uniqVarNames
   
-  // let proof =
-  //   let rec helper = function
-  //     | Tree.Node (([ x ], [ Assert y ]), tl) ->
-  //       HyperProof
-  //         (Prelude.asserted.Asserted (expr2smtExpr y),
-  //          List.map helper tl,
-  //          match Implies.head x with Some h -> expr2smtExpr h | _ -> expr2smtExpr x)
-  //     | o ->
-  //       printfn $"ERR-NOT-UNIQ {o}"
-  //       Environment.Exit 0
-  //       failwith "ERR-NOT-UNIQ"
-  //          
-  //   Tree.fmap2 (fun x y -> (x, List.map (forAll >> Assert) y)) assertsTree' assertsTree
-  //   |> helper
-  //   
-  // printfn $"assertsTree------------------------------"
-  // printfn $"{proof}"
-  // printfn $"------------------------------assertsTree"
+  let proof =
+    let rec helper = function
+      | Tree.Node (([ x ], [ Assert y ]), tl) ->
+        HyperProof
+          (Prelude.asserted.Asserted (expr2smtExpr y),
+           List.map helper tl,
+           match Implies.head x with Some h -> expr2smtExpr h | _ -> expr2smtExpr x)
+      | o ->
+        printfn $"ERR-NOT-UNIQ {o}"
+        Environment.Exit 0
+        failwith "ERR-NOT-UNIQ"
+           
+    Tree.fmap2 (fun x y -> (x, List.map (forallTyped origAsserts) y)) assertsTree' assertsTree
+    |> helper
+    
+  printfn $"assertsTree------------------------------"
+  printfn $"{proof}"
+  printfn $"------------------------------assertsTree"
   
   
   let resolvent' =
@@ -1645,6 +1655,7 @@ let anotherConsts funDefs constDefs constrDefs clause pushed =
 
 
 let rec learner
+  origAsserts
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
   funDefs
@@ -1655,10 +1666,11 @@ let rec learner
   proof
   pushed
   =
+  for x in adtConstrs do printfn $"XX {x}"
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
-      let resolvent = resolvent constDefs funDecls hyperProof asserts 
+      let resolvent = resolvent origAsserts constDefs funDecls hyperProof asserts 
       let simpResolvent = Simplifier.simplify resolvent  |>  Simplifier.simplify
         
       let! (feasible, smtADTLIAcContent), _ =
@@ -1683,7 +1695,7 @@ let rec learner
         return Error "UNSAT"
       | Error _ ->
         // printfn "ANOTHER"
-        return! anotherConsts funDefs constDefs constrDefs (Implies (simpResolvent, Bool false) |> forAll) pushed
+        return! anotherConsts funDefs constDefs constrDefs (Implies (simpResolvent, Bool false) |> forAllInt) pushed
 
     | _ ->
       printfn $"ERR-PROOF_FORMAT"
@@ -1904,6 +1916,7 @@ module Model =
     
 
 let rec teacher
+  origAsserts
   origPs
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -2003,15 +2016,15 @@ let rec teacher
       do! Debug.Print.proof dbgProof
       do! Debug.Print.next
 
-      match! learner (adtDecs, recs) adtConstrs funDefs asserts constDefs constrDefs funDecls proof pushed with
+      match! learner origAsserts (adtDecs, recs) adtConstrs funDefs asserts constDefs constrDefs funDecls proof pushed with
       | Result.Ok (defConsts', defConstrs', pushed') ->
-        return! teacher origPs (adtDecs, recs) adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
+        return! teacher origAsserts origPs (adtDecs, recs) adtConstrs funDefs defConsts' defConstrs' funDecls asserts pushed'
       | Error e ->
         let! i = Debug.Print.iteration
         return e + $", {i - 1}"
     | _ ->
       do! Solver.setCommandsKEK [ banValues constDefs ]
-      return! teacher origPs (adtDecs, recs) adtConstrs funDefs constDefs constrDefs funDecls asserts pushed
+      return! teacher origAsserts origPs (adtDecs, recs) adtConstrs funDefs constDefs constrDefs funDecls asserts pushed
   // failwith $"{o}"
   // return "failwith A"
   }
@@ -2100,6 +2113,8 @@ module PredicateMinimiztion =
     List.choose (function Decl (n, _) as d when contains n cmds -> Some d | _ -> None) ps 
       
     
+// module Aboba =
+  
 
 module HenceNormalization =
   let decNames =
@@ -2448,12 +2463,13 @@ module ImpliesWalker =
     |> flip List.zip heads
     |> List.map (fun (b, h) ->
       Implies (andVal (notAppRestrictions b @ Implies.bodyArgs' b), h)
-      |> forAll
+      |> forAllInt
       |> Assert)
     |> fun xs -> xs @ (List.filter (not << flip List.contains toRm) cmds)
 // xs
 
 let rec solver
+  origAsserts
   declFuns
   (adtDecs, recs)
   (adtConstrs: Map<ident, symbol * Type list>)
@@ -2526,9 +2542,9 @@ let rec solver
         )
         |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
 
-      return! teacher declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      return! teacher origAsserts declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Result.Ok x) ->
-      return! teacher declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
+      return! teacher origAsserts declFuns (adtDecs, recs) adtConstrs funDefs x constrDefs funDecls asserts (startCmds @ setSofts)
     | timeout.Ok (Error _) -> return "UNKNOWN"
   }
   |> run (statement.Init envLearner solverLearner)
@@ -2539,11 +2555,22 @@ let sort2type =
   | ADTSort name -> ADT name
   | _ -> Integer
 
+let sortedVar2typedVar (n, symbol) = n, sort2type symbol
+  
+
 let approximation file =
   let recs, _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
   let p = Parser.Parser false
   let cmds = p.ParseFile file
-
+  
+  let origAsserts =
+    List.choose
+      (function
+        | originalCommand.Assert (QuantifierApplication ([ForallQuantifier vars], expr)) ->
+          Some (List.map sortedVar2typedVar vars, smtExpr2expr expr)
+        | _ -> None)
+      cmds
+  
   let adtDecs =
     cmds
     |> List.mapi (fun i ->
@@ -2604,7 +2631,7 @@ let approximation file =
       | Definition _ as x -> Some x
       | _ -> None)
 
-  (recs, adtDecs, defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
+  (origAsserts, recs, adtDecs, defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
 
 let apply2app appNames =
   let rec helper =
@@ -2638,13 +2665,13 @@ let apply2app appNames =
 let run file dbg timeLimit =
   dbgPath <- dbg
 
-  let recs, adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
+  let origAsserts, recs, adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
     try
     approximation file
     with _ ->
       printfn "ERR APPROXIMATION"
       Environment.Exit 0
-      ([[]],Map.empty, [], [], [], [], [])
+      ([], [[]],Map.empty, [], [], [], [], [])
   // for x in declFuns do
     // printfn $">>>>>>> {x}"
 
@@ -2683,6 +2710,7 @@ let run file dbg timeLimit =
 
   let v, _ =
     solver
+      origAsserts
       declFuns
       (adtDecs, recs)
       adtConstrs

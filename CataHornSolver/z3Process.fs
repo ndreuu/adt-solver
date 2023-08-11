@@ -340,3 +340,8 @@ let chc () =
   |> printfn "%O"
   
 
+
+let chck () =
+    let p =  Parser.Parser false
+    let cmds = p.ParseFile "/home/andrew/adt-solver/smr/binop-list.smt2"
+    for cmd in cmds do printfn $">> {cmd}"

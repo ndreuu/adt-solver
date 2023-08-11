@@ -120,9 +120,15 @@ module AST =
         names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> Quantifiers.forall,
         expr2smtExpr e
       )
+    | ForAllTyped (vars, e) ->
+      QuantifierApplication (
+        vars |> List.map (fun (n, (t: Type)) -> (n, t.toSort)) |> Quantifiers.forall,
+        expr2smtExpr e
+      )
+    
     | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
     | SMTExpr e -> e
-
+    | o -> failwith $"{o}" 
   type Definition = Name * Name list * Type * Expr
 
   type VarCtx = Map<Name, Microsoft.Z3.Expr>
