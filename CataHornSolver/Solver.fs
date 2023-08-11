@@ -2,6 +2,7 @@ module ProofBased.Solver
 
 open System
 open System.Diagnostics
+open System.IO
 open System.Threading
 open System.Threading.Tasks
 open CataHornSolver
@@ -573,7 +574,6 @@ module TypeClarification =
     |> Set.union vars
 
   let clarify (adts: Map<ident, (symbol * Type list)>) expr varNames =
-    printfn $"E EEE {expr}"
     let appConstrExpr = constrFuns2apps adts expr
     let typedVars = constrFuns2apps adts appConstrExpr |> argTypes adts
     let vars =
@@ -1353,8 +1353,6 @@ module Resolvent =
 
 let forallTyped (origAsserts: ((symbol * Type) list * Expr) list) expr =
   let map = List.map (fun (vars, e) -> (toString <| expr2smtExpr e, vars)) origAsserts |> Map
-  for x in map do printfn $"{x}" 
-  printfn $"{toString <| expr2smtExpr expr}"
   match Map.tryFind (toString <| expr2smtExpr expr) map with
   | Some ts -> Assert (ForAllTyped (ts, expr))
   | None -> Assert expr  
@@ -1369,24 +1367,24 @@ let resolvent (origAsserts: ((symbol * Type) list * Expr) list) defConsts decFun
     assertsTree
     |> Resolvent.uniqVarNames
   
-  let proof =
-    let rec helper = function
-      | Tree.Node (([ x ], [ Assert y ]), tl) ->
-        HyperProof
-          (Prelude.asserted.Asserted (expr2smtExpr y),
-           List.map helper tl,
-           match Implies.head x with Some h -> expr2smtExpr h | _ -> expr2smtExpr x)
-      | o ->
-        printfn $"ERR-NOT-UNIQ {o}"
-        Environment.Exit 0
-        failwith "ERR-NOT-UNIQ"
-           
-    Tree.fmap2 (fun x y -> (x, List.map (forallTyped origAsserts) y)) assertsTree' assertsTree
-    |> helper
-    
-  printfn $"assertsTree------------------------------"
-  printfn $"{proof}"
-  printfn $"------------------------------assertsTree"
+  // let proof =
+  //   let rec helper = function
+  //     | Tree.Node (([ x ], [ Assert y ]), tl) ->
+  //       HyperProof
+  //         (Prelude.asserted.Asserted (expr2smtExpr y),
+  //          List.map helper tl,
+  //          match Implies.head x with Some h -> expr2smtExpr h | _ -> expr2smtExpr x)
+  //     | o ->
+  //       printfn $"ERR-NOT-UNIQ {o}"
+  //       Environment.Exit 0
+  //       failwith "ERR-NOT-UNIQ"
+  //          
+  //   Tree.fmap2 (fun x y -> (x, List.map (forallTyped origAsserts) y)) assertsTree' assertsTree
+  //   |> helper
+  //   
+  // printfn $"assertsTree------------------------------"
+  // printfn $"{proof}"
+  // printfn $"------------------------------assertsTree"
   
   
   let resolvent' =
@@ -1666,7 +1664,6 @@ let rec learner
   proof
   pushed
   =
-  for x in adtConstrs do printfn $"XX {x}"
   state {
     match proof with
     | [ Command (Proof (hyperProof, _, _)) ] ->
@@ -2468,6 +2465,8 @@ module ImpliesWalker =
     |> fun xs -> xs @ (List.filter (not << flip List.contains toRm) cmds)
 // xs
 
+
+
 let rec solver
   origAsserts
   declFuns
@@ -2558,10 +2557,108 @@ let sort2type =
 let sortedVar2typedVar (n, symbol) = n, sort2type symbol
   
 
+module Kek =
+  let body = function
+      | smtExpr.And args -> args
+      | otherwise -> [ otherwise ] 
+  
+  let pop = function
+      | h :: tl -> h, tl
+      | _ -> failwith "A"
+
+  let toBody =
+    function
+      | [ x ] -> x
+      | xs -> smtExpr.And xs
+  
+  let transformHence idx b h =
+    let newFrees =
+        body b
+        |> List.filter (function smtExpr.Apply (UserDefinedOperation (n, a, s), args) -> true | _ -> false)
+        |> List.mapi (fun i _ -> $"ppp_{i}")
+      
+    let b' =
+      match newFrees with
+      | [] -> [ b ]
+      | h::ts ->
+          List.mapFold (fun (frees: string list) -> function
+            | smtExpr.Apply (UserDefinedOperation (n, a, s), args) ->
+              let free, newFrees' = pop frees
+              smtExpr.Apply (UserDefinedOperation (n, a, s), List.addLast (Ident (free, IntSort)) args), newFrees' 
+            | otherwise ->
+              otherwise, frees)
+            newFrees
+            (body b)
+          |> fst
+          
+    let h', idx' =
+      match h with
+      | smtExpr.Apply (UserDefinedOperation (n, a, s), args) ->
+        smtExpr.Apply (UserDefinedOperation (n, a, s), List.addLast (Number idx) args), idx + 1L
+      | otherwies -> otherwies, idx
+  
+    b', h', List.map (fun n -> (n, IntSort)) newFrees , idx'
+    
+  let transformExpr idx = function
+    | Hence (b, h) ->
+      let b', h', fs, idx' = transformHence idx b h
+      match fs with
+      | [] -> Hence (toBody b', h'), idx'
+      | vars -> QuantifierApplication ([ quantifier.ForallQuantifier vars ], Hence (toBody b', h')), idx'
+    | QuantifierApplication ([ quantifier.ForallQuantifier vars ], Hence (b, h)) ->
+      let b', h', fs, idx' = transformHence idx b h
+      QuantifierApplication ([ quantifier.ForallQuantifier (vars @ fs) ], Hence (toBody b', h')), idx'
+    | smtExpr.Apply _ as app ->
+      let b', h', fs, idx' = transformHence idx (BoolConst true) app
+      match fs with
+      | [] -> h', idx'
+      | vars -> QuantifierApplication ([ quantifier.ForallQuantifier vars ], h'), idx'
+    | QuantifierApplication ([ quantifier.ForallQuantifier vars ], (smtExpr.Apply _ as app)) as x ->
+      let b', h', fs, idx' = transformHence idx (BoolConst true) app
+      match fs with
+      | [] -> QuantifierApplication ([ quantifier.ForallQuantifier vars ], h'), idx'
+      | vars -> QuantifierApplication ([ quantifier.ForallQuantifier <| vars @ fs ], h'), idx'
+
+    | otherwise -> otherwise, idx
+  
+  let transformAsserts acc =
+      function
+        | originalCommand.Assert e -> let e', idx' = transformExpr acc e in originalCommand.Assert e', idx'
+        | otherwise -> otherwise, acc
+  
+  let transformCommand =
+    function
+      | Command (command.DeclareFun (n, b, sorts, rSort)) ->
+        Command (command.DeclareFun (n, b, List.addLast IntSort sorts, rSort)) 
+      | otherwise -> otherwise
+  
+  let transform =
+    List.mapFold (fun idx -> function
+      | Command _ as c -> transformCommand c, idx
+      | originalCommand.Assert _ as a ->
+        let a', idx' = transformAsserts idx a
+        a', idx'
+      | otherwise -> otherwise, idx)
+    
 let approximation file =
   let recs, _, _, _, dataTypes, _, _, _, _ = Linearization.linearization file
   let p = Parser.Parser false
-  let cmds = p.ParseFile file
+
+
+  let cmds = p.ParseFile file 
+  
+  let cmds = Kek.transform 0L cmds |> fst 
+  let p = Parser.Parser false
+  for x in List.map toString cmds do
+    // printfn $".. {x}"
+    p.ParseLine x |> ignore
+    
+  // let tmp = Path.GetTempFileName()
+  // File.WriteAllLines(tmp, List.map toString cmds)
+  // let p = Parser.Parser false
+  // let cmds = p.ParseFile tmp 
+  
+  // for cmd in cmds do printfn $"{cmd}"
   
   let origAsserts =
     List.choose
@@ -2662,16 +2759,19 @@ let apply2app appNames =
   helper
 
 
+
 let run file dbg timeLimit =
   dbgPath <- dbg
 
   let origAsserts, recs, adtConstrs, defFuns, liaTypes, defConstants, declFuns, asserts =
-    try
+    // try
     approximation file
-    with _ ->
-      printfn "ERR APPROXIMATION"
-      Environment.Exit 0
-      ([], [[]],Map.empty, [], [], [], [], [])
+    // with _ ->
+      // printfn "ERR APPROXIMATION"
+      // Environment.Exit 0
+      // ([], [[]],Map.empty, [], [], [], [], [])
+  
+  
   // for x in declFuns do
     // printfn $">>>>>>> {x}"
 
@@ -2736,7 +2836,7 @@ module Shiza =
       | originalCommand.Assert e ->
         originalCommand.Assert (Hence (smtExpr.And [BoolConst true], e))
       | otherwise -> otherwise)
-      cmds
+      (cmds)
     |> List.map toString
     |> join "\n"  
   
