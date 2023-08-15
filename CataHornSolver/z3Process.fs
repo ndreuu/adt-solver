@@ -47,8 +47,8 @@ module Instances =
        Proof,
        "fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      Learner, (NIA, Model, "-T:10")
-      // Learner, (NIA, Model, "")
+      // Learner, (NIA, Model, "-T:10")
+      Learner, (NIA, Model, "")
       (TeacherModel, (Horn, Model, "fp.spacer.global=true")) ]
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
@@ -76,7 +76,7 @@ module Instances =
     let _, _, flags = instances |> Map.find instance
     let file = Path.GetTempPath () + ".smt2"
     File.WriteAllText (file, content instance cmds)
-    let result = execute timeout "./z3" $"{flags} {file}"
+    let result = execute timeout "z3" $"{flags} {file}"
     if result.StdOut.Contains "timeout" then
       Option.None
     else Some result.StdOut
@@ -129,14 +129,16 @@ module Interpreter =
       
       $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
       
-    let run timeout content =
+    let runLearner inputs timeout content =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
+      // printfn $"INPUT:::::::::::::::\n{flags} {content}"
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      let result = execute timeout "./z3" $"{flags} {file}"
+      let result = execute timeout "z3" $"{flags} {file}"
+      // let result = execute timeout "cvc" $"--produce-unsat-cores --produce-models {file}"
       if result.StdOut.Contains "timeout" then
-        Option.None
-      else Some result.StdOut
+        Option.None, content :: inputs
+      else Some result.StdOut, content :: inputs
       // elif result.ExitCode = 0 || result.ExitCode = 1 then
       //   Some result.StdOut
       // else failwith $"{result.StdOut} {result.StdErr}"
@@ -146,12 +148,30 @@ module Interpreter =
       let assumings' = join " " assumings
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
-    let rec solve timeout constDefs cmds softs =
+    let solve timeout constDefs cmds softs dbgPath iteration =
       let content = content cmds softs
+
       // printfn $"contentcontentcontentcontent\n\n{content}"
-      File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
-      let rec helper assumings =
-        let out = run timeout <| setAssuming content assumings
+      // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
+      
+      let rec helper i inputs assumings =
+        let softContent = setAssuming content assumings
+        // let softContent = content 
+        
+///////////////////////////////////////////////////////////////////
+        printfn $"{iteration},   smt-input-{i}.smt2" 
+        let path = Path.Join [| dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
+        if not <| Directory.Exists (Path.GetDirectoryName path) then
+          Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+        File.WriteAllText ($"{path}", $"{softContent}\n")
+///////////////////////////////////////////////////////////////////
+
+        
+        
+        let out, inputs' = runLearner inputs timeout softContent 
+        
+        printfn $"outoutoutout\n{out}"
+        
         match out with
         | Some out -> 
           let rSat = (Regex @"\bsat\b\n").Matches out
@@ -160,10 +180,11 @@ module Interpreter =
             if rSat.Count = 1 then SAT ()
             elif rUnknown.Count = 1 then failwith "UNKNOWN?"
             else UNSAT ()
+          printfn $"{r}"
           match r with
           | SAT _ ->
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-            Some (SAT (Some <| model constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)) 
+            Some (SAT (Some <| model constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs' 
           | UNSAT _ -> 
             (Regex @"soft_c_\d+").Matches out
             |> Seq.toList
@@ -171,15 +192,15 @@ module Interpreter =
             |> function
               | Some x ->
                 List.filter (fun a -> a <> x.Value) assumings
-                |> helper 
+                |> helper (i + 1) inputs' 
               | None ->
                 printfn "!!!!!UNKNOWN"
                 Environment.Exit(0)
                 failwith ""
         // | Option.None when not <| List.isEmpty softs ->
           // solve timeout constDefs cmds (List.tail softs)
-        | Option.None -> None
-      helper (softAsserts softs |> snd)
+        | Option.None -> None, inputs'
+      helper 0 [] (softAsserts softs |> snd)
 
 
   let proof cmds content =
@@ -220,10 +241,10 @@ module Interpreter =
      content)
 
 
-  let solve timeout instance cmds constDefs softs =
+  let solve timeout instance cmds constDefs softs dbgPath iteration =
     match instance with
     | Instances.instance.Learner ->
-      SoftSolver.solve timeout constDefs cmds softs
+      SoftSolver.solve timeout constDefs cmds softs dbgPath iteration
     | _ ->
       let _, option, _ = Instances.instances |> Map.find instance
 
@@ -241,7 +262,7 @@ module Interpreter =
       // printfn $"--------------------------------------------------------------|||||||||||||||||"
       
       match output with
-      | Option.None -> Option.None 
+      | Option.None -> Option.None, [] 
       | Some output -> 
         let rUnsat = (Regex "unsat").Matches output
         let rSat = (Regex "sat").Matches output
@@ -252,13 +273,13 @@ module Interpreter =
           else UNKNOWN
         
         match option, r with
-        | Instances.option.None, UNSAT _ -> Some (UNSAT None, [])
-        | Instances.option.Model, UNSAT _ -> Some (UNSAT None, [])
-        | Instances.option.Proof, UNSAT _ -> Some (UNSAT (Some <| proof cmds output), [])
-        | Instances.option.None, SAT _ -> Some (SAT None, [])
-        | Instances.option.Proof, SAT _ -> Some (SAT None, [])
-        | Instances.option.Model, SAT _ -> Some (SAT (Some <| model constDefs output), [])
-        | _ -> Some (UNKNOWN, [])
+        | Instances.option.None, UNSAT _ -> Some (UNSAT None, []), []
+        | Instances.option.Model, UNSAT _ -> Some (UNSAT None, []), []
+        | Instances.option.Proof, UNSAT _ -> Some (UNSAT (Some <| proof cmds output), []), []
+        | Instances.option.None, SAT _ -> Some (SAT None, []), []
+        | Instances.option.Proof, SAT _ -> Some (SAT None, []), []
+        | Instances.option.Model, SAT _ -> Some (SAT (Some <| model constDefs output), []), []
+        | _ -> Some (UNKNOWN, []), []
         
         
 type snapshot =
@@ -268,12 +289,14 @@ type snapshot =
 type context =
   { cmds: AST.Program list
     snapshot: snapshot
-    softConsts: AST.Name list }
+    softConsts: AST.Name list
+    lastConsraint: AST.Program option}
 
   static member Init () =
     { cmds = []
       snapshot = { cmds = []; consts = [] }
-      softConsts = [] }
+      softConsts = []
+      lastConsraint = None }
 
 let tst () =
   let contnet =

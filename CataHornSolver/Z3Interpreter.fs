@@ -634,6 +634,8 @@ module Interpreter =
             actives = env.actives |> List.tail  },
          solver)
 
+      
+    
     let setCommands env (solver: Solver) cmds =
       z3softSolver
         { env = env
