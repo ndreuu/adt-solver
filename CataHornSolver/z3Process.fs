@@ -45,9 +45,10 @@ module Instances =
     [ Teacher,
       (Horn,
        Proof,
-       "-T:10 fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
+       "fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      Learner, (NIA, Model, "-T:25")
+      Learner, (NIA, Model, "-T:10")
+      // Learner, (NIA, Model, "")
       (TeacherModel, (Horn, Model, "fp.spacer.global=true")) ]
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
@@ -145,9 +146,10 @@ module Interpreter =
       let assumings' = join " " assumings
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
-    let solve timeout constDefs cmds softs =
+    let rec solve timeout constDefs cmds softs =
       let content = content cmds softs
-      File.AppendAllText("/home/andrew/Downloads/jjj/BLYA.smt2", $"{content}\n---------------------")
+      // printfn $"contentcontentcontentcontent\n\n{content}"
+      File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
       let rec helper assumings =
         let out = run timeout <| setAssuming content assumings
         match out with
@@ -174,6 +176,8 @@ module Interpreter =
                 printfn "!!!!!UNKNOWN"
                 Environment.Exit(0)
                 failwith ""
+        // | Option.None when not <| List.isEmpty softs ->
+          // solve timeout constDefs cmds (List.tail softs)
         | Option.None -> None
       helper (softAsserts softs |> snd)
 

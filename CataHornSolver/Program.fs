@@ -43,7 +43,7 @@ module Program =
         // printfn $"{Shiza.pp path}"
         // 0
           let testName = Path.GetFileName path
-          // printfn $"{testName}"
+          printfn $"{testName}"
           
           let result, st, curDurName = run path None None
           let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  

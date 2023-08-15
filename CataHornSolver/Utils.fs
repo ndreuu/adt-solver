@@ -128,7 +128,7 @@ let proof dbg str =
   assertedPos str |> fun str -> varsIdxs str |> substituteVars str |> clean
 
 let randomValues: string list -> _ list =
-  List.map (fun n -> (n, Random().NextInt64 (-10L, 10L)))
+  List.map (fun n -> (n, Random().NextInt64 (0L, 10L)))
   
 
 let taskChild() : Async<unit> =
