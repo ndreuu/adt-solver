@@ -47,8 +47,8 @@ module Instances =
        Proof,
        "fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
       Checker, (All, None, "")
-      // Learner, (NIA, Model, "-T:10")
-      Learner, (NIA, Model, "")
+      Learner, (NIA, Model, "-T:10")
+      // Learner, (NIA, Model, "")
       (TeacherModel, (Horn, Model, "fp.spacer.global=true")) ]
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
@@ -149,28 +149,32 @@ module Interpreter =
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
     let solve timeout constDefs cmds softs dbgPath iteration =
-      let content = content cmds softs
+      // let content = content cmds softs
 
       // printfn $"contentcontentcontentcontent\n\n{content}"
       // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
       
       let rec helper i inputs assumings =
+        let isActual (soft: string) =
+          List.fold (fun acc (assuming: string) -> acc || (assuming.Contains soft)) false assumings
+        
+        let content = content cmds (List.filter isActual softs)
         let softContent = setAssuming content assumings
         // let softContent = content 
         
 ///////////////////////////////////////////////////////////////////
-        printfn $"{iteration},   smt-input-{i}.smt2" 
-        let path = Path.Join [| dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
-        if not <| Directory.Exists (Path.GetDirectoryName path) then
-          Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-        File.WriteAllText ($"{path}", $"{softContent}\n")
+        // printfn $"{iteration},   smt-input-{i}.smt2" 
+        // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
+        // if not <| Directory.Exists (Path.GetDirectoryName path) then
+          // Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+        // File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
 
         
         
         let out, inputs' = runLearner inputs timeout softContent 
         
-        printfn $"outoutoutout\n{out}"
+        // printfn $"outoutoutout\n{out}"
         
         match out with
         | Some out -> 
@@ -178,10 +182,15 @@ module Interpreter =
           let rUnknown = (Regex "unknown").Matches out
           let r =
             if rSat.Count = 1 then SAT ()
-            elif rUnknown.Count = 1 then failwith "UNKNOWN?"
+            elif rUnknown.Count = 1 then
+              // printfn "??UNKNOWN??"
+              // Environment.Exit 0
+              UNKNOWN
             else UNSAT ()
-          printfn $"{r}"
+          // printfn $"{r}"
           match r with
+          | UNKNOWN ->
+            Some (UNKNOWN, assumings), inputs'
           | SAT _ ->
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
             Some (SAT (Some <| model constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs' 
@@ -290,13 +299,13 @@ type context =
   { cmds: AST.Program list
     snapshot: snapshot
     softConsts: AST.Name list
-    lastConsraint: AST.Program option}
+    lastConsraint: AST.Program list }
 
   static member Init () =
     { cmds = []
       snapshot = { cmds = []; consts = [] }
       softConsts = []
-      lastConsraint = None }
+      lastConsraint = [] }
 
 let tst () =
   let contnet =

@@ -274,7 +274,9 @@ module AST =
       Def (name, List.map fst args, t, smtExpr2expr body)
     | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
     | originalCommand.Assert expr -> Assert (smtExpr2expr expr)
-    | _ -> __notImplemented__()
+    | o ->
+      printfn $"{o}"
+      __notImplemented__()
     
   let rec aboba =
     function

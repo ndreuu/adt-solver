@@ -49,9 +49,9 @@ module Program =
           let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
           let content = $"{result}\n{curDurName}{durations}"
           File.WriteAllText("./out.txt", content)
-          // printfn $"{testName} {result}"
+          printfn $"{testName} {result}"
           
-          printfn $"{result}"
+          // printfn $"{result}"
           0
         // with _ ->
           // printfn "ERR-SMTH-ELSE"
