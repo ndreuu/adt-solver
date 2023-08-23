@@ -18,6 +18,7 @@ module Program =
       //   let content = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
       //   File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
       // 0
+  
 
   let main =
     function
@@ -45,11 +46,17 @@ module Program =
           let testName = Path.GetFileName path
           printfn $"{testName}"
           
+          let watch = System.Diagnostics.Stopwatch.StartNew();
+
           let result, st, curDurName = run path None None
+          watch.Stop();
+
           let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
           let content = $"{result}\n{curDurName}{durations}"
+
+          let elapsedMs = watch.ElapsedMilliseconds;
           File.WriteAllText("./out.txt", content)
-          printfn $"{testName} {result}"
+          printfn $"{testName} {result} {elapsedMs}"
           
           // printfn $"{result}"
           0

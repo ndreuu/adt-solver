@@ -1,7 +1,8 @@
 module Process.Process
 open System.IO
+open System.Text.RegularExpressions
 open System.Threading.Tasks
-
+// open ProofBased.Utils
 
 open Fli
 
@@ -17,15 +18,8 @@ open System
 let trim (s: string) = s.TrimEnd([| '\r'; '\n' |])
 
 let execute timeout processName processArgs =
-    // let get = function Some v -> v | _ -> ""
-    // cli {
-      // Exec $"{processName}"
-      // Arguments $"{processArgs}"
-    // }
-    // |> Command.execute
-    // |> fun x -> { StdErr = get x.Error; StdOut = get x.Text; ExitCode = x.ExitCode }
-    
-    let psi = Diagnostics.ProcessStartInfo (processName, processArgs) 
+    // let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""") 
+    let psi = Diagnostics.ProcessStartInfo ("bash", $"""-c "time {processName} {processArgs}" """) 
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
     psi.RedirectStandardError <- true
@@ -39,14 +33,20 @@ let execute timeout processName processArgs =
     let text = proc.StandardOutput.ReadToEnd()
     let error = proc.StandardError.ReadToEnd()
     
+    
+    // error.Split('\n')
+    // |>
+    // printfn $"{ }"
+    
     proc.WaitForExit()
     { ExitCode = proc.ExitCode
       StdOut = text |> trim
-      StdErr = error |> trim }
+      StdErr = error  }
 
 
-
-
+let tt () =
+    let a = execute 0 "bash" """-c "time z3 fp.spacer.global=true /home/andrew/Downloads/jjj/dbg/lol/15/horn-input.smt2" """
+    printfn $"{a.StdErr}"
 
 
 // let runWithTimeout (timeout: int) (action: unit -> 'a) : 'a option =

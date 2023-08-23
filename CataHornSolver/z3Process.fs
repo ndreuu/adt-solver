@@ -6,6 +6,7 @@ open System.Text.RegularExpressions
 open Antlr4.Runtime.Misc
 open Process.Process
 open ProofBased
+open ProofBased.Utils
 open SMTLIB2
 open Z3Interpreter
 
@@ -15,6 +16,7 @@ module Instances =
     | Checker
     | Learner
     | TeacherModel
+    | ADTModel
 
   type logic =
     | Horn
@@ -49,7 +51,10 @@ module Instances =
       Checker, (All, None, "")
       Learner, (NIA, Model, "-T:10")
       // Learner, (NIA, Model, "")
-      (TeacherModel, (Horn, Model, "fp.spacer.global=true")) ]
+
+      TeacherModel, (Horn, Model, $"-T:5 fp.spacer.global=true pp.max_depth={UInt64.MaxValue} pp.min_alias_size={UInt64.MaxValue} fp.spacer.global=true")
+      ADTModel, (All, Model, "")]
+      
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
 //  >> Def ("c_2", [], Integer, Int 1L)
@@ -62,12 +67,6 @@ module Instances =
 // isaplanner_prop_16.smt2
 //  >> Def ("c_2", [], Integer, Int 1L)
 
-
-
-
-
-  
-
   let content instance cmds =
     let logic, option, _ = instances |> Map.find instance
     $"""{logic}{setOption (join "\n" cmds) option}"""
@@ -75,11 +74,28 @@ module Instances =
   let run timeout instance cmds =
     let _, _, flags = instances |> Map.find instance
     let file = Path.GetTempPath () + ".smt2"
+    
+    // printfn $"CONTENTTTTTTTTTTTTTTTt\n{content instance cmds}"
+    
     File.WriteAllText (file, content instance cmds)
     let result = execute timeout "z3" $"{flags} {file}"
-    if result.StdOut.Contains "timeout" then
+    
+    
+    
+    let time =
+      result.StdErr.Split('\n')
+      |> Array.filter (fun (s: string) -> s.Contains("real"))
+      |> join "\n"
+///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+    printfn $"{instance}, {time}"  
+///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+    
+    if result.StdOut.Contains "timeout"
+       // || result.StdErr.Contains "timeout"
+       then
       Option.None
-    else Some result.StdOut
+     
+    else Some <| if instance=TeacherModel then (Weight.rmWeightBlocks result.StdOut) else result.StdOut
 
     
     // if result.ExitCode = 124 then
@@ -95,15 +111,37 @@ module Interpreter =
     | UNKNOWN
 
 
-  let model consts (content: string) =
+  let model (adts: _ list) consts (content: string) =
     let p = Parser.Parser false
     // for x in content.Split '\n' do printfn $"< < < {x}" 
-    p.ParseModel (List.ofArray <| content.Split '\n')
-    |> snd
+    
+    // for adt in adts do
+      // printfn $"adt: {adt}"
+      // p.ParseLine adt |> ignore
+    
+    // printfn "HERERERER"
+    //p.ParseLine $"(declare-datatypes ((list_298 0)) (((nil_331) (cons_296 (list_298x0 Int) (list_298x1 list_298)))))" |> ignore
+
+    // for x in List.ofArray <| content.Split '\n' do printfn $"BBBLLLL {x}"
+    
+    let cmds = adts @ (List.ofArray <| content.Split '\n').[ 2..(List.ofArray <| content.Split '\n').Length - 2 ] |> join "\n"
+    let file = Path.GetTempPath () + ".smt2"
+    File.WriteAllText (file, cmds)
+    
+    let cmds = p.ParseFile file
+    
+    cmds
     |> List.choose (function
-      | definition.DefineFun (n, _, _, _) as d when List.contains n ((*names*) consts) ->
-        Some (AST.origCommand2program <| Definition d)
-      | _ -> None)
+             | originalCommand.Definition (DefineFun (n, _, _, _)) as def when List.contains n consts ->
+               Some (AST.origCommand2program <| def)
+             | _ -> None)
+    
+    // p.ParseModel (List.ofArray <| content.Split '\n')
+    // |> snd
+    // |> List.choose (function
+      // | definition.DefineFun (n, _, _, _) as d when List.contains n ((*names*) consts) ->
+        // Some (AST.origCommand2program <| Definition d)
+      // | _ -> None)
 
   module SoftSolver =
     let softAsserts softs =
@@ -125,35 +163,49 @@ module Interpreter =
       let softAsserts' = List.map (AST.program2originalCommand >> toString) (List.sort softAsserts) |> join "\n" 
       let softDecls =
         List.map (fun n -> AST.DeclConst (n, AST.Boolean) |> AST.program2originalCommand |> toString) softNames
-        |> join "\n" 
+        |> join "\n"
       
-      $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
+      let sofCore = List.map (fun n -> $"(assert (! {n}:named _{n}))") softNames |> join "\n"
+      $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n{sofCore}\n(check-sat)\n(get-unsat-core)\n(get-model)"      
+      // $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
       
     let runLearner inputs timeout content =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       // printfn $"INPUT:::::::::::::::\n{flags} {content}"
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      let result = execute timeout "z3" $"{flags} {file}"
-      // let result = execute timeout "cvc" $"--produce-unsat-cores --produce-models {file}"
-      if result.StdOut.Contains "timeout" then
+      // let result = execute timeout "z3" $"{flags} {file}"
+      let result = execute timeout "cvc5" $"--tlimit 10000 {file}"
+      
+      let time =
+        result.StdErr.Split('\n')
+        |> Array.filter (fun (s: string) -> s.Contains("real"))
+        |> join "\n"
+
+      
+///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+      printfn $"{Instances.instance.Learner}, {time}"
+///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+      
+      // printfn $"KEK \n{result.StdOut}"
+      // let a = split "\n" result.StdOut
+      // printfn $"{a.[a.Length - 1]}"
+      if result.StdOut.Contains "timeout" || result.StdErr.Contains "timeout" then
         Option.None, content :: inputs
       else Some result.StdOut, content :: inputs
-      // elif result.ExitCode = 0 || result.ExitCode = 1 then
-      //   Some result.StdOut
-      // else failwith $"{result.StdOut} {result.StdErr}"
       //   
     
     let setAssuming (content: string) assumings =
       let assumings' = join " " assumings
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
+    
     let solve timeout constDefs cmds softs dbgPath iteration =
       // let content = content cmds softs
 
       // printfn $"contentcontentcontentcontent\n\n{content}"
       // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
-      
+      // printfn "solveSOFT"
       let rec helper i inputs assumings =
         let isActual (soft: string) =
           List.fold (fun acc (assuming: string) -> acc || (assuming.Contains soft)) false assumings
@@ -165,16 +217,11 @@ module Interpreter =
 ///////////////////////////////////////////////////////////////////
         // printfn $"{iteration},   smt-input-{i}.smt2" 
         // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
-        // if not <| Directory.Exists (Path.GetDirectoryName path) then
-          // Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+        // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
         // File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
-
-        
         
         let out, inputs' = runLearner inputs timeout softContent 
-        
-        // printfn $"outoutoutout\n{out}"
         
         match out with
         | Some out -> 
@@ -187,14 +234,18 @@ module Interpreter =
               // Environment.Exit 0
               UNKNOWN
             else UNSAT ()
-          // printfn $"{r}"
+          
+          // printfn $"OOOOOOOOOOOOOOOOOOO\n{out}\n-------RRRRRRRRRRRRRR {r}"
           match r with
           | UNKNOWN ->
             Some (UNKNOWN, assumings), inputs'
           | SAT _ ->
+            // printfn $"{out}"
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-            Some (SAT (Some <| model constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs' 
-          | UNSAT _ -> 
+            Some (SAT (Some <| model [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
+          | UNSAT _ ->
+            // for a in assumings do printfn $"{a}"
+            // printfn $"{assumings}"
             (Regex @"soft_c_\d+").Matches out
             |> Seq.toList
             |> List.tryHead
@@ -250,7 +301,7 @@ module Interpreter =
      content)
 
 
-  let solve timeout instance cmds constDefs softs dbgPath iteration =
+  let solve adts timeout instance cmds constDefs softs dbgPath iteration =
     match instance with
     | Instances.instance.Learner ->
       SoftSolver.solve timeout constDefs cmds softs dbgPath iteration
@@ -259,6 +310,13 @@ module Interpreter =
 
       let input = List.map (AST.program2originalCommand >> toString) cmds
 
+
+////////////////////////////////////////////////////////////////
+      // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"--{instance}-{iteration}.smt2" |]
+      // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+      // File.WriteAllText ($"{path}", $"""{join "\n" input}""")
+//////////////////////////////////////////////////////////////////
+      
       // printfn $"----------------------input for {instance}----------------------"
       // join "\n" input |> printfn "%O"
       // printfn $"----------------------------------------------------------------"
@@ -266,9 +324,11 @@ module Interpreter =
       let output =
         Instances.run timeout instance input
 
-      // printfn $"output of {instance}-----------------------------------------"
-      // printfn $"{output}"
-      // printfn $"--------------------------------------------------------------|||||||||||||||||"
+      // if instance = Instances.ADTModel then 
+        // printfn $"output of {instance}-----------------------------------------"
+        // printfn $"{output}"
+        // printfn $"--------------------------------------------------------------|||||||||||||||||"
+      // else ()
       
       match output with
       | Option.None -> Option.None, [] 
@@ -287,7 +347,9 @@ module Interpreter =
         | Instances.option.Proof, UNSAT _ -> Some (UNSAT (Some <| proof cmds output), []), []
         | Instances.option.None, SAT _ -> Some (SAT None, []), []
         | Instances.option.Proof, SAT _ -> Some (SAT None, []), []
-        | Instances.option.Model, SAT _ -> Some (SAT (Some <| model constDefs output), []), []
+        | Instances.option.Model, SAT _ ->
+          // printfn $"{output}"
+          Some (SAT (Some <| model adts constDefs output), []), []
         | _ -> Some (UNKNOWN, []), []
         
         
@@ -376,7 +438,38 @@ let chc () =
   |> printfn "%O"
   
 
-
+let suka () =
+  let p = Parser.Parser false
+  for x in [
+    "sat"
+    "("
+    "(define-fun x0 () Int"
+    "0)"
+    "(define-fun x1 () Int"
+    "1)"
+    "(define-fun x10 () list_298"
+    "nil_331)"
+    "(define-fun x11 () Int"
+    "(- 1))"
+    "(define-fun x2 () list_298"
+    "nil_331)"
+    "(define-fun x3 () list_298"
+    "nil_331)"
+    "(define-fun x4 () list_298"
+    "nil_331)"
+    "(define-fun x5 () Int"
+    "1)"
+    "(define-fun x6 () list_298"
+    "nil_331)"
+    "(define-fun x7 () Int"
+    "0)"
+    "(define-fun x8 () list_298"
+    "nil_331)"
+    "(define-fun x9 () Int"
+    "0)"
+    ")"
+  ] do p.ParseLine x
+  
 let chck () =
     let p =  Parser.Parser false
     let cmds = p.ParseFile "/home/andrew/adt-solver/smr/binop-list.smt2"

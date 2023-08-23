@@ -270,6 +270,7 @@ module AST =
       let t = 
         match sort with
         | IntSort -> Integer
+        | ADTSort adt -> ADT adt 
         | _ -> Boolean
       Def (name, List.map fst args, t, smtExpr2expr body)
     | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
@@ -277,6 +278,21 @@ module AST =
     | o ->
       printfn $"{o}"
       __notImplemented__()
+    
+  // let rec origModelCommand2program =
+    // function
+    // | Definition (DefineFun (name, args, sort, body)) ->
+      // let t = 
+        // match sort with
+        // | IntSort -> Integer
+        // | ADTSort adt -> ADT adt 
+        // | _ -> Boolean
+      // Def (name, List.map fst args, t, smtExpr2expr body)
+    // | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
+    // | originalCommand.Assert expr -> Assert (smtExpr2expr expr)
+    // | o ->
+      // printfn $"{o}"
+      // __notImplemented__()
     
   let rec aboba =
     function
