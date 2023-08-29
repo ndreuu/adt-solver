@@ -33,11 +33,11 @@ jobs:
         run: |
           git clone --recursive https://github.com/ndreuu/SMTLIB2.git
           git submodule update --init --recursive
-#      - name: Z3-build
-#        run: |
-#          cd ./z3
-#          python3 ./scripts/mk_make.py 
-#          cd build; make
+      #      - name: Z3-build
+      #        run: |
+      #          cd ./z3
+      #          python3 ./scripts/mk_make.py 
+      #          cd build; make
       - name: Redlog
         run: |
           sudo apt install gdebi
@@ -48,27 +48,27 @@ jobs:
           dotnet build ./ADTsolver.sln  /nodeReuse:false 
       - name: Run
         run: |
-          cd ./CataHornSolver
-#          dotnet run --project CataHornSolver.fsproj ../CataHornSolver/Tests/Source/TIP-no-NAT/tip2015_regexp_RecNil.smt2 -- >> output.txt
-          for v in ./Tests/Source/TIP-no-NAT/*.smt2
-          do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
-          done;
-#      - name: Building-table
-#        run: |
-#          cd ./CataHornSolver
-#          python ./build-table.py > output.csv
-#      - name: Cross-validation
-#        run: |
-#          cd ./CataHornSolver
-#          python ./compare.py > validation.txt
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: table
-#          path: ./CataHornSolver/output.csv
-#      - uses: actions/upload-artifact@v3
-#        with:
-#          name: validation
-#          path: ./CataHornSolver/validation.txt
+               cd ./CataHornSolver
+          #          dotnet run --project CataHornSolver.fsproj ../CataHornSolver/Tests/Source/TIP-no-NAT/tip2015_regexp_RecNil.smt2 -- >> output.txt
+               for v in ./Tests/Source/TIP-no-NAT/*.smt2
+               do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
+               done;
+      #      - name: Building-table
+      #        run: |
+      #          cd ./CataHornSolver
+      #          python ./build-table.py > output.csv
+      #      - name: Cross-validation
+      #        run: |
+      #          cd ./CataHornSolver
+      #          python ./compare.py > validation.txt
+      #      - uses: actions/upload-artifact@v3
+      #        with:
+      #          name: table
+      #          path: ./CataHornSolver/output.csv
+      #      - uses: actions/upload-artifact@v3
+      #        with:
+      #          name: validation
+      #          path: ./CataHornSolver/validation.txt
       - uses: actions/upload-artifact@v3
         with:
           name: validation
