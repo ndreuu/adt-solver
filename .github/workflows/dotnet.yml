@@ -49,10 +49,9 @@ jobs:
       - name: Run
         run: |
           cd ./CataHornSolver
-          dotnet run --project CataHornSolver.fsproj ../CataHornSolver/Tests/Source/TIP-no-NAT/tip2015_regexp_RecNil.smt2 -- >> output.txt
-#          for v in ./Tests/Source/TIP-no-NAT/*.smt2
-#          do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
-#          done;
+          for v in ./Tests/Source/TIP-no-NAT/*.smt2
+          do timeout 60s sh -c "echo $v; dotnet run --project CataHornSolver.fsproj $v -- >> output.txt" || true
+          done;
 #      - name: Building-table
 #        run: |
 #          cd ./CataHornSolver
