@@ -2015,8 +2015,8 @@ let rec teacher
       | Some (result.SAT (Some model), _), _ ->
         // printfn $"MMM: {model}"
         // let! i = Debug.Print.iteration
-        return $"SAT"
-        // return $"sat\n{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
+        // return $"SAT"
+        return $"sat\n{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
       
       
       | _ ->
