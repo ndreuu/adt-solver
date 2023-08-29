@@ -135,21 +135,20 @@ module AST =
   type FunCtx = Map<Name, Function>
 
   and Env =
-    { ctxSlvr: int
-      ctxVars: int
+    { 
+      
       ctxFuns: FunCtx
-      ctxDecfuns: int
+      
       actives: Name list
-      ctxDataType: int }
+       }
 
   and Function = Name list * Expr
 
   let newEnv args =
-    { ctxSlvr = 123
-      ctxVars = 123
+    { 
+      
       ctxFuns = Map.empty
-      ctxDecfuns = 123
-      ctxDataType = 123
+      
       actives = [] }
 
   type Constructor =  Name * Type list
