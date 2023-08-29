@@ -78,16 +78,16 @@ module Instances =
     // printfn $"CONTENTTTTTTTTTTTTTTTt\n{content instance cmds}"
     
     File.WriteAllText (file, content instance cmds)
-    let result = execute timeout "z3" $"{flags} {file}"
+    let result = execute timeout "./z3" $"{flags} {file}"
     
-    
+    // printfn $"rrrrrrrrrr {result}"
     
     let time =
       result.StdErr.Split('\n')
       |> Array.filter (fun (s: string) -> s.Contains("real"))
       |> join "\n"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-    printfn $"{instance}, {time}"  
+    // printfn $"{instance}, {time}"  
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
     
     if result.StdOut.Contains "timeout"
@@ -174,8 +174,8 @@ module Interpreter =
       // printfn $"INPUT:::::::::::::::\n{flags} {content}"
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      // let result = execute timeout "z3" $"{flags} {file}"
-      let result = execute timeout "cvc5" $"--tlimit 10000 {file}"
+      // let result = execute timeout "./d/z3" $"{flags} {file}"
+      let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
       
       let time =
         result.StdErr.Split('\n')
@@ -184,7 +184,7 @@ module Interpreter =
 
       
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-      printfn $"{Instances.instance.Learner}, {time}"
+      // printfn $"{Instances.instance.Learner}, {time}"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
       
       // printfn $"KEK \n{result.StdOut}"
@@ -433,42 +433,6 @@ let tstpp () =
     printfn $"... {x}"
 
 
-let chc () =
-  executeZ3 "fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false /home/andrew/Downloads/jjj/dbg/lol/2/smt-input.smt2"
-  |> printfn "%O"
-  
-
-let suka () =
-  let p = Parser.Parser false
-  for x in [
-    "sat"
-    "("
-    "(define-fun x0 () Int"
-    "0)"
-    "(define-fun x1 () Int"
-    "1)"
-    "(define-fun x10 () list_298"
-    "nil_331)"
-    "(define-fun x11 () Int"
-    "(- 1))"
-    "(define-fun x2 () list_298"
-    "nil_331)"
-    "(define-fun x3 () list_298"
-    "nil_331)"
-    "(define-fun x4 () list_298"
-    "nil_331)"
-    "(define-fun x5 () Int"
-    "1)"
-    "(define-fun x6 () list_298"
-    "nil_331)"
-    "(define-fun x7 () Int"
-    "0)"
-    "(define-fun x8 () list_298"
-    "nil_331)"
-    "(define-fun x9 () Int"
-    "0)"
-    ")"
-  ] do p.ParseLine x
   
 let chck () =
     let p =  Parser.Parser false

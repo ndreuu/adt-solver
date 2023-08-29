@@ -1,19 +1,13 @@
 module ProofBased.Solver
 
-open System
 open System.Diagnostics
+open System
 open System.IO
-open System.Threading
-open System.Threading.Tasks
-open Antlr4.Runtime.Misc
 open CataHornSolver
 open CataHornSolver.z3Process
 open CataHornSolver.z3Process.Instances
 open CataHornSolver.z3Process.Interpreter
 open Microsoft.FSharp.Core
-open Microsoft.VisualStudio.TestPlatform.TestHost
-open Microsoft.Z3
-open NUnit.Framework
 open Process
 open SMTLIB2
 open SMTLIB2.Parser
@@ -22,15 +16,9 @@ open Z3Interpreter.AST
 
 let mutable dbgPath = None
 
-open System.Collections.Generic
-open System.IO
-open SMTLIB2
-
-open Process
 open Tree.Tree
 open ProofBased.Utils
 open Z3Interpreter.Interpreter
-open Z3Interpreter.AST
 open Approximation
 open State
 
@@ -46,24 +34,18 @@ let state = StateBuilder ()
 type statement =
   { iteration: int
     env: Env
-    solver: Solver
     stopwatch: Stopwatch
     context: z3Process.context }
 
-  static member Init env solver =
+  static member Init env =
     { iteration = 0
       env = env
-      solver = solver
       stopwatch = Stopwatch ()
       context = context.Init () }
 
-let emptyEnv argss =
-  { ctxSlvr = new Context (argss |> dict |> Dictionary)
-    ctxVars = Map.empty
-    ctxFuns = Map.empty
-    ctxDecfuns = Map.empty
-    actives = []
-    ctxDataType = Map.empty }
+let emptyEnv =
+  { ctxFuns = Map.empty
+    actives = [] }
 
 
 
@@ -311,7 +293,6 @@ let collectApps (kids: Expr list list) =
 let singleArgsBinds appsOfSingleParent (kids: Expr list list) =
   try
     let get k map =
-      // printfn $"{k}"
 
       (map |> Map.find k |> List.head,
        map
@@ -996,10 +977,6 @@ module State =
     
   
 module Solver =
-  let setCommands cmds =
-    State (fun st ->
-      (), let env, solver, _ = SoftSolver.setCommands st.env st.solver cmds in { st with env = env; solver = solver })
-
   let cmds = State (fun st -> st.context.cmds, st)
 
   let sortByQuantifiers xs = xs
@@ -1043,24 +1020,6 @@ module Solver =
                       cmds = st.context.cmds }
                 cmds = st.context.cmds @ cmds } })
 
-  let unsetCommands =
-    State (fun st ->
-      st.context.snapshot.consts,
-      { st with
-          context =
-            { st.context with
-                cmds = st.context.snapshot.cmds } })
-
-  let curConsts = State (fun st -> st.context.snapshot.consts, st)
-
-  let setSoftConsts cmds =
-    State (fun st ->
-      let env, solver, cmds' = SoftSolver.setSoftAsserts st.env st.solver cmds
-      cmds', { st with env = env; solver = solver })
-
-  let softs = State (fun st -> st.context.softConsts, st)
-
-
   let setSoftConstsKEK cmds =
     State (fun st ->
       let cmds' = SoftSolver.setSoftAssertsKEK cmds
@@ -1082,27 +1041,11 @@ module Solver =
                     | _ -> None) } })
 
 
-  //deprecated should use setC...; solve;
-  let evalModel cmds =
-    State (fun st ->
-      let m, env, solver =
-        match SoftSolver.evalModel st.env st.solver cmds with
-        | SAT (env, solver, model) -> Result.Ok model, env, solver
-        | UNSAT _ -> Error (), st.env, st.solver in
-
-      m,
-      match m with
-      | Result.Ok _ -> { st with env = env; solver = solver }
-      | Error _ -> st)
-
   let solveFeasible =
     State (fun st ->
       match solve [] -1 instance.Checker st.context.cmds [] [] (dbgPath) -1 with
       | Some (Interpreter.SAT _, _), _ -> Result.Ok (), st
       | _ -> Error (), st)
-
-  let banSoft c = Assert (Not (Var $"soft_{c}"))
-
 
   let solveLearner defConsts =
     State (fun st ->
@@ -1140,19 +1083,6 @@ module Solver =
   // match solve instance.Learner st.context.cmds defConsts with
   // | Interpreter.SAT (Some xs) -> timeout.Ok (Result.Ok xs), st
   // | Interpreter.UNSAT (Some _) -> timeout.Ok (Result.Error "UNKNEONWOWN"), st)
-
-  let solve =
-    State (fun st ->
-      let m, env, solver =
-        match SoftSolver.solve st.env st.solver with
-        | Result.Ok (env, solver, model) -> Result.Ok model, env, solver
-        | Error e -> Error e, st.env, st.solver in
-
-      m,
-      match m with
-      | Result.Ok _ -> { st with env = env; solver = solver }
-      | Error _ -> st)
-
 
 module Debug =
   module Duration =
@@ -1251,9 +1181,9 @@ let adtDecls (adtDecs, recs: symbol list list) =
 
 
 let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
-  let env = emptyEnv [||]
-  let solver = env.ctxSlvr.MkSolver "ALL"
-  solver.Push ()
+  let env = emptyEnv 
+  // let solver = env.ctxSlvr.MkSolver "ALL"
+  // solver.Push ()
 
   let nonRec =
     List.filter
@@ -1300,7 +1230,7 @@ let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
     let! r = Solver.solveFeasible
     return (r, q)
   }
-  |> run (statement.Init env solver)
+  |> run (statement.Init env)
 
 
 module Resolvent =
@@ -1784,59 +1714,29 @@ module NIA =
     |> nia constDefs constrDefs pushed'
 
 
-  let afterHorn constDefs constrDefs pushed' =
-    failwith "afterHorn"
-    // (lazy
-    //   state {
-    //     // let! _ = Solver.unsetCommands
-    //     do! Solver.setCommandsKEK [ banValues constDefs ]
-    //   })
-    // |> nia constDefs constrDefs pushed'
 let anotherConsts funDefs constDefs constrDefs clause pushed =
   state {
-    // printfn $"CLAUSE:::::: {expr2smtExpr clause}"
     do! Debug.Print.redlogInput $"{Redlog.redlogQuery (funDefs @ def2decVars constrDefs) clause}"
-    // let! softs = Solver.softs
-
-    // do! Solver.setCommandsKEK [ Assert clause ]
-    // match! Solver.solveLearner constDefs with
-    // | timeout.Timeout ->
-    // let! _ = Solver.unsetCommands
-    // match! Debug.Duration.go (lazy state.Return (redlog (if List.length softs = List.length constDefs then 0.1 else 20) (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
-    
-    
-    // printfn $"CLAUSE:: {expr2smtExpr clause}"
     do! Solver.setCommandsKEK [ Assert clause ]
     do! Solver.rememberConstraint <| Assert clause
-    // clause
-    //remember clause!!
-    //if TL rm
     match! Solver.solveLearner constDefs with
     | Timeout, _ | timeout.Ok (Result.Error "UNKNOWN~"), _ ->
-       // failwith "KEK"
        do! Solver.rmRememberedConstraint 
-       match! Debug.Duration.go (lazy state.Return (redlog 10 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+       match! Debug.Duration.go (lazy state.Return (redlog 5 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
        | Timeout ->
-         // do! Solver.setCommandsKEK [ banValues constDefs; banValues constDefs ]
          return! NIA.tlAfterRedlogTl constDefs constrDefs pushed
     
        | timeout.Ok redlogResult ->
-         // do! Solver.setCommandsKEK [ banValues constDefs; redlogResult ]
          do! Debug.Print.redlogOutput <| toString (program2originalCommand redlogResult)       
          do! Solver.setCommandsKEK [ redlogResult ]
          do! Solver.rememberConstraint redlogResult
          
          return! NIA.tlAfterRedlog constDefs constrDefs (pushed |> List.addLast redlogResult)
-    // | timeout.Ok (Result.Error "") HERE UNKNOWN and ^
     
     | timeout.Ok (Result.Ok consts), _ ->
-      // do! Solver.rememberConstraint <| Assert (Int 0)
       do! Solver.setCommandsKEK [ banValues constDefs ]
 
       return Result.Ok (consts, constrDefs, pushed)
-  // | timeout.Ok (Result.Ok consts) ->
-  // printfn "KEKEKEKKEKEKKEKKEKEKKEKEKKEKEKEKEK"
-  // return Result.Ok (consts, constrDefs, pushed)
   }
 
 
@@ -1984,8 +1884,6 @@ module Model =
       m @ List.map (fun (p, args) -> Def (p, args, Boolean, Bool true)) delta
 
 
-    // for p in m do printfn $"m: {p}"
-
     let ps =
       if m.Length > ps.Length then
         Command (DeclareFun ("q", [ IntSort ], BoolSort)) :: ps
@@ -2117,8 +2015,8 @@ let rec teacher
       | Some (result.SAT (Some model), _), _ ->
         // printfn $"MMM: {model}"
         // let! i = Debug.Print.iteration
-        // return $"SAT"
-        return $"sat\n{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
+        return $"SAT"
+        // return $"sat\n{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
       
       
       | _ ->
@@ -2164,8 +2062,8 @@ let rec teacher
 
 
 let newLearner () =
-  let envLearner = emptyEnv [| ("model", "true") |]
-  let solverLearner = envLearner.ctxSlvr.MkSolver "NIA"
+  let envLearner = emptyEnv
+  let solverLearner = 123
   envLearner, solverLearner
 
 module AssertsMinimization =
@@ -2650,17 +2548,14 @@ let rec solver
   // let startCmds = funDefs @ decConsts @ constrDefs @ (notZeroFunConsts constrDefs)
   let startCmds = funDefs @ decConsts @ constrDefs 
 
-  solverLearner.Push ()
-
-
   state {
-    do kek startCmds
+    // do kek startCmds
     // do! Solver.setCommands startCmds
     do! Solver.setCommandsKEK startCmds
     // let! setSofts = Solver.setSoftConsts constDefs
 
     let! setSofts = Solver.setSoftConstsKEK constDefs
-    do kek setSofts
+    // do kek setSofts
     do! Debug.Print.redlogInput ""
     do! Debug.Print.redlogOutput ""
 
@@ -2719,7 +2614,7 @@ let rec solver
       // printfn $"eeeeeeeeeeeeeeeeeeeeeeee {err}"
       return "UNKNOWN"
   }
-  |> run (statement.Init envLearner solverLearner)
+  |> run (statement.Init envLearner)
 
 let sort2type =
   function
