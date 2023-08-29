@@ -350,7 +350,13 @@
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten2.smt2" />
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten3.smt2" />
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_SwapAB.smt2" />
-        <Content Include="..\z3\build\z3">
+<!--        <Content Include="..\z3\build\z3">-->
+<!--            <CopyToOutputDirectory>Always</CopyToOutputDirectory>-->
+<!--        </Content>-->
+        <Content Include="..\d\z3">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+        <Content Include="..\d\cvc5">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
         <Compile Include="Program.fs" />
@@ -364,7 +370,6 @@
         <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
         <PackageReference Include="Fli" Version="1.1.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
-        <PackageReference Include="Microsoft.Z3" Version="4.11.2" />
         <PackageReference Include="NUnit" Version="3.13.3" />
         <PackageReference Include="NUnit3TestAdapter" Version="4.2.1" />
         <PackageReference Include="NUnit.Analyzers" Version="3.3.0" />
@@ -382,7 +387,7 @@
     </ItemGroup>
     
     
-    
+<!--    -->
 <!--    <ItemGroup>-->
 <!--      <Reference Include="Microsoft.Z3">-->
 <!--        <HintPath>..\z3\build\Microsoft.Z3.dll</HintPath>-->
@@ -390,4 +395,13 @@
 <!--    </ItemGroup>-->
 
 
+
+<!--ADD HERE CVC-->
+<!--    <ItemGroup>-->
+<!--        <Reference Include="Microsoft.Z3">-->
+<!--            <HintPath>CVC-PATH</HintPath>-->
+<!--        </Reference>-->
+<!--    </ItemGroup>-->
+
+    
 </Project>
