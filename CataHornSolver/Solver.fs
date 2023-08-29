@@ -1892,8 +1892,8 @@ let rec learner
           |> List.map (program2originalCommand >> toString)
           |>  join "\n" 
         
-        // return Error $"UNSAT\n{defines}\n\n{proof}\n\n"
-        return Error $"UNSAT"
+        return Error $"unsat\n{defines}\n\n{proof}\n\n"
+        //return Error $"UNSAT"
       | Error _ ->
         return! anotherConsts funDefs constDefs constrDefs (Implies (simpResolvent, Bool false) |> forAllInt) pushed
 
