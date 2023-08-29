@@ -2561,13 +2561,13 @@ let rec solver
   let startCmds = funDefs @ decConsts @ constrDefs 
 
   state {
-    do kek startCmds
+    // do kek startCmds
     // do! Solver.setCommands startCmds
     do! Solver.setCommandsKEK startCmds
     // let! setSofts = Solver.setSoftConsts constDefs
 
     let! setSofts = Solver.setSoftConstsKEK constDefs
-    do kek setSofts
+    // do kek setSofts
     do! Debug.Print.redlogInput ""
     do! Debug.Print.redlogOutput ""
 
