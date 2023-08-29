@@ -24,10 +24,3 @@ dotnet run <path-to-chc.smt2>
 
 ## Contacts
 ### email: a.oleyn1kov@outlook.com
-
-### Run
-cd /CataHornSolver
-dotnet run <path-to-chc.smt2>
-
-## Contacts
-### email: a.oleyn1kov@outlook.com
