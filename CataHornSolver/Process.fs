@@ -18,8 +18,8 @@ open System
 let trim (s: string) = s.TrimEnd([| '\r'; '\n' |])
 
 let execute timeout processName processArgs =
-    // let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""") 
-    let psi = Diagnostics.ProcessStartInfo ("bash", $"""-c "time {processName} {processArgs}" """) 
+    let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""") 
+    // let psi = Diagnostics.ProcessStartInfo ("bash", $"""-c "time {processName} {processArgs}" """) 
     psi.UseShellExecute <- false
     psi.RedirectStandardOutput <- true
     psi.RedirectStandardError <- true
@@ -43,7 +43,10 @@ let execute timeout processName processArgs =
       StdOut = text |> trim
       StdErr = error  }
 
-
+let asf () =
+    let aasd = execute 0.1 "./z3" "-h"
+    printfn $"{aasd}"
+    
 let tt () =
     let a = execute 0 "bash" """-c "time z3 fp.spacer.global=true /home/andrew/Downloads/jjj/dbg/lol/15/horn-input.smt2" """
     printfn $"{a.StdErr}"
@@ -219,10 +222,6 @@ type RunRedlog () =
   override this.RunOnFile var0 var1 = failwith "todo"
 
 
-let executeRedlog file =
-    let r = RunRedlog ()
-    let _, hasFinished, error, output = r.RunProcessOn file
-    { StdErr = error; StdOut = output ; ExitCode = if hasFinished then 1 else 0 }
     
 
 type RunZ3 () = 
