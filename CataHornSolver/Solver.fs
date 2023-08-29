@@ -16,15 +16,9 @@ open Z3Interpreter.AST
 
 let mutable dbgPath = None
 
-open System.Collections.Generic
-open System.IO
-open SMTLIB2
-
-open Process
 open Tree.Tree
 open ProofBased.Utils
 open Z3Interpreter.Interpreter
-open Z3Interpreter.AST
 open Approximation
 open State
 
@@ -40,24 +34,18 @@ let state = StateBuilder ()
 type statement =
   { iteration: int
     env: Env
-    solver: int
     stopwatch: Stopwatch
     context: z3Process.context }
 
-  static member Init env solver =
+  static member Init env =
     { iteration = 0
       env = env
-      solver = solver
       stopwatch = Stopwatch ()
       context = context.Init () }
 
-let emptyEnv argss =
-  { ctxSlvr = 123
-    ctxVars = 123
-    ctxFuns = Map.empty
-    ctxDecfuns = 123
-    actives = []
-    ctxDataType = 123 }
+let emptyEnv =
+  { ctxFuns = Map.empty
+    actives = [] }
 
 
 
@@ -1193,7 +1181,7 @@ let adtDecls (adtDecs, recs: symbol list list) =
 
 
 let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
-  let env = emptyEnv [||]
+  let env = emptyEnv 
   // let solver = env.ctxSlvr.MkSolver "ALL"
   // solver.Push ()
 
@@ -1242,7 +1230,7 @@ let feasible (adtDecs, (recs: symbol list list)) adtConstrs funDefs resolvent =
     let! r = Solver.solveFeasible
     return (r, q)
   }
-  |> run (statement.Init env 123)
+  |> run (statement.Init env)
 
 
 module Resolvent =
@@ -2074,7 +2062,7 @@ let rec teacher
 
 
 let newLearner () =
-  let envLearner = emptyEnv [| ("model", "true") |]
+  let envLearner = emptyEnv
   let solverLearner = 123
   envLearner, solverLearner
 
@@ -2626,7 +2614,7 @@ let rec solver
       // printfn $"eeeeeeeeeeeeeeeeeeeeeeee {err}"
       return "UNKNOWN"
   }
-  |> run (statement.Init envLearner solverLearner)
+  |> run (statement.Init envLearner)
 
 let sort2type =
   function
