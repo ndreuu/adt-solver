@@ -17,8 +17,10 @@ git clone --recursive https://github.com/ndreuu/SMTLIB2.git
 git submodule update --init --recursive 
 ```
 ### Run
+```bash
 cd /CataHornSolver
 dotnet run <path-to-chc.smt2>
+```
 
 ## Contacts
 ### email: a.oleyn1kov@outlook.com
