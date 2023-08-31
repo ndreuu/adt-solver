@@ -78,7 +78,10 @@ module Instances =
     // printfn $"CONTENTTTTTTTTTTTTTTTt\n{content instance cmds}"
     
     File.WriteAllText (file, content instance cmds)
+    
     let result = execute timeout "./z3" $"{flags} {file}"
+    // let kek = execute timeout "ls" ""
+    // printfn $"Z3:\n {kek}"
     
     // printfn $"rrrrrrrrrr {result}"
     
@@ -175,7 +178,13 @@ module Interpreter =
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
       // let result = execute timeout "./d/z3" $"{flags} {file}"
+      
+      // let kek = execute timeout "ls" ""
+      // printfn $"CVC:\n{kek}"
+
       let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
+      // let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
+      // printfn $"----------CVC-code: {result.ExitCode}"
       
       let time =
         result.StdErr.Split('\n')
@@ -187,9 +196,6 @@ module Interpreter =
       // printfn $"{Instances.instance.Learner}, {time}"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
       
-      // printfn $"KEK \n{result.StdOut}"
-      // let a = split "\n" result.StdOut
-      // printfn $"{a.[a.Length - 1]}"
       if result.StdOut.Contains "timeout" || result.StdErr.Contains "timeout" then
         Option.None, content :: inputs
       else Some result.StdOut, content :: inputs

@@ -80,6 +80,9 @@ let runRedlog timeout definitions formula =
   
   File.WriteAllText(file, redlogQuery definitions formula)
   
+  // let kek = execute timeout "ls" ""
+  // printfn $"RD:\n{kek}"
+    
   let r = execute -1 "timeout" $"{timeout}s redcsl -w- {file}"
   let time =
     r.StdErr.Split('\n')
@@ -88,7 +91,7 @@ let runRedlog timeout definitions formula =
 
   
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-  printfn $"REDLOG, {time}"
+  // printfn $"REDLOG, {time}"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
   match r with
   | x when x.ExitCode <> 0 -> None 

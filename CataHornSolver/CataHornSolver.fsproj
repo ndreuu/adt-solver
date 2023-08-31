@@ -22,6 +22,10 @@
         <Compile Include="Tree.fs" />
         <Compile Include="Solver.fs" />
         <Compile Include="Tests\Test.fs" />
+        <Content Include="run-tests.py" />
+        <Folder Include="unsats\" />
+        <Folder Include="sats\" />
+        <Content Include="table.csv" />
         <Content Include="Tests\Source\racer.horn.smt2">
           <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
@@ -350,9 +354,6 @@
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten2.smt2" />
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_Flatten3.smt2" />
         <Content Include="Tests\Source\TIP-no-NAT\tip2015_tree_SwapAB.smt2" />
-<!--        <Content Include="..\z3\build\z3">-->
-<!--            <CopyToOutputDirectory>Always</CopyToOutputDirectory>-->
-<!--        </Content>-->
         <Content Include="..\d\z3">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
@@ -376,8 +377,6 @@
         <PackageReference Include="coverlet.collector" Version="3.1.2" />
     </ItemGroup>
     
-    
-    
     <ItemGroup>
       <ProjectReference Include="..\SMTLIB2\SMTLIB2\SMTLIB2.fsproj" />
     </ItemGroup>
@@ -385,23 +384,5 @@
     <ItemGroup>
         <ProjectReference Include="..\RedlogParser\RedlogParser.csproj" />
     </ItemGroup>
-    
-    
-<!--    -->
-<!--    <ItemGroup>-->
-<!--      <Reference Include="Microsoft.Z3">-->
-<!--        <HintPath>..\z3\build\Microsoft.Z3.dll</HintPath>-->
-<!--      </Reference>-->
-<!--    </ItemGroup>-->
-
-
-
-<!--ADD HERE CVC-->
-<!--    <ItemGroup>-->
-<!--        <Reference Include="Microsoft.Z3">-->
-<!--            <HintPath>CVC-PATH</HintPath>-->
-<!--        </Reference>-->
-<!--    </ItemGroup>-->
-
     
 </Project>

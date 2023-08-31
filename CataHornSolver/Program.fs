@@ -41,27 +41,22 @@ module Program =
         for s in st do printfn $"{s}"
         0
       | [| path |] ->
-        // printfn $"{Shiza.pp path}"
-        // 0
+          
           let testName = Path.GetFileName path
-          printfn $"{testName}"
+          // printfn $"{testName}"
           
           let watch = System.Diagnostics.Stopwatch.StartNew();
 
-          let result, st, curDurName = run path None None
+          let (status, result), st, curDurName = run path None None
           watch.Stop();
 
           let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
-          let content = $"{result}\n{curDurName}{durations}"
+          let content = $"{status}\n{curDurName}{durations}"
 
-          let elapsedMs = watch.ElapsedMilliseconds;
-          File.WriteAllText("./out.txt", content)
-          printfn $"{testName} {result} {elapsedMs}"
+          let elapsedMs = watch.ElapsedMilliseconds
+          // printfn $"{testName} {elapsedMs} {status}\n{result}"
+          printfn $"{status}\n{elapsedMs}\n{result}"
           
-          // printfn $"{result}"
           0
-        // with _ ->
-          // printfn "ERR-SMTH-ELSE"
-          // 0
       | _ -> 
         1

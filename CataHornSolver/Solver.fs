@@ -1441,13 +1441,10 @@ let resolvent (origAsserts: ((symbol * Type) list * Expr) list) defConsts decFun
           |> function
             | [| x |] -> expr2smtExpr x
             | xs -> expr2smtExpr <| Or xs)
-      | o ->
-        printfn $"ERR-NOT-UNIQ {o}"
-        Environment.Exit 0
-        failwith "ERR-NOT-UNIQ"
 
+    Command( Proof(
     Tree.fmap2 (fun x y -> (x, List.map (forallTyped origAsserts) y)) (restoreOrigExprTree assertsTree') (restoreOrigExprTree assertsTree)
-    |> helper
+    |> helper, Asserted (BoolConst false), BoolConst false))
 
   // printfn $"assertsTree------------------------------"
   // printfn $"{proof}"
@@ -1695,7 +1692,7 @@ module NIA =
       | timeout.Ok (Error e), inputs ->
         do! Debug.Print.smtInputs inputs
         printfn $"{e}"
-        return Error e
+        return Error (e, "")
     }
 
   and tlAfterRedlog constDefs constrDefs pushed' =
@@ -1723,6 +1720,7 @@ let anotherConsts funDefs constDefs constrDefs clause pushed =
     | Timeout, _ | timeout.Ok (Result.Error "UNKNOWN~"), _ ->
        do! Solver.rmRememberedConstraint 
        match! Debug.Duration.go (lazy state.Return (redlog 5 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+       // match! Debug.Duration.go (lazy state.Return (redlog 0.1 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
        | Timeout ->
          return! NIA.tlAfterRedlogTl constDefs constrDefs pushed
     
@@ -1792,7 +1790,7 @@ let rec learner
           |> List.map (program2originalCommand >> toString)
           |>  join "\n" 
         
-        return Error $"unsat\n{defines}\n\n{proof}\n\n"
+        return Error ("unsat", $"{defines}\n\n{proof}\n\n")
         //return Error $"UNSAT"
       | Error _ ->
         return! anotherConsts funDefs constDefs constrDefs (Implies (simpResolvent, Bool false) |> forAllInt) pushed
@@ -1800,7 +1798,7 @@ let rec learner
     | _ ->
       printfn $"ERR-PROOF_FORMAT"
       Environment.Exit 0
-      return Error $"PROOF_FORMAT"
+      return Error ("", $"PROOF_FORMAT")
   }
 
 
@@ -2016,12 +2014,12 @@ let rec teacher
         // printfn $"MMM: {model}"
         // let! i = Debug.Print.iteration
         // return $"SAT"
-        return $"sat\n{Model.model (adtDecs, recs) origPs constDefs constrDefs model}"
+        return ("sat", $"{Model.model (adtDecs, recs) origPs constDefs constrDefs model}")
       
       
       | _ ->
         failwith "!"
-        return "?SAT"
+        return ("?SAT", "")
       // return "SAT"
     | Some (result.UNSAT (Some (proof, dbgProof)), _), _ ->
       // let proof, dbgProof =
@@ -2612,7 +2610,7 @@ let rec solver
     | timeout.Ok (Error err), inputs ->
       do! Debug.Print.smtInputs inputs
       // printfn $"eeeeeeeeeeeeeeeeeeeeeeee {err}"
-      return "UNKNOWN"
+      return "UNKNOWN", ""
   }
   |> run (statement.Init envLearner)
 
@@ -3128,7 +3126,7 @@ module Shiza =
         originalCommand.Assert (QuantifierApplication (vars, Hence (smtExpr.And [ BoolConst true ], e)))
       | originalCommand.Assert e -> originalCommand.Assert (Hence (smtExpr.And [ BoolConst true ], e))
       | otherwise -> otherwise)
-      (cmds)
+      cmds
     |> List.map toString
     |> join "\n"
 
@@ -3152,305 +3150,11 @@ module Shiza =
     | originalCommand.Assert (QuantifierApplication (_, Hence (b, _))) -> [ b ]
     | _ -> []
 
-  let minimize cmds =
-    let rec helper visited x =
-
-      id
-
-    helper []
-
-
-let chck () =
-  Shiza.pp
-    "/home/andrew/RiderProjects/adt-solver-smr/CataHornSolver/Tests/Source/TIP-no-NAT/false_productive_use_of_failure_rot_inj00.smt2"
-  |> printfn "%O"
-
-
-
-
-let ccc () =
-  let eqs =
-    [ Eq (Var "x100", Var "x114")
-      Eq (Var "x121", Var "x117")
-      Eq (Var "x124", Var "x120")
-      Eq (Var "x127", Var "x123")
-      Eq (Var "x130", Var "x126")
-      Eq (Var "x133", Var "x129")
-      Eq (Var "x291", Var "x317")
-      Eq (Var "x342", Var "x343")
-      Eq (Var "x342", Var "x350")
-      Eq (Var "x342", Var "x356")
-      Eq (Var "x343", Var "x365")
-      Eq (Var "x343", Var "x372")
-      Eq (Var "x343", Var "x378")
-      Eq (Var "x344", Var "x345")
-      Eq (Var "x346", Var "x364")
-      Eq (Var "x347", Var "x543")
-      Eq (Var "x350", Var "x365")
-      Eq (Var "x350", Var "x372")
-      Eq (Var "x350", Var "x378")
-      Eq (Var "x352", Var "x364")
-      Eq (Var "x353", Var "x543")
-      Eq (Var "x356", Var "x365")
-      Eq (Var "x356", Var "x372")
-      Eq (Var "x356", Var "x378")
-      Eq (Var "x358", Var "x364")
-      Eq (Var "x359", Var "x543")
-      Eq (Var "x365", Var "x387")
-      Eq (Var "x365", Var "x394")
-      Eq (Var "x365", Var "x400")
-      Eq (Var "x366", Var "x367")
-      Eq (Var "x368", Var "x386")
-      Eq (Var "x369", Var "x540")
-      Eq (Var "x372", Var "x387")
-      Eq (Var "x372", Var "x394")
-      Eq (Var "x372", Var "x400")
-      Eq (Var "x374", Var "x386")
-      Eq (Var "x375", Var "x540")
-      Eq (Var "x378", Var "x387")
-      Eq (Var "x378", Var "x394")
-      Eq (Var "x378", Var "x400")
-      Eq (Var "x380", Var "x386")
-      Eq (Var "x381", Var "x540")
-      Eq (Var "x387", Var "x409")
-      Eq (Var "x387", Var "x416")
-      Eq (Var "x387", Var "x422")
-      Eq (Var "x388", Var "x389")
-      Eq (Var "x390", Var "x408")
-      Eq (Var "x391", Var "x537")
-      Eq (Var "x394", Var "x409")
-      Eq (Var "x394", Var "x416")
-      Eq (Var "x394", Var "x422")
-      Eq (Var "x396", Var "x408")
-      Eq (Var "x397", Var "x537")
-      Eq (Var "x400", Var "x409")
-      Eq (Var "x400", Var "x416")
-      Eq (Var "x400", Var "x422")
-      Eq (Var "x402", Var "x408")
-      Eq (Var "x403", Var "x537")
-      Eq (Var "x409", Var "x431")
-      Eq (Var "x409", Var "x438")
-      Eq (Var "x409", Var "x444")
-      Eq (Var "x410", Var "x411")
-      Eq (Var "x412", Var "x430")
-      Eq (Var "x413", Var "x534")
-      Eq (Var "x416", Var "x431")
-      Eq (Var "x416", Var "x438")
-      Eq (Var "x416", Var "x444")
-      Eq (Var "x418", Var "x430")
-      Eq (Var "x419", Var "x534")
-      Eq (Var "x422", Var "x431")
-      Eq (Var "x422", Var "x438")
-      Eq (Var "x422", Var "x444")
-      Eq (Var "x424", Var "x430")
-      Eq (Var "x425", Var "x534")
-      Eq (Var "x431", Var "x453")
-      Eq (Var "x431", Var "x460")
-      Eq (Var "x431", Var "x466")
-      Eq (Var "x432", Var "x433")
-      Eq (Var "x434", Var "x452")
-      Eq (Var "x435", Var "x531")
-      Eq (Var "x438", Var "x453")
-      Eq (Var "x438", Var "x460")
-      Eq (Var "x438", Var "x466")
-      Eq (Var "x440", Var "x452")
-      Eq (Var "x441", Var "x531")
-      Eq (Var "x444", Var "x453")
-      Eq (Var "x444", Var "x460")
-      Eq (Var "x444", Var "x466")
-      Eq (Var "x446", Var "x452")
-      Eq (Var "x447", Var "x531")
-      Eq (Var "x453", Var "x475")
-      Eq (Var "x453", Var "x482")
-      Eq (Var "x453", Var "x488")
-      Eq (Var "x454", Var "x455")
-      Eq (Var "x456", Var "x474")
-      Eq (Var "x457", Var "x528")
-      Eq (Var "x460", Var "x475")
-      Eq (Var "x460", Var "x482")
-      Eq (Var "x460", Var "x488")
-      Eq (Var "x462", Var "x474")
-      Eq (Var "x463", Var "x528")
-      Eq (Var "x466", Var "x475")
-      Eq (Var "x466", Var "x482")
-      Eq (Var "x466", Var "x488")
-      Eq (Var "x468", Var "x474")
-      Eq (Var "x469", Var "x528")
-      Eq (Var "x475", Var "x497")
-      Eq (Var "x475", Var "x504")
-      Eq (Var "x475", Var "x510")
-      Eq (Var "x476", Var "x477")
-      Eq (Var "x478", Var "x496")
-      Eq (Var "x479", Var "x525")
-      Eq (Var "x482", Var "x497")
-      Eq (Var "x482", Var "x504")
-      Eq (Var "x482", Var "x510")
-      Eq (Var "x484", Var "x496")
-      Eq (Var "x485", Var "x525")
-      Eq (Var "x488", Var "x497")
-      Eq (Var "x488", Var "x504")
-      Eq (Var "x488", Var "x510")
-      Eq (Var "x490", Var "x496")
-      Eq (Var "x491", Var "x525")
-      Eq (Var "x497", Var "x519")
-      Eq (Var "x498", Var "x499")
-      Eq (Var "x500", Var "x518")
-      Eq (Var "x501", Var "x522")
-      Eq (Var "x504", Var "x519")
-      Eq (Var "x506", Var "x518")
-      Eq (Var "x507", Var "x522")
-      Eq (Var "x510", Var "x519")
-      Eq (Var "x512", Var "x518")
-      Eq (Var "x513", Var "x522") ]
-
-  let clause name eqs =
-    for e in eqs do
-      printfn $"> {expr2smtExpr e}"
-
-    let rec helper name (acc: Name list) used =
-      printfn $"< {name}"
-
-      eqs
-      |> List.fold
-        (fun (acc, used) ->
-          function
-          | Eq (Var x, Var y)
-          | Eq (Var y, Var x) when x = name && (used |> Set.contains y |> not) ->
-            let acc', used' = helper y (y :: acc) (used |> Set.add y)
-            acc', used'
-          | o -> acc, used)
-        (acc, used)
-
-    helper name []
-
-  printfn $"""{clause "x343" eqs (Set [ "x343" ])} """
-
-  ()
-
 
 
 let ttt () =
   let p = Parser.Parser false
   for c in p.ParseFile "/home/andrew/Downloads/dbg/lol/1/horn-input.smt2" do printfn $"{c}"
-  
-let aaaaaaaa () =
-  let p = Parser.Parser false
-  let content = """sat
-(
-  (define-fun name_7 () Bool
-    true)
-  (define-fun name_0 () Bool
-    true)
-  (define-fun name_6 () Bool
-    true)
-  (define-fun name_5 () Bool
-    true)
-  (define-fun name_11 () Bool
-    true)
-  (define-fun name_1 () Bool
-    true)
-  (define-fun name_10 () Bool
-    true)
-  (define-fun name_9 () Bool
-    true)
-  (define-fun name_3 () Bool
-    true)
-  (define-fun name_2 () Bool
-    true)
-  (define-fun name_4 () Bool
-    true)
-  (define-fun name_8 () Bool
-    true)
-  (define-fun c_1 () Int
-    1)
-  (define-fun c_2 () Int
-    0)
-  (define-fun c_0 () Int
-    0)
-  (define-fun nil () Int
-    0)
-  (define-fun c_3 () Int
-    1)
-(define-fun Inv_7_0 ((x!0 Int) (x!1 Int) (x!2 Int)) Bool
-    (let ((a!1 (not (<= (+ x!0 (* (- 1) x!1)) (- 1))))
-          (a!2 (not (>= (+ x!0 (* (- 1) x!1)) 1)))
-          (a!3 (not (<= (+ x!1 (* (- 1) x!2)) (- 1))))
-          (a!4 (not (>= (+ x!0 (* (- 1) x!1)) 2)))
-          (a!6 (exists ((x!3 Int) (x!4 Int))
-                 (let ((wa!1 (not (<= (+ x!0 (* (- 1) x!2)) (- 1))))
-        (wa!2 (not (>= (+ x!0 (* (- 1) x!2)) 1)))
-        (wa!3 (not (<= (+ x!3 (* (- 1) x!4)) (- 1))))
-        (wa!4 (not (>= (+ x!0 (* (- 1) x!3)) 1)))
-        (wa!5 (not (<= (+ x!0 (* (- 1) x!4)) (- 2))))
-        (wa!6 (not (>= (+ x!0 (* (- 1) x!4)) 0))))
-    (and wa!1
-         (not (<= x!0 (- 1)))
-         wa!2
-         wa!3
-         (not (<= x!3 (- 1)))
-         (or (not (<= x!3 0)) (not (>= x!0 0)))
-         (or (not (<= x!3 1)) (not (>= x!0 1)))
-         wa!4
-         (or (not (<= x!3 2)) (not (>= x!0 2)))
-         wa!5
-         (not (<= x!0 (- 2)))
-         wa!6
-         (= x!1 (+ (- 1) x!3)))) 
-                    )))
-    (let ((a!5 (and a!3
-                    (not (<= x!1 (- 1)))
-                    (or (not (<= x!1 0)) (not (>= x!0 1)))
-                    (or (not (<= x!1 1)) (not (>= x!0 2)))
-                    a!4
-                    (or (not (<= x!1 2)) (not (>= x!0 3))))))
-      (or (and a!1 (not (<= x!0 (- 1))) a!2 (= x!2 x!1)) a!5 a!6)))
-      
-)
-
-)
-""" 
-  // for x in content.Split '\n' do printfn $"< < < {x}"
-  let xs, ys = (p.ParseModel (List.ofArray <| content.Split '\n')) 
-  printfn $"{xs}"
-  printfn $"{ys}"
-  for x in ys do
-    printfn $"{x}"
-  // |> snd
-  // |> List.choose (function
-    // | definition.DefineFun (n, _, _, _) as d when List.contains n ((*names*) consts) ->
-      // Some (AST.origCommand2program <| Definition d)
-    // | _ -> None)
-    
-    
-    
-let sdfsdf () =
-  let content =
-    [ "(declare-datatypes ((list_298 0)) (((nil_331) (cons_296 (list_298x0 Int) (list_298x1 list_298)))))"
-      "sat"
-      "("
-      "(define-fun x1 () Int 1)"
-      "(define-fun Z_2291 () Int 0)"
-      "(define-fun x0 () Int 0)"
-      "(define-fun x2 () list_298 nil_331)"
-      "(define-fun x6 () list_298 nil_331)"
-      "(define-fun x8 () list_298 nil_331)"
-      "(define-fun x7 () Int 0)"
-      "(define-fun x11 () Int (- 1))"
-      "(define-fun x4 () list_298 nil_331)"
-      "(define-fun x3 () list_298 nil_331)"
-      "(define-fun x10 () list_298 nil_331)"
-      "(define-fun x9 () Int 0)"
-      "(define-fun x5 () Int 1)"
-      ")"
-    ]
-  let p = Parser.Parser (false)
-  // p.AddRawADTSort "list_298"
-  // p.ParseLine $"(declare-datatypes ((list_298 0)) (((nil_331) (cons_296 (list_298x0 Int) (list_298x1 list_298)))))" |> ignore
-  let a = p.ParseModel content
-  printfn $"{fst a}"    
-  printfn $"{snd a}"    
-
-
 
 
 let sdf () =
