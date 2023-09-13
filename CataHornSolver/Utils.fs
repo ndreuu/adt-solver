@@ -212,7 +212,8 @@ module Weight =
     |> fun b -> b.Replace(":weight 0)", "").Replace("(!", "")
     |> fun b' -> s.Replace(block, b')
   
-  let rmWeightBlocks (s: string) = s.Replace("(!","").Replace(":weight 0)", "")
+  let rmWeightBlocks (s: string) =
+    s.Replace("(!","").Replace(":weight 0)", "")
 
     // weightPoses s
     // |> Seq.map s.Substring
