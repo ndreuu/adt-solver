@@ -22,41 +22,45 @@ module Program =
 
   let main =
     function
-      | [| path; dbgPath; timeLimit |] ->
-        let d = Path.Join [| dbgPath; "dbg" |]
-        if Directory.Exists d then Directory.Delete (d, true)
-        Directory.CreateDirectory d |> ignore
-        let v, st, curDuration = run path (Some d) (Some timeLimit)
-        printfn $"{v}"
-        printfn $"{curDuration}"
-        for s in st do printfn $"{s}"
-        0
-      | [| path; dbgPath |] ->
-        let d = Path.Join [| dbgPath; "dbg" |]
-        if Directory.Exists d then Directory.Delete (d, true)
-        Directory.CreateDirectory d |> ignore
-        let v, st, curDuration = run path (Some d) None
-        printfn $"{v}"
-        printfn $"{curDuration}"
-        for s in st do printfn $"{s}"
-        0
-      | [| path |] ->
+      // | [| path; dbgPath; timeLimit |] ->
+      //   let d = Path.Join [| dbgPath; "dbg" |]
+      //   if Directory.Exists d then Directory.Delete (d, true)
+      //   Directory.CreateDirectory d |> ignore
+      //   let v, st, curDuration = run path (Some d) (Some timeLimit)
+      //   printfn $"{v}"
+      //   printfn $"{curDuration}"
+      //   for s in st do printfn $"{s}"
+      //   0
+      // | [| path; dbgPath |] ->
+      //   let d = Path.Join [| dbgPath; "dbg" |]
+      //   if Directory.Exists d then Directory.Delete (d, true)
+      //   Directory.CreateDirectory d |> ignore
+      //   let v, st, curDuration = run path (Some d) None
+      //   printfn $"{v}"
+      //   printfn $"{curDuration}"
+      //   for s in st do printfn $"{s}"
+      //   0
+      | path ->
           
-          let testName = Path.GetFileName path
-          // printfn $"{testName}"
+          let testName = Path.GetFileName path[0]
+          printfn $"{testName}"
           
           let watch = System.Diagnostics.Stopwatch.StartNew();
 
-          let (status, result), st, curDurName = run path None None
-          watch.Stop();
-
-          let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
-          let content = $"{status}\n{curDurName}{durations}"
-
-          let elapsedMs = watch.ElapsedMilliseconds
-          // printfn $"{testName} {elapsedMs} {status}\n{result}"
-          printfn $"{status}\n{elapsedMs}\n{result}"
-          
+          try
+            let (status, result), st, curDurName = run path[0] None None
+            watch.Stop();
+  
+            let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
+            let content = $"{status}\n{curDurName}{durations}"
+  
+            let elapsedMs = watch.ElapsedMilliseconds
+            // printfn $"{testName} {elapsedMs} {status}\n{result}"
+            // printfn $"{status}\n{elapsedMs}\n{result}"
+            printfn $"{status}\n{elapsedMs}"
+          with
+          | e -> printfn $"{e}"
+            
           0
       | _ -> 
         1
