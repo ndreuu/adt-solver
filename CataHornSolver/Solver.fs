@@ -241,10 +241,11 @@ let banValues constDefs =
   )
 
 let redlog t definitions formula =
-  match Redlog.runRedlog t definitions formula with
-  | Some (Result.Ok v) -> timeout.Ok (Assert (smtExpr2expr' v))
-  | None -> timeout.Timeout
-  | Some (Error e) -> failwith $"redlog-output: {e}"
+  timeout.Timeout
+  // match Redlog.runRedlog t definitions formula with
+  // | Some (Result.Ok v) -> timeout.Ok (Assert (smtExpr2expr' v))
+  // | None -> timeout.Timeout
+  // | Some (Error e) -> failwith $"redlog-output: {e}"
 
 let decConst =
   function
@@ -979,12 +980,13 @@ module State =
 module Solver =
   let cmds = State (fun st -> st.context.cmds, st)
 
-  let sortByQuantifiers xs = xs
+  let sortByQuantifiers xs =
+    xs
     // Assert.bodies xs
     // |> List.map (function
-    //   | ForAll (ns, _) as e -> Array.length ns, e
-    //   | ForAllTyped (ns, _) as e -> List.length ns, e
-    //   | e -> (0, e))
+    // | ForAll (ns, _) as e -> Array.length ns, e
+    // | ForAllTyped (ns, _) as e -> List.length ns, e
+    // | e -> (0, e))
     // |> List.sortByDescending fst
     // |> List.map (snd >> Assert)
 
@@ -1719,8 +1721,8 @@ let anotherConsts funDefs constDefs constrDefs clause pushed =
     match! Solver.solveLearner constDefs with
     | Timeout, _ | timeout.Ok (Result.Error "UNKNOWN~"), _ ->
        do! Solver.rmRememberedConstraint 
-       match! Debug.Duration.go (lazy state.Return (redlog 5 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
-       // match! Debug.Duration.go (lazy state.Return (redlog 0.1 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+       // match! Debug.Duration.go (lazy state.Return (redlog 10 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
+       match! Debug.Duration.go (lazy state.Return (redlog 0.1 (funDefs @ def2decVars constrDefs) clause)) "REDLOG" with
        | Timeout ->
          return! NIA.tlAfterRedlogTl constDefs constrDefs pushed
     
@@ -2012,14 +2014,20 @@ let rec teacher
       with
       | Some (result.SAT (Some model), _), _ ->
         // printfn $"MMM: {model}"
+        //
         // let! i = Debug.Print.iteration
         // return $"SAT"
+        
         return ("sat", $"{Model.model (adtDecs, recs) origPs constDefs constrDefs model}")
       
       
-      | _ ->
-        failwith "!"
-        return ("?SAT", "")
+      // | o, [] ->
+        // printfn ">>"
+        // printfn $"{o}"
+        // printfn "<<<"
+        // failwith $"!\n{o}"
+        // return ("?SAT", "")
+      
       // return "SAT"
     | Some (result.UNSAT (Some (proof, dbgProof)), _), _ ->
       // let proof, dbgProof =
@@ -2579,6 +2587,7 @@ let rec solver
             constDefs
         )
         |> List.map (fun (n, v) -> Def (n, [], Integer, Int v))
+        // |> List.map (fun (n, v) -> Def (n, [], Integer, Int 0))
 
       return!
         teacher
@@ -2609,7 +2618,7 @@ let rec solver
           (startCmds @ setSofts)
     | timeout.Ok (Error err), inputs ->
       do! Debug.Print.smtInputs inputs
-      // printfn $"eeeeeeeeeeeeeeeeeeeeeeee {err}"
+      printfn $"eeeeeeeeeeeeeeeeeeeeeeee {err}"
       return "UNKNOWN", ""
   }
   |> run (statement.Init envLearner)
@@ -2661,9 +2670,6 @@ module Preprocessing =
         let cmds' = List.filter (not << flip List.contains qs) cmds
         List.map changeQueryHeads cmds |> addQuery
       | [] -> []
-  // changeQueryHeads cmds
-  // |> addQuery
-  // |>
 
   module GhostVals =
     let body =
@@ -2840,10 +2846,12 @@ module Preprocessing =
     
     let run cmds recs dataTypes =
       if List.filter (function originalCommand.Command (DeclareFun (n, sorts, sort)) when List.contains BoolSort sorts -> true | _ -> false) cmds |> List.isEmpty then
+        printfn "1111111111"
         recs, dataTypes, cmds
       else
         let file = Path.GetTempPath () + ".smt2"
         File.WriteAllText (file, List.map toString ( adtDeclBool :: rwrtCommands cmds) |> join "\n")
+        printfn $"""> {List.map toString ( adtDeclBool :: rwrtCommands cmds) |> join "\n" }"""
         
         let recs, _, _, _, dataTypes, _, _, _, _ =
           Linearization.linearization file
@@ -2908,7 +2916,13 @@ module Preprocessing =
           List.filter (function originalCommand.Definition _ -> true | _ -> false) cmds
           
         adtDecls @ decls @ defines @ (List.filter (function originalCommand.Assert _ -> true | _ -> false ) cmds)
-
+  
+  module chcFF =
+    let notFF =
+      List.choose (function
+        | originalCommand.Assert (smtExpr.Not (smtExpr.Apply (op, []))) when Operation.opName op = "ff" ->
+          Some (originalCommand.Assert (smtExpr.Hence (smtExpr.Apply (op, []), BoolConst false)))
+        | otherwise -> Some otherwise) 
         
   
 let approximation file =
@@ -2917,26 +2931,19 @@ let approximation file =
 
   let cmds = p.ParseFile file
   
-  // let _ = Preprocessing.RmBooleanPredicateArgs.run cmds recs dataTypes
   let cmds = Preprocessing.UniqBodyPredicates.run cmds
+  
   // for x in cmds do printfn $":::: {x}"
-  
   let recs, dataTypes, cmds = Preprocessing.RmBooleanPredicateArgs.run cmds recs dataTypes
-  let cmds = Preprocessing.NamedAsserts.addNames cmds
   
+  let cmds = Preprocessing.chcFF.notFF cmds
+  
+  let cmds = Preprocessing.NamedAsserts.addNames cmds
   
   let p = Parser.Parser false
 
   for x in List.map toString cmds do
-    // printfn $".. {x}"
     p.ParseLine x |> ignore
-
-  // let tmp = Path.GetTempFileName()
-  // File.WriteAllLines(tmp, List.map toString cmds)
-  // let p = Parser.Parser false
-  // let cmds = p.ParseFile tmp
-
-  // for cmd in cmds do printfn $"{cmd}"
 
   let rec origExpr = function
     | smtExpr.Apply (op, _) when (Operation.opName op).Contains "$name" -> BoolConst true
@@ -3017,7 +3024,6 @@ let approximation file =
       | Definition _ as x -> Some x
       | _ -> None)
 
-  //for d in dataTypes do printfn $"ddd:: {d}"
   (origAsserts, recs, adtDecs, defFuns cmds, dataTypes, defConstants dataTypes, decFuns cmds, asserts cmds)
 
 let apply2app appNames =
