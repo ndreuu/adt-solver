@@ -83,16 +83,17 @@ let runRedlog timeout definitions formula =
   // let kek = execute timeout "ls" ""
   // printfn $"RD:\n{kek}"
     
-  let r = execute -1 "timeout" $"{timeout}s redcsl -w- {file}"
+  // let r = execute -1 "timeout" $"{timeout}s redcsl -w- {file}"
+  let r = execute -1 "timeout" $"{timeout}s ./rdlg/usr/bin/redcsl -w- {file}"
   let time =
     r.StdErr.Split('\n')
     |> Array.filter (fun (s: string) -> s.Contains("real"))
     |> join "\n"
 
   
-///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-  // printfn $"REDLOG, {time}"
-///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+/////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+  // printfn $"redlog, {time}"
+/////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
   match r with
   | x when x.ExitCode <> 0 -> None 
   | result -> 
