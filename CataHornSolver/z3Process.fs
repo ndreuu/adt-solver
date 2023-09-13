@@ -40,20 +40,20 @@ module Instances =
   let setOption x =
     function
     | Proof -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-proof)"
-    | Model -> $"{x}\n(check-sat)\n(get-model)"
+    | Model -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-model)"
     | None -> $"{x}\n(check-sat)"
 
   let instances =
     [ Teacher,
       (Horn,
        Proof,
-       "fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
-      Checker, (All, None, "")
+       "-T:10 fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
+      Checker, (All, None, "-T:10")
       Learner, (NIA, Model, "-T:10")
       // Learner, (NIA, Model, "")
 
-      TeacherModel, (Horn, Model, $"-T:5 fp.spacer.global=true pp.max_depth={UInt64.MaxValue} pp.min_alias_size={UInt64.MaxValue} fp.spacer.global=true")
-      ADTModel, (All, Model, "")]
+      TeacherModel, (Horn, Model, $"fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false fp.spacer.global=true pp.max_depth={UInt64.MaxValue} pp.min_alias_size={UInt64.MaxValue}")
+      ADTModel, (All, Model, "-T:10")]
       
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
@@ -79,7 +79,11 @@ module Instances =
     
     File.WriteAllText (file, content instance cmds)
     
+    // printfn $"{instance}---"
+    // printfn $"{content instance cmds}"
     let result = execute timeout "./z3" $"{flags} {file}"
+    // printfn $"---{instance}"
+
     // let kek = execute timeout "ls" ""
     // printfn $"Z3:\n {kek}"
     
@@ -98,7 +102,7 @@ module Instances =
        then
       Option.None
      
-    else Some <| if instance=TeacherModel then (Weight.rmWeightBlocks result.StdOut) else result.StdOut
+    else Some <| if instance=TeacherModel then (result; Weight.rmWeightBlocks result.StdOut) else result.StdOut
 
     
     // if result.ExitCode = 124 then
@@ -114,7 +118,7 @@ module Interpreter =
     | UNKNOWN
 
 
-  let model (adts: _ list) consts (content: string) =
+  let model cmds (adts: _ list) consts (content: string) =
     let p = Parser.Parser false
     // for x in content.Split '\n' do printfn $"< < < {x}" 
     
@@ -177,13 +181,15 @@ module Interpreter =
       // printfn $"INPUT:::::::::::::::\n{flags} {content}"
       let file = Path.GetTempPath () + ".smt2"
       File.WriteAllText (file, content)
-      // let result = execute timeout "./d/z3" $"{flags} {file}"
+      // let result = execute timeout "./z3" $"{flags} {file}"
+      let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
+      
+      // printfn $"INP::::\n{content}"
+      // printfn $"OUT::::\n{result.StdOut}"
       
       // let kek = execute timeout "ls" ""
       // printfn $"CVC:\n{kek}"
 
-      let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
-      // let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
       // printfn $"----------CVC-code: {result.ExitCode}"
       
       let time =
@@ -227,6 +233,8 @@ module Interpreter =
         // File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
         
+        printfn $"{softContent}"
+        
         let out, inputs' = runLearner inputs timeout softContent 
         
         match out with
@@ -241,14 +249,14 @@ module Interpreter =
               UNKNOWN
             else UNSAT ()
           
-          // printfn $"OOOOOOOOOOOOOOOOOOO\n{out}\n-------RRRRRRRRRRRRRR {r}"
+          printfn $"OOOOOOOOOOOOOOOOOOO\n{out}\n-------RRRRRRRRRRRRRR {r}"
           match r with
           | UNKNOWN ->
             Some (UNKNOWN, assumings), inputs'
           | SAT _ ->
             // printfn $"{out}"
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-            Some (SAT (Some <| model [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
+            Some (SAT (Some <| model cmds [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
           | UNSAT _ ->
             // for a in assumings do printfn $"{a}"
             // printfn $"{assumings}"
@@ -354,8 +362,9 @@ module Interpreter =
         | Instances.option.None, SAT _ -> Some (SAT None, []), []
         | Instances.option.Proof, SAT _ -> Some (SAT None, []), []
         | Instances.option.Model, SAT _ ->
-          // printfn $"{output}"
-          Some (SAT (Some <| model adts constDefs output), []), []
+          
+          // printfn $"------>>>\n{output}"
+          Some (SAT (Some <| model cmds adts constDefs output), []), []
         | _ -> Some (UNKNOWN, []), []
         
         
