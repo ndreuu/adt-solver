@@ -13,7 +13,7 @@ module AST =
 
   type ArgsNum = int
 
-  type  Type =
+  type Type =
     | Boolean
     | Integer
     | ADT of Name
