@@ -1,6 +1,7 @@
 module Z3Interpreter
 
 open System.Collections.Generic
+open System.Numerics
 open Microsoft.FSharp.Collections
 // open Microsoft.Z3
 open ProofBased
@@ -24,7 +25,7 @@ module AST =
       | ADT n -> ADTSort n
   
   type Expr =
-    | Int of int64
+    | Int of bigint
     | Bool of bool
     | Eq of Expr * Expr
     | Lt of Expr * Expr
@@ -196,8 +197,8 @@ module AST =
 
   let rec smtExpr2expr =
     function
-    | Number i when i >= 0 -> Int i
-    | Number i when i < 0 -> Neg (Int (-1L * i))
+    | Number i when i >= BigInteger.Zero -> Int i
+    | Number i when i < BigInteger.Zero -> Neg (Int (BigInteger.MinusOne * i))
     | BoolConst b -> Bool b
     | Ident (ident, _) -> Var ident
     | smtExpr.Apply (operation, exprs) ->
@@ -221,12 +222,13 @@ module AST =
     | Hence (e1, e2) -> Implies (smtExpr2expr e1, smtExpr2expr e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
       ForAll (List.map fst args |> List.toArray, smtExpr2expr expr)
+    | smtExpr.Ite (e1, e2, e3) -> Ite (smtExpr2expr e1, smtExpr2expr e2, smtExpr2expr e3)
     | a -> SMTExpr a
 
   let rec smtExpr2expr' =
     function
-    | Number i when i >= 0 -> Int i
-    | Number i when i < 0 -> Neg (Int (-1L * i))
+    | Number i when i >= BigInteger.Zero -> Int i
+    | Number i when i < BigInteger.Zero -> Neg (Int (BigInteger.MinusOne * i))
     | BoolConst b -> Bool b
     | Ident (ident, _) -> Var ident
     | smtExpr.Apply (operation, exprs) ->

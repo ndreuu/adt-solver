@@ -3,18 +3,33 @@ module Tests.ProofBased.Test
 open System.IO
 open NUnit.Framework
 open ProofBased
+open RedlogParser.RedTrace
 open Z3Interpreter.AST
 
-
 [<TestFixture>]
-type TestClass () =
-  let run () =
-      let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
-      let v, st, curDuration = Solver.run file None None
-      printfn $"{v}"
-      printfn $"{curDuration}"
-      for s in st do printfn $"{s}"
-      Assert.True(1 = 11)
+type RedlogParser () =
+  
+  // let runWithoutFuns consts defFns decFns asserts =
+      // Solver.solver [] Map.empty [] consts defFns decFns asserts
+  
+  [<Test>]
+  member this.ListLenInv () =
+    
+    printfn "LK"
+    printfn $"{Parser.aaaa}"
+    Assert.True(11 = 11)
+
+
+
+// [<TestFixture>]
+// type TestClass () =
+//   let run () =
+//       let file = Path.Join(TestContext.CurrentContext.TestDirectory, "Tests/Source/racer.horn.smt2")
+//       let v, st, curDuration = Solver.run file None None 
+//       printfn $"{v}"
+//       printfn $"{curDuration}"
+//       for s in st do printfn $"{s}"
+//       Assert.True(1 = 11)
 
 
 // [<TestFixture>]

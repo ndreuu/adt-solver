@@ -25,8 +25,6 @@ def add_in_table(table, name, result):
     r.close()
 
 
-
-
 def run(path, file, table, unsats, sats, timeout):
     try:
         tmp = tempfile.TemporaryFile()
@@ -36,8 +34,8 @@ def run(path, file, table, unsats, sats, timeout):
         out = tmp.read().decode().split("\n")
         
         if out[0] == "unsat":
-            add_in_table(os.path.basename(file), "UNSAT")
-            add_unsat_res(table, unsats, os.path.basename(file), open(file, "r").read(), "\n".join(out[2:]))
+            add_in_table(table, os.path.basename(file), "UNSAT")
+            add_unsat_res(unsats, os.path.basename(file), open(file, "r").read(), "\n".join(out[2:]))
         elif out[0] == "sat":
             add_in_table(table, os.path.basename(file), "SAT")
             add_sat_res(sats, os.path.basename(file), open(file, "r").read(), "\n".join(out[2:]))
@@ -47,6 +45,5 @@ def run(path, file, table, unsats, sats, timeout):
         add_in_table(table, os.path.basename(file), "TL")
 
 
-
-
-run('./bin/Release/net6.0/CataHornSolver', args[0], "./table.csv", './unsats', './sats', 5)
+run(path=args[0], file=args[1], table=args[2], unsats=args[3], sats=args[4], timeout=args[5])
+# run('./bin/Release/net6.0/CataHornSolver', args[0], "./table.csv", './unsats', './sats', 5)

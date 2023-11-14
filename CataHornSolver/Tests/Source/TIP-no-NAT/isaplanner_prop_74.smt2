@@ -42,7 +42,7 @@
 	(isS_43 (S_43 x_1349))))
 (declare-fun take_5 (list_25 Int list_25) Bool)
 (assert (forall ((x_1304 list_25) (x_1291 Int) (x_1292 list_25) (z_125 Int))
-	(=> (=> (>= z_125 0) (take_5 x_1304 z_125 x_1292)) (take_5 (cons_25 x_1291 x_1304) (S_43 z_125) (cons_25 x_1291 x_1292)))))
+	(=> (and (>= z_125 0) (take_5 x_1304 z_125 x_1292)) (take_5 (cons_25 x_1291 x_1304) (S_43 z_125) (cons_25 x_1291 x_1292)))))
 (assert (forall ((z_125 Int))
 	(take_5 nil_25 z_125 nil_25)))
 (assert (forall ((z Int) (y_98 list_25))

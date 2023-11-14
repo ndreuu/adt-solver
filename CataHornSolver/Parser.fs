@@ -1,6 +1,8 @@
 module RedlogParser.RedTrace.Parser
 
 open System
+open System.IO
+open System.Numerics
 open System.Text.RegularExpressions
 open Antlr4.Runtime
 open Antlr4.Runtime.Tree
@@ -8,230 +10,29 @@ open Microsoft.FSharp.Core
 open ProofBased
 open SMTLIB2
 open Utils.IntOps
+open Z3Interpreter
 
-let parseNumberRaw (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> Int32.Parse
-let parseNumber (number: RedTraceParser.NumberContext) = number |> parseNumberRaw |> int64 |> Number
+let parseNumberRaw (number: RedTraceParser.NumberContext) = number.NUM().GetText () |> BigInteger.Parse
+let parseNumber (number: RedTraceParser.NumberContext) =
+  parseNumberRaw number 
+  |> fun i ->
+    if i < BigInteger.Zero then
+      smtExpr.Apply (ElementaryOperation ("-", [ IntSort ], IntSort), [ Number <| BigInteger.MinusOne * i ])
+    else
+      Number i
 
+let init n v =
+  let rec helper acc = function
+    | z when z = BigInteger.Zero -> acc
+    | n -> helper (v::acc) <| n - BigInteger.One
+  helper [] n 
+  
 let parsePower (power: RedTraceParser.PowerContext) =
   match power.GetChild 1, power.GetChild 3 with
   | :? RedTraceParser.IdContext as id, (:? RedTraceParser.NumberContext as number) ->
     let app = Expr.makeConst (id.GetText()) IntSort
     let number = parseNumberRaw number
-    Seq.init number (fun _ -> app) |> Seq.reduce mult
-  | _ -> __unreachable__ ()
-
-let parseFactor (factor: RedTraceParser.FactorContext) =
-  match factor.GetChild 1, factor.GetChild 3 with
-  | :? RedTraceParser.PowerContext as pow, (:? RedTraceParser.NumberContext as number) ->
-    let power = parsePower pow
-    let coeff = number |> parseNumber
-    mult power coeff
-  | _ -> __unreachable__ ()
-
-let parseNum (num: RedTraceParser.NumContext) =
-  match num.GetChild 1 with
-  | :? RedTraceParser.NumberContext as number -> parseNumber number
-  | _ -> __unreachable__ ()
-  
-let parseFactorOrNum (v: IParseTree) =
-  match v with
-  | :? RedTraceParser.FactorContext as factor -> parseFactor factor
-  | :? RedTraceParser.NumContext as num -> parseNum num
-  | _ -> __unreachable__ ()
-
-let rec parseMul (mul: RedTraceParser.MulContext) =
-  match mul.GetChild 0 with
-  | :? RedTraceParser.FactorContext as factor -> parseFactor factor
-  | :? RedTraceParser.PowerContext as power ->
-    let power = parsePower power
-    let factorNumMuls i n =
-      let rec helper acc i n =
-        match acc with
-        | _ when i < n ->
-          match mul.GetChild i with
-          | :? RedTraceParser.FactorContext
-          | :? RedTraceParser.NumContext as v -> helper (parseFactorOrNum v :: acc) (i + 1) n
-          | :? RedTraceParser.MulContext as mul -> helper (parseMul mul :: acc) (i + 1) n
-          | _ -> helper acc (i + 1) n
-        | _ -> acc
-      
-      helper [] i n |> List.rev
-    
-    match mul.GetChild 1 with
-    | :? RedTraceParser.FactorContext
-    | :? RedTraceParser.NumContext as v ->
-      let acc = mult power (parseFactorOrNum v)      
-      factorNumMuls 2 mul.ChildCount
-      |> List.fold (fun acc v -> add acc (mult power v)) acc
-    | _ ->
-      let acc =
-        match mul.GetChild 2 with
-        | :? RedTraceParser.MulContext as mul -> mult power (parseMul mul)
-        | _ -> __unreachable__ ()
-      factorNumMuls 3 mul.ChildCount
-      |> List.fold (fun acc v -> add acc (mult power v)) acc
-  | _ -> __unreachable__ ()
-
-let parseNcong (ncong: RedTraceParser.NcgongContext) =
-  match ncong.GetChild 2 with
-  | :? RedTraceParser.FactorContext
-  | :? RedTraceParser.NumContext as v -> parseFactorOrNum v
-  | _ ->
-    match ncong.GetChild 3 with
-    | :? RedTraceParser.MulContext as mul -> parseMul mul
-    | _ -> __unreachable__ ()
-
-let rec parseBody (body: RedTraceParser.BodyContext) =
-  let factorNumMuls i n =
-    let rec helper acc i n =
-      match acc with
-      | _ when i < n ->
-        match body.GetChild i with
-        | :? RedTraceParser.FactorContext
-        | :? RedTraceParser.NumContext as v -> helper (parseFactorOrNum v :: acc) (i + 1) n
-        | :? RedTraceParser.MulContext as m -> helper (parseMul m :: acc) (i + 1) n
-        | _ -> helper acc (i + 1) n
-      | _ -> acc
-
-    helper [] i n |> List.rev
-
-  match body.GetChild 1 with
-  | :? RedTraceParser.FactorContext
-  | :? RedTraceParser.NumContext as v ->
-    let acc = parseFactorOrNum v
-
-    factorNumMuls 2 body.ChildCount
-    |> List.fold add acc
-
-  | _ ->
-    match body.GetChild 2 with
-    | :? RedTraceParser.MulContext as mul ->
-      let acc = parseMul mul
-
-      factorNumMuls 4 body.ChildCount
-      |> List.fold add acc
-    | _ -> __unreachable__ ()
-
-let rec exprs (expr: RedTraceParser.ExprContext) i n =
-  let rec helper acc i n =
-    match acc with
-    | _ when i < n ->
-      match expr.GetChild i with
-      | :? RedTraceParser.ExprContext as e -> helper (parseExpr e :: acc) (i + 1) n
-      | _ -> helper acc (i + 1) n
-    | _ -> acc
-
-  helper [] i n |> List.rev
-
-and parseExpr (expr: RedTraceParser.ExprContext) =
-  match expr.GetChild 1 with
-  | :? RedTraceParser.AndContext -> And <| exprs expr 2 expr.ChildCount
-  | :? RedTraceParser.OrContext -> Or <| exprs expr 2 expr.ChildCount
-  | :? RedTraceParser.NcgongContext as ncong ->
-    let m = parseNcong ncong
-
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Not (Apply (eqOp, [ Apply (modOp, [ l; m ]); r ]))
-  | :? RedTraceParser.EqualContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Apply (eqOp, [ l; r ])
-  | :? RedTraceParser.GrContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Apply (grOp, [ l; r ])
-  | :? RedTraceParser.LsContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Apply (lsOp, [ l; r ])
-
-  | :? RedTraceParser.NeqContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Not (Apply (eqOp, [ l; r ]))
-  | :? RedTraceParser.LeqContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Apply (leqOp, [ l; r ])
-  | :? RedTraceParser.GeqContext ->
-    let l =
-      match expr.GetChild 2 with
-      | :? RedTraceParser.BodyContext as body -> parseBody body
-      | _ -> __unreachable__ ()
-
-    let r =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.NilContext -> Number 0
-      | _ -> __unreachable__ ()
-
-    Apply (geqOp, [ l; r ])
-
-  | :? RedTraceParser.BallContext ->
-    let head =
-      match expr.GetChild 3 with
-      | :? RedTraceParser.ExprContext as e -> parseExpr e
-      | _ -> __unreachable__ ()
-
-    let body =
-      match expr.GetChild 4 with
-      | :? RedTraceParser.ExprContext as e -> parseExpr e
-      | _ -> __unreachable__ ()
-
-    let id = 
-      match expr.GetChild 2 with
-        | :? RedTraceParser.IdContext as id -> id.GetText()
-        | _ -> __unreachable__ ()
-  
-    QuantifierApplication ([ForallQuantifier [(id, IntSort)]], Hence(body, head))
+    init number app |> List.reduce mult
   | _ -> __unreachable__ ()
 
 let rec substituteVar oldName newName =
@@ -255,47 +56,141 @@ let rec substituteVar oldName newName =
     | Hence (expr1, expr2) -> Hence (substituteVar oldName newName expr1, substituteVar oldName newName expr2)
     | QuantifierApplication (quantifier, expr) -> QuantifierApplication (quantifier, substituteVar oldName newName expr)
     
-let rec uniqVarsInQuantifier usedNames =
-  function
-    | QuantifierApplication ([ForallQuantifier [(n, sort)]], body) when (usedNames |> List.contains n) ->
-      let newName = "!" + n
-      let body', usedNames' = uniqVarsInQuantifier (newName::usedNames) (substituteVar n newName body)
-      QuantifierApplication ([ForallQuantifier [(newName, sort)]], body'), newName::usedNames'
-    | QuantifierApplication ([ForallQuantifier [(n, sort)]], body) ->
-      let body', usedNames' = uniqVarsInQuantifier usedNames body
-      QuantifierApplication ([ForallQuantifier [(n, sort)]], body'), n::usedNames'
-    | Hence (expr1, expr2) ->
-      let expr2', usedNames' = uniqVarsInQuantifier usedNames expr2
-      Hence (expr1, expr2'), usedNames' 
-    | Or exprs ->
-      let exprs', usedNames' = List.mapFold uniqVarsInQuantifier usedNames exprs
-      Or exprs', usedNames'
-    | And exprs ->
-      let exprs', usedNames' = List.mapFold uniqVarsInQuantifier usedNames exprs
-      And exprs', usedNames'
-    | expr -> expr, usedNames 
-      
-let rec clauseHead =
-  function
-    | And exprs -> And (List.map clauseHead exprs)
-    | Or exprs -> Or (List.map clauseHead exprs)
-    | Not expr -> Not (clauseHead expr)
-    | QuantifierApplication ([ForallQuantifier _], Hence(_, head)) -> clauseHead head
-    | expr -> expr
+let parseMonom (x: RedTraceParser.MonomContext) =
+  mult (parsePower (x.power())) (parseNumber (x.number()))
 
+let rec parsePolynom (x: RedTraceParser.PolynomContext) =
+  match x.polynom() with
+  | null | [||] ->
+    match x.monom() with
+    | null ->
+      match x.number() with
+      | number ->
+        parseNumber number
+    | monom ->
+      match x.number() with
+      | null -> parseMonom monom
+      | number -> add (parseMonom monom) (parseNumber number)
+  | polynoms ->
+    let sum =
+      let sum' = Array.map parsePolynom polynoms |> Array.fold add (Number 0)
+      match x.number() with
+      | null -> sum' 
+      | number -> add sum' (parseNumber number)         
+    match x.power() with
+    | null -> sum
+    | power -> mult (parsePower power) sum
+
+let rec parseFormulas (x: RedTraceParser.FormulaContext) from =
+  let n = x.ChildCount
+  let rec helper acc i n =
+    match acc with
+    | _ when i < n ->
+      match x.GetChild i with
+      | :? RedTraceParser.FormulaContext as e -> helper (parseFormula e :: acc) (i + 1) n
+      | _ -> helper acc (i + 1) n
+    | _ -> acc
+
+  helper [] from n |> List.rev
+
+and parseFormula (x: RedTraceParser.FormulaContext) =
+  match x.GetChild 1 with
+  | :? RedTraceParser.AndContext ->
+    Prelude.And <| (List.ofArray <| Array.map parseFormula (x.formula()))
+  | :? RedTraceParser.OrContext ->
+    Prelude.Or <| (List.ofArray <| Array.map parseFormula (x.formula()))
+  | :? RedTraceParser.Equal_zeroContext ->
+    let v = x.polynom() |> parsePolynom
+      // match x.GetChild 2 with
+      // | :? RedTraceParser.PolynomContext as p -> parsePolynom p
+      // | _ -> __unreachable__ ()
+    Apply (eqOp, [ v; Number 0 ])
+  | :? RedTraceParser.CongContext as cong ->
+    let r =
+      match cong.polynom() with
+      | null | [||] -> __unreachable__()
+      | polynoms ->
+        Array.map parsePolynom polynoms
+        |> Array.fold add (Number 0)
+    let l = x.polynom() |> parsePolynom
+      // match x.GetChild 2 with
+      // | :? RedTraceParser.PolynomContext as p ->
+        // parsePolynom p
+      // | _ -> __unreachable__()
+
+    Apply (eqOp, [ Apply (modOp, [ l; r ]); Number 0 ])
+  | :? RedTraceParser.NcgongContext as nCong ->
+    let r =
+      match nCong.polynom()  with
+      | null | [||] -> __unreachable__()
+      | polynoms ->
+        Array.map parsePolynom polynoms
+        |> Array.fold add (Number 0)
+    let l = x.polynom() |> parsePolynom
+    
+    Not (Apply (eqOp, [ Apply (modOp, [ l; r ]); Number 0 ]))
+  | :? RedTraceParser.GrContext ->
+    let v = x.polynom() |> parsePolynom
+    Apply (grOp, [ v; Number 0 ])
+  | :? RedTraceParser.LsContext ->
+    let v = x.polynom() |> parsePolynom
+    Apply (lsOp, [ v; Number 0 ])
+  | :? RedTraceParser.NeqContext ->
+    let v = x.polynom() |> parsePolynom
+    Not (Apply (eqOp, [ v; Number 0 ]))
+  | :? RedTraceParser.LeqContext ->
+    let v = x.polynom() |> parsePolynom
+    Apply (leqOp, [ v; Number 0 ])
+  | :? RedTraceParser.GeqContext ->
+    let v = x.polynom() |> parsePolynom
+    Apply (geqOp, [ v; Number 0 ])
+   | :? RedTraceParser.BallContext ->
+     let [| head; body |] = x.formula()
+     let head = parseFormula head
+     let body = parseFormula body
+     let id = x.id().GetText()
+     QuantifierApplication ([ForallQuantifier [ (id, IntSort) ]], Hence (body, head))
+   | _ ->
+     match x.GetChild 0 with
+     | :? RedTraceParser.FalseContext ->
+       BoolConst false
+     | _ -> __unreachable__()
+    
 let translateToSmt line =
+  // File.WriteAllText (
+  //     $"/home/andrew/adt-solver/benchs/rr.rd",
+  //     line
+  //   )
   let lexer = RedTraceLexer (CharStreams.fromString line)
   let tokens = CommonTokenStream lexer
   let parser = RedTraceParser tokens
   let tree: RedTraceParser.ProgContext = parser.prog ()
 
   match tree.GetChild 1 with
-  | :? RedTraceParser.ExprContext as expr ->
-      parseExpr expr 
+  | :? RedTraceParser.FormulaContext as formula ->
+      // printfn $"{parseFormula formula}"
+      parseFormula formula
   | _ -> __unreachable__ ()
+
+
+let aaaa  =
+  let lexer = RedTraceLexer (CharStreams.fromString"""(!*fof (pasf) (ball !_k128 (ball !_k122 false (and (geq (((!_k122 . 1) . 1) ((c_5 . 2) . 1) . 1) nil
+) (leq (((!_k122 . 1) . 1) ((c_5 . 2) . -1) . -1) nil) (neq (((!_k122 . 1) . 1)
+. -1) nil) (neq (((!_k122 . 1) . 1)) nil))) (and (geq (((!_k128 . 1) . 1) ((c_5
+. 2) . 1) . 1) nil) (leq (((!_k128 . 1) . 1) ((c_5 . 2) . -1) . -1) nil) (neq ((
+(!_k128 . 1) . 1) . -1) nil) (neq (((!_k128 . 1) . 1)) nil))) t)""")
+  let tokens = CommonTokenStream lexer
+  let parser = RedTraceParser tokens
+  
+  let tree: RedTraceParser.ProgContext = parser.prog ()
+
+  match tree.GetChild 1 with
+  | :? RedTraceParser.FormulaContext as formula ->
+      parseFormula formula
+  | _ -> __unreachable__ ()
+  
+
 let chc () =
-  
-  
   let balancedBracket (str: string) =
     let rec helper depth acc =
       function

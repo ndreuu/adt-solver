@@ -1,66 +1,197 @@
+open System
 open System.IO
 open System.Text.RegularExpressions
+open CataHornSolver
+open Microsoft.VisualStudio.TestPlatform.CoreUtilities.Helpers
+open Microsoft.VisualStudio.TestPlatform.Utilities
 open NUnit.Framework
 open ProofBased
 open ProofBased.Solver
+open SMTLIB2
+
 
 module Program =
+  let withRedlog = true
 
-  [<EntryPoint>]
-  // let main _ = 
-      // let path = Path.Join(TestContext.CurrentContext.TestDirectory, @"Tests/Source/TIP-no-NAT")
-      // let path = @"./Tests/Source/TIP-no-NAT"
-      // printfn $"{Directory.Exists(path)}"
-      // let dir = DirectoryInfo(path);
-      // let files = dir.GetFiles("*.smt2"); 
-      // for file in files do
-      //   let v, st, curDuration = run file.DirectoryName None None
-      //   let content = Utils.join "\n" (List.map (fun (n, t) -> $"{n} {t}") st)  
-      //   File.WriteAllText("./out.txt", $"{v}\n{curDuration}\n{content}")
-      // 0
+  let runWithCVC file fileTimes =
+    run (10, 30, 10, 10) file None None z3Process.Instances.learner.CVC (not <| withRedlog) fileTimes
+
+  let runWithCVC' file fileTimes =
+    try
+      Some (runWithCVC file fileTimes)
+    with e ->
+      None
+
+  let runWithCVC2 file fileTimes =
+    run (2, 30, 10, 10) file None None z3Process.Instances.learner.CVC (not <| withRedlog) fileTimes
+
+
+  let runWithCVC2' file fileTimes =
+    try
+      Some (runWithCVC2 file fileTimes)
+    with e ->
+      None
+
+  let runWithCVCRedlog file fileTimes =
+    run (10, 30, 10, 2) file None None z3Process.Instances.learner.CVC withRedlog fileTimes
+
+  let runWithCVCRedlog' file fileTimes =
+    try
+      Some (runWithCVCRedlog file fileTimes)
+    with e ->
+      None
+
+  let runWithZ3 file fileTimes =
+    run (2, 20, 10, 10) file None None z3Process.Instances.learner.CVC (not <| withRedlog) fileTimes
+
+  let runWithZ3' file fileTimes =
+    try
+      Some (runWithZ3 file fileTimes)
+    with e ->
+      None
+
+  let runWithZ3Redlog file fileTimes =
+    run (2, 20, 10, 5) file None None z3Process.Instances.learner.CVC withRedlog fileTimes
+
+  let runWithZ3Redlog' file fileTimes =
+    try
+      Some (runWithZ3Redlog file fileTimes)
+    with e ->
+      None
   
-
-  let main =
+  let modes =
+    let solver = function
+      | ArgumentsParser.CVC -> z3Process.Instances.learner.CVC
+      | ArgumentsParser.Z3 -> z3Process.Instances.learner.Z3
     function
-      // | [| path; dbgPath; timeLimit |] ->
-      //   let d = Path.Join [| dbgPath; "dbg" |]
-      //   if Directory.Exists d then Directory.Delete (d, true)
-      //   Directory.CreateDirectory d |> ignore
-      //   let v, st, curDuration = run path (Some d) (Some timeLimit)
-      //   printfn $"{v}"
-      //   printfn $"{curDuration}"
-      //   for s in st do printfn $"{s}"
-      //   0
-      // | [| path; dbgPath |] ->
-      //   let d = Path.Join [| dbgPath; "dbg" |]
-      //   if Directory.Exists d then Directory.Delete (d, true)
-      //   Directory.CreateDirectory d |> ignore
-      //   let v, st, curDuration = run path (Some d) None
-      //   printfn $"{v}"
-      //   printfn $"{curDuration}"
-      //   for s in st do printfn $"{s}"
-      //   0
-      | path ->
-          
-          let testName = Path.GetFileName path[0]
-          printfn $"{testName}"
-          
-          let watch = System.Diagnostics.Stopwatch.StartNew();
+    | Result.Ok (file, (fTimes, modes)) ->
+      Result.Ok
+        (List.map (function
+          | s, (tLearner, tTeacher, tChecker, Some tRedlog) ->
+            File.WriteAllText ($"{fTimes}-{s}-rd", "");
+            lazy run (tLearner, tTeacher, tChecker, tRedlog) file None None (solver s) withRedlog $"{fTimes}-{s}-rd"
+          | s, (tLearner, tTeacher, tChecker, None) ->
+            File.WriteAllText ($"{fTimes}-{s}", "");
+            lazy run (tLearner, tTeacher, tChecker, 0) file None None (solver s) (not withRedlog) $"{fTimes}-{s}")
+          modes)
+    | Error err -> Error err
 
-          try
-            let (status, result), st, curDurName = run path[0] None None
-            watch.Stop();
+      // Result<(string * (string * (SMTSolver * (int * int * int * 'a option)) list)),'b> -> Result<Lazy<(string * string) * (string * int64) list * string> list,'b>
+    
+  let rec choice asyncs =
+    asyncs
+    |> Async.Choice
+    |> Async.RunSynchronously
+    |> function
+      | Some x -> x
+      | None ->
+        printfn "unknown"
+        Environment.Exit 0
+        failwith ""
+
+  let run (fs: Lazy<(string * string) * (string * int64) list * string> list) =
+    match fs with
+    | [ f ] ->
+      f.Force()
+    | _ ->
+      List.map (fun (f: Lazy<(string * string) * (string * int64) list * string>) ->
+        (async { return try Some (f.Force()) with _ -> None }))
+        fs
+      |> choice
   
-            let durations = Utils.join "\n" (List.map (fun (n, t) -> $"\t{n} {t}") st)  
-            let content = $"{status}\n{curDurName}{durations}"
-  
-            let elapsedMs = watch.ElapsedMilliseconds
-            // printfn $"{testName} {elapsedMs} {status}\n{result}"
-            // printfn $"{status}\n{elapsedMs}\n{result}"
-            printfn $"{status}\n{elapsedMs}"
-          with
-          | e -> printfn $"{e}"
-            
-          0
-      | _ -> 
+  [<EntryPoint>]
+  let main = function
+    | args ->
+      let file = match ArgumentsParser.parse args with Result.Ok (file, _) -> file | Error err -> failwith err 
+      match modes (ArgumentsParser.parse args) with
+      | Error err ->
+        printfn $"{err}"
         1
+      | Result.Ok ok ->
+        try
+          let (status, result), _, _ = run ok
+          
+          printfn $"{status}"
+          
+          if status = "unsat" || status = "sat" then
+            let path' = Path.GetTempPath () + Guid.NewGuid().ToString () + ".smt2"
+            File.WriteAllText (path', Preprocessing.Parametrized.go <| File.ReadAllText file)
+            let p = Parser.Parser false
+            let cmds = p.ParseFile path'
+            
+            if List.contains (originalCommand.Command command.GetModel) cmds ||
+               List.contains (originalCommand.Command command.GetProof) cmds then
+              printfn $"{result}"
+              
+            let cmds = Preprocessing.chcFF.notFF cmds
+            
+            let cmds = Preprocessing.ApproximateBooleans.rwrt cmds
+            // let cmds = Preprocessing.Selectors.run cmds
+            let cmds = cmds |> List.map toString |> join "\n"
+            
+            match ArgumentsParser.runParser ArgumentsParser.outputContract args with
+            | Result.Ok file ->
+              File.WriteAllText ($"{file}", $"{status}\n{cmds}\n{result}")
+            | _ ->
+              File.WriteAllText ($".result", $"{status}\n{cmds}\n{result}")
+            
+
+      // printfn "9"
+        with e ->
+          printfn $"{e.Message}"
+          printfn $"ERR"
+
+        0
+    // | args ->
+    //   
+    //   try
+    //     let (status, result), _, _ =
+    //       match
+    //         List.ofArray
+    //         <| Array.filter
+    //           (fun arg -> arg = "-cvc" || arg = "-cvc2" || arg = "-cvcRD" || arg = "-z3" || arg = "-z3RD")
+    //           args
+    //       with
+    //       | [ mode ] ->
+    //         Map
+    //           [ ("-cvc", runWithCVC)
+    //             ("-cvc2", runWithCVC2)
+    //             ("-cvcRD", runWithCVCRedlog)
+    //             ("-z3", runWithZ3)
+    //             ("-z3RD", runWithZ3Redlog) ]
+    //         |> Map.find mode
+    //         <|| (args[0], args[1])
+    //       | _ ->
+    //         let modes =
+    //           match List.ofArray args with
+    //           | modes ->
+    //             List.choose
+    //               (function
+    //               | "-cvc" -> Some (async { return runWithCVC' args[0] $"{args[1]}-runWithCVC" })
+    //               | "-cvc2" -> Some (async { return runWithCVC2' args[0] $"{args[1]}-runWithCVC2" })
+    //               | "-cvcRD" -> Some (async { return runWithCVCRedlog' args[0] $"{args[1]}-runWithCVCRedlog" })
+    //               | "-z3" -> Some (async { return runWithZ3' args[0] $"{args[1]}-runWithZ3" })
+    //               | "-z3RD" -> Some (async { return runWithZ3Redlog' args[0] $"{args[1]}-runWithZ3Redlog" })
+    //               | _ -> None)
+    //               modes
+    //
+    //         choice modes
+    //
+    //     printfn $"{status}"
+    //
+    //     if status = "unsat" || status = "sat" then
+    //       let path' = Path.GetTempPath () + Guid.NewGuid().ToString () + ".smt2"
+    //       File.WriteAllText (path', Preprocessing.Parametrized.go <| File.ReadAllText args[0])
+    //       let p = Parser.Parser false
+    //       let cmds = p.ParseFile path'
+    //       let cmds = Preprocessing.chcFF.notFF cmds
+    //       let cmds = Preprocessing.ApproximateBooleans.rwrt cmds
+    //       let cmds = Preprocessing.Selectors.run cmds
+    //       let cmds = cmds |> List.map toString |> join "\n"
+    //       File.WriteAllText (args[2], $"{status}\n{cmds}\n{result}")
+    //   // printfn "9"
+    //   with e ->
+    //     printfn $"{e.Message}"
+    //     printfn $"ERR"
+    //     
+    //   0

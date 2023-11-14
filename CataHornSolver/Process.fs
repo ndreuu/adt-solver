@@ -12,7 +12,7 @@ open System
 
 let trim (s: string) = s.TrimEnd ([| '\r'; '\n' |])
 
-let execute timeout processName processArgs =
+let execute processName processArgs =
   // let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""")
   let psi =
     Diagnostics.ProcessStartInfo (

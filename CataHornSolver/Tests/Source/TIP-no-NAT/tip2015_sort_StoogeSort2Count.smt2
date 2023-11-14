@@ -1,4 +1,4 @@
-(set-logic HORN)
+(set-logic UFDTLIA)
 (define-fun Z_1150 () Int 0)
 (define-fun S_293 ((x Int)) Int (+ x 1))
 (declare-fun unS_401 (Int Int) Bool)

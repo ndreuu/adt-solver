@@ -37,6 +37,15 @@ module Instances =
     | Model
     | None
     
+  type learner =
+    | Z3
+    | CVC
+    override x.ToString() =
+      match x with
+        | Z3 -> "z3"
+        | CVC ->  "cvc"
+      
+  
   let setOption x =
     function
     | Proof -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-proof)"
@@ -47,13 +56,12 @@ module Instances =
     [ Teacher,
       (Horn,
        Proof,
-       "-T:10 fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
-      Checker, (All, None, "-T:10")
-      Learner, (NIA, Model, "-T:10")
-      // Learner, (NIA, Model, "")
+       "fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false")
+      Checker, (All, None, "")
+      Learner, (NIA, Model, "")
 
-      TeacherModel, (Horn, Model, $"fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false fp.spacer.global=true pp.max_depth={UInt64.MaxValue} pp.min_alias_size={UInt64.MaxValue}")
-      ADTModel, (All, Model, "-T:10")]
+      TeacherModel, (Horn, Model, $"fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.subsumption_checker=false fp.spacer.global=true fp.xform.inline_eager=false fp.xform.inline_linear=false fp.xform.slice=false fp.datalog.similarity_compressor=false fp.datalog.subsumption=false fp.datalog.unbound_compressor=false fp.xform.tail_simplifier_pve=false pp.max_depth={UInt64.MaxValue} pp.min_alias_size={UInt64.MaxValue}")
+      ADTModel, (All, Model, "") ]
       
     |> Map
 // false_productive_use_of_failure_rot_inj00.smt2
@@ -71,9 +79,9 @@ module Instances =
     let logic, option, _ = instances |> Map.find instance
     $"""{logic}{setOption (join "\n" cmds) option}"""
 
-  let run timeout instance cmds =
+  let run tl instance cmds fTime =
     let _, _, flags = instances |> Map.find instance
-    let file = Path.GetTempPath () + ".smt2"
+    let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
     
     // printfn $"CONTENTTTTTTTTTTTTTTTt\n{content instance cmds}"
     
@@ -81,7 +89,7 @@ module Instances =
     
     // printfn $"{instance}---"
     // printfn $"{content instance cmds}"
-    let result = execute timeout "./z3" $"{flags} {file}"
+    let result = execute "./z3" $"-T:{tl} {flags} {file}"
     // printfn $"---{instance}"
 
     // let kek = execute timeout "ls" ""
@@ -94,6 +102,7 @@ module Instances =
       |> Array.filter (fun (s: string) -> s.Contains("real"))
       |> join "\n"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+    File.AppendAllText(fTime, $"{instance}, {time}\n")
     // printfn $"{instance}, {time}"  
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
     
@@ -102,7 +111,7 @@ module Instances =
        then
       Option.None
      
-    else Some <| if instance=TeacherModel then (result; Weight.rmWeightBlocks result.StdOut) else result.StdOut
+    else Some <| if instance=TeacherModel then (Weight.rmWeightBlocks result.StdOut) else result.StdOut
 
     
     // if result.ExitCode = 124 then
@@ -117,7 +126,38 @@ module Interpreter =
     | UNSAT of 'b
     | UNKNOWN
 
-
+  let constDefStrs consts (s: String) =
+    let constantsWithName (def: string) = List.filter (fun c -> def.Contains $"define-fun {c}" || def.Contains $"declare-datatype") consts 
+    let rec helper s acc =
+      // printfn $"<<< < {s}"
+      let b = Regex "\("
+      let brackets = b.Matches s
+      match Seq.toList brackets with
+      | [] ->
+        acc
+      | bs ->
+        let def =
+          List.map (fun (s: Match) -> s.Index) bs
+          |> List.sort
+          |> List.head
+          |> s.Substring
+          |> balancedBracket
+          |> fun x ->
+            match x with
+            | Some x -> x
+            | None ->
+              // printfn $"{s}"
+              failwith $"{s}"
+          // |> Option.get
+        let acc' =
+          // List.addLast (def.Replace("\n", "")) acc
+          if constantsWithName def |> List.length > 0 then List.addLast (def.Replace("\n", "")) acc else acc 
+          // if def.Contains "define-fun c_" then List.addLast (def.Replace("\n", "")) acc else acc
+        
+        helper (s.Replace(def, "")) acc'
+      
+    helper s []
+    
   let model cmds (adts: _ list) consts (content: string) =
     let p = Parser.Parser false
     // for x in content.Split '\n' do printfn $"< < < {x}" 
@@ -131,25 +171,42 @@ module Interpreter =
 
     // for x in List.ofArray <| content.Split '\n' do printfn $"BBBLLLL {x}"
     
+    // printfn $"\n---------------content--------\n{content}"
+     
+    if content.Contains("unknown constant !") then
+      // printfn $"ERR: -ball-unbound-var-\n{content}"
+      // Environment.Exit(0);
+      failwith "ERR: -ball-unbound-var-"
+    
     let cmds = adts @ (List.ofArray <| content.Split '\n').[ 2..(List.ofArray <| content.Split '\n').Length - 2 ] |> join "\n"
-    let file = Path.GetTempPath () + ".smt2"
-    File.WriteAllText (file, cmds)
+    let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
     
-    let cmds = p.ParseFile file
+    // printfn $"CCCCCCC\n{cmds}"
+    // File.WriteAllText (file, constDefStrs cmds |> join "\n")
+    // File.WriteAllText (file, constDefStrs consts cmds |> join "\n")
+    File.WriteAllText (file, constDefStrs consts cmds |> join "\n")
+    // File.WriteAllText (file, cmds )
+    // printfn "e"
     
-    cmds
-    |> List.choose (function
-             | originalCommand.Definition (DefineFun (n, _, _, _)) as def when List.contains n consts ->
-               Some (AST.origCommand2program <| def)
-             | _ -> None)
     
-    // p.ParseModel (List.ofArray <| content.Split '\n')
-    // |> snd
-    // |> List.choose (function
-      // | definition.DefineFun (n, _, _, _) as d when List.contains n ((*names*) consts) ->
-        // Some (AST.origCommand2program <| Definition d)
-      // | _ -> None)
+    try 
+      let cmds = p.ParseFile file
+      
+      // printfn $"--------------------------------------------\n\n{cmds}\\n^^^^^^^"
 
+      cmds
+      |> List.choose (function
+               | originalCommand.Definition (DefineFun (n, _, _, _)) as def when List.contains n consts ->
+                 Some (AST.origCommand2program <| def)
+               | _o ->
+                 None)
+    with  
+      | e ->
+        let d = constDefStrs consts cmds |> join "\n"
+        // printfn $"ERR: -model- {e.Message}\n{d}"
+        // Environment.Exit 0
+        failwith $"ERR: -model- {e.Message}\n{d}"
+        
   module SoftSolver =
     let softAsserts softs =
       let softNames = List.map (fun n -> $"soft_{n}") (softs)
@@ -163,7 +220,7 @@ module Interpreter =
         softNames,
       softNames
 
-    let content cmds softs =
+    let content cmds softs learnerInstance =
       let cmds = List.map (AST.program2originalCommand >> toString) cmds |> join "\n"
       let softAsserts, softNames = softAsserts softs
       let softNames' = softNames |> join " "
@@ -173,17 +230,25 @@ module Interpreter =
         |> join "\n"
       
       let sofCore = List.map (fun n -> $"(assert (! {n}:named _{n}))") softNames |> join "\n"
-      $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n{sofCore}\n(check-sat)\n(get-unsat-core)\n(get-model)"      
-      // $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
+      match learnerInstance with
+        | Instances.learner.CVC -> 
+          $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n{sofCore}\n(check-sat)\n(get-unsat-core)\n(get-model)"
+        | Instances.learner.Z3 ->
+          $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
       
-    let runLearner inputs timeout content =
+    let runLearner tl inputs content learnerInstance fTime =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       // printfn $"INPUT:::::::::::::::\n{flags} {content}"
-      let file = Path.GetTempPath () + ".smt2"
+      let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
       File.WriteAllText (file, content)
-      // let result = execute timeout "./z3" $"{flags} {file}"
-      let result = execute timeout "./cvc5" $"--tlimit 10000 {file}"
       
+      // let result = execute timeout "./z3" $"{flags} {file}"
+      let result =
+        match learnerInstance with
+        | Instances.learner.CVC ->
+          execute "./cvc5" $"--tlimit {tl * 1000} {file}"
+        | Instances.learner.Z3 ->
+          execute "./z3" $"-T:{tl} {flags} {file}"
       // printfn $"INP::::\n{content}"
       // printfn $"OUT::::\n{result.StdOut}"
       
@@ -199,6 +264,7 @@ module Interpreter =
 
       
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
+      File.AppendAllText(fTime, $"{Instances.instance.Learner}, {time}\n")
       // printfn $"{Instances.instance.Learner}, {time}"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
       
@@ -212,19 +278,19 @@ module Interpreter =
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
     
-    let solve timeout constDefs cmds softs dbgPath iteration =
+    let solve tl constDefs cmds softs dbgPath iteration learnerInstance fTime =
       // let content = content cmds softs
 
       // printfn $"contentcontentcontentcontent\n\n{content}"
-      // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
       // printfn "solveSOFT"
       let rec helper i inputs assumings =
         let isActual (soft: string) =
           List.fold (fun acc (assuming: string) -> acc || (assuming.Contains soft)) false assumings
         
-        let content = content cmds (List.filter isActual softs)
+        let content = content cmds (List.filter isActual softs) learnerInstance
         let softContent = setAssuming content assumings
         // let softContent = content 
+        // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
         
 ///////////////////////////////////////////////////////////////////
         // printfn $"{iteration},   smt-input-{i}.smt2" 
@@ -233,9 +299,12 @@ module Interpreter =
         // File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
         
-        printfn $"{softContent}"
+        // printfn $"----------softContent----------\n{softContent}\n------------------"
+        // printfn $"{inputs}"
+        let out, inputs' = runLearner tl inputs softContent learnerInstance fTime
         
-        let out, inputs' = runLearner inputs timeout softContent 
+        // printfn $"{out}\n{inputs'}"
+        // printfn $"{out}"
         
         match out with
         | Some out -> 
@@ -249,9 +318,10 @@ module Interpreter =
               UNKNOWN
             else UNSAT ()
           
-          printfn $"OOOOOOOOOOOOOOOOOOO\n{out}\n-------RRRRRRRRRRRRRR {r}"
+          // printfn $"OUT\n{out}\n{r}"
           match r with
           | UNKNOWN ->
+            // printfn $".....UNKNOWN...."
             Some (UNKNOWN, assumings), inputs'
           | SAT _ ->
             // printfn $"{out}"
@@ -268,9 +338,12 @@ module Interpreter =
                 List.filter (fun a -> a <> x.Value) assumings
                 |> helper (i + 1) inputs' 
               | None ->
-                printfn "!!!!!UNKNOWN"
-                Environment.Exit(0)
-                failwith ""
+                // printfn "unknown"
+                // Some (UNKNOWN, assumings), inputs'
+                Some (UNSAT None, assumings), inputs'
+                // Environment.Exit(0)
+                // failwith ""
+
         // | Option.None when not <| List.isEmpty softs ->
           // solve timeout constDefs cmds (List.tail softs)
         | Option.None -> None, inputs'
@@ -303,22 +376,26 @@ module Interpreter =
         cmds do
       p.ParseLine x |> ignore
 
-    let mp = p.ParseLine mp
-
-    (List.choose
-      (function
-      | Command (Proof (HyperProof (a, hs, _), x, _)) ->
-        Command (Proof (HyperProof (a, hs, BoolConst false), x, BoolConst false))
-        |> Some
-      | _ -> None)
-      mp,
-     content)
-
-
-  let solve adts timeout instance cmds constDefs softs dbgPath iteration =
+    try
+      let mp' = p.ParseLine mp
+  
+      (List.choose
+        (function
+        | Command (Proof (HyperProof (a, hs, _), x, _)) ->
+          Command (Proof (HyperProof (a, hs, BoolConst false), x, BoolConst false))
+          |> Some
+        | _ -> None)
+        mp',
+       content)
+      with e ->
+        // printfn $"ERR: -proof- {e.Message}\n{mp}" 
+        // Environment.Exit 0
+        failwith $"ERR: -proof- {e.Message}\n{mp}"
+        
+  let solve' tl adts instance cmds constDefs softs dbgPath iteration learnerInstance fTime =
     match instance with
     | Instances.instance.Learner ->
-      SoftSolver.solve timeout constDefs cmds softs dbgPath iteration
+      SoftSolver.solve tl constDefs cmds softs dbgPath iteration learnerInstance fTime
     | _ ->
       let _, option, _ = Instances.instances |> Map.find instance
 
@@ -331,18 +408,22 @@ module Interpreter =
       // File.WriteAllText ($"{path}", $"""{join "\n" input}""")
 //////////////////////////////////////////////////////////////////
       
-      // printfn $"----------------------input for {instance}----------------------"
-      // join "\n" input |> printfn "%O"
-      // printfn $"----------------------------------------------------------------"
-
       let output =
-        Instances.run timeout instance input
+        Instances.run tl instance input fTime
 
       // if instance = Instances.ADTModel then 
-        // printfn $"output of {instance}-----------------------------------------"
-        // printfn $"{output}"
-        // printfn $"--------------------------------------------------------------|||||||||||||||||"
+      //   printfn $"----------------------input for {instance}----------------------"
+      //   join "\n" input |> printfn "%O"
+      //   printfn $"----------------------------------------------------------------"
+      //
+      //   printfn $"output of {instance}-----------------------------------------"
+      //   printfn $"{output}"
+      //   printfn $"--------------------------------------------------------------|||||||||||||||||"
       // else ()
+
+      // printfn $"output of {instance}-----------------------------------------"
+      // printfn $"{output}"
+      // printfn $"--------------------------------------------------------------|||||||||||||||||"
       
       match output with
       | Option.None -> Option.None, [] 
@@ -363,11 +444,19 @@ module Interpreter =
         | Instances.option.Proof, SAT _ -> Some (SAT None, []), []
         | Instances.option.Model, SAT _ ->
           
+          // join "\n" input |> printfn "%O"
           // printfn $"------>>>\n{output}"
           Some (SAT (Some <| model cmds adts constDefs output), []), []
         | _ -> Some (UNKNOWN, []), []
         
-        
+  
+  let solve tl adts instance cmds constDefs softs dbgPath iteration fTimes =
+    solve' tl adts instance cmds constDefs softs dbgPath iteration Instances.CVC fTimes 
+  
+  let solveLearner tl adts cmds constDefs softs dbgPath iteration instance fTimes =
+    solve' tl adts Instances.instance.Learner cmds constDefs softs dbgPath iteration instance fTimes
+    
+  
 type snapshot =
   { cmds: AST.Program list
     consts: AST.Program list }
@@ -453,3 +542,5 @@ let chck () =
     let p =  Parser.Parser false
     let cmds = p.ParseFile "/home/andrew/adt-solver/smr/binop-list.smt2"
     for cmd in cmds do printfn $">> {cmd}"
+    
+    

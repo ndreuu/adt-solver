@@ -8,7 +8,12 @@
         <GenerateProgramFile>false</GenerateProgramFile>
         <RootNamespace>CataHornSolver</RootNamespace>
     </PropertyGroup>
-    
+
+<!--    <ItemGroup>-->
+<!--        <Content Include="rdlg\*">-->
+<!--            <CopyToOutputDirectory>Always</CopyToOutputDirectory>-->
+<!--        </Content>-->
+<!--    </ItemGroup>-->
     
     <ItemGroup>
         <Compile Include="Process.fs" />
@@ -360,15 +365,18 @@
         <Content Include="..\d\cvc5">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
+        <Compile Include="ArgumentsParser.fs" />
         <Compile Include="Program.fs" />
         <Content Include="build-table.py" />
         <Content Include="eldarica.csv" />
         <Content Include="spacer.csv" />
         <Content Include="compare.py" />
+        <Content Include="rdlg\usr\bin\redcsl" />
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Antlr4.Runtime.Standard" Version="4.10.1" />
+        <PackageReference Include="Argu" Version="6.1.1" />
         <PackageReference Include="Fli" Version="1.1.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.1.0" />
         <PackageReference Include="NUnit" Version="3.13.3" />

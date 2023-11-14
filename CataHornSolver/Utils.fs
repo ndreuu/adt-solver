@@ -1,6 +1,7 @@
 module ProofBased.Utils
 
 open System
+open System.Numerics
 open System.Text.RegularExpressions
 open System.Threading.Tasks
 
@@ -19,10 +20,10 @@ module IntOps =
   let neg = Expr.makeUnaryOp negOp
   let mult x y =
     match x, y with
-    | Number 1L, _ -> y
-    | _, Number 1L -> x
-    | Number -1L, _ -> neg y
-    | _, Number -1L -> neg x
+    | Number v, _ when v = BigInteger.One -> y
+    | _, Number v when v = BigInteger.One -> x
+    | Number v, _  when v = BigInteger.MinusOne -> neg y
+    | _, Number v  when v = BigInteger.MinusOne -> neg x
     | _ -> Expr.makeBinaryOp mulOp x y
   let add x y = Expr.makeBinaryOp addOp x y
   let minusOp = ElementaryOperation ("-", [ IntSort; IntSort ], IntSort)
@@ -174,21 +175,6 @@ let withTimeout timeout action =
   }
 
 
-
-// type Microsoft.FSharp.Control.Async with
-//     static member AwaitTask (t : Task<'T>, timeout : int) =
-//         async {
-//             use cts = new CancellationTokenSource()
-//             use timer = Task.Delay (timeout, cts.Token)
-//             let! completed = Async.AwaitTask <| Task.WhenAny(t, timer)
-//             if completed = (t :> Task) then
-//                 cts.Cancel ()
-//                 let! result = Async.AwaitTask t
-//                 return Some result
-//             else return None
-//         }
-//
-// example
 
 
 let uniqs =

@@ -1,37 +1,32 @@
 grammar RedTrace;
 
-prog : PREAMBULA expr POSTAMBULA EOF;
+prog : PREAMBULA formula POSTAMBULA EOF;
 
-expr : '(' and expr+ ')'
-     | '(' or expr+ ')'
-     | '(' ncgong body nil ')'
-     | '(' equal body nil ')'
-     | '(' gr body nil ')'
-     | '(' ls body nil ')'
-     | '(' neq body nil ')'
-     | '(' leq body nil ')'
-     | '(' geq body nil ')'
-     | '(' ball id expr expr ')'
+formula : '(' and formula+ ')'
+     | '(' or formula+ ')'
+     | '(' ncgong polynom nil ')'
+     | '(' cong polynom nil ')'
+     | '(' equal_zero polynom nil ')'
+     | '(' gr polynom nil ')'
+     | '(' ls polynom nil ')'
+     | '(' neq polynom nil ')'
+     | '(' leq polynom nil ')'
+     | '(' geq polynom nil ')'
+     | '(' ball id formula formula ')'
+     | false
      ;
 
-//body : '('( factor | '('mul(')'?) |  num)+(')'?);
-body : '('(factor | num | '('mul')')+')';
-
-mul : factor
-    | power ( factor | num |  '(' mul ')' )+
-    ;
-
-ncgong : '(' NCONG (factor | num | '('mul')')+ ')';
-
-factor : '('power'.'number')';
+polynom : '(' power? polynom+ ('.'number)? ')' | monom ('.'number)? | '.'number | number;
+monom : '(' power '.' number ')';
+ncgong : '(' NCONG polynom+ ')' ;
+cong : '(' CONG polynom+ ')' ;
 power : '('id'.'number')';
-num : '.'number;
 
 number : NUM;
 id : ID;
 and : AND;
 or : OR;
-equal : EQUAL;
+equal_zero : EQUAL;
 gr : GR;
 ls : LS;
 neq : NEQ;
@@ -39,6 +34,7 @@ leq : LEQ;
 geq : GEQ;
 ball : BALL;
 nil : NIL;
+false : FALSE;
 
 AND : 'and';
 OR : 'or';
@@ -49,8 +45,10 @@ LEQ : 'leq';
 NEQ : 'neq';
 GEQ : 'geq';
 NCONG : 'ncong';
+CONG : 'cong';
 BALL : 'ball';
 NIL : 'nil';
+FALSE : 'false';
 
 PREAMBULA : '(!*fof (pasf)';
 POSTAMBULA : 't)';
