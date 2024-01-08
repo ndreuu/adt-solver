@@ -7,19 +7,18 @@ type ProcessResult =
     StdOut: string
     StdErr: string }
 
-
 open System
 
 let trim (s: string) = s.TrimEnd ([| '\r'; '\n' |])
 
 let execute processName processArgs =
-  // let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""")
-  let psi =
-    Diagnostics.ProcessStartInfo (
-      "bash",
-      $"""-c "cd {FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)
-                    .Directory.FullName}; time {processName} {processArgs}" """
-    )
+  let psi = Diagnostics.ProcessStartInfo (processName, $"""{processArgs}""")
+  // let psi =
+  //   Diagnostics.ProcessStartInfo (
+  //     "bash",
+  //     $"""-c "cd {FileInfo(System.Reflection.Assembly.GetExecutingAssembly().Location)
+  //                   .Directory.FullName}; time {processName} {processArgs}" """
+  //   )
 
   psi.UseShellExecute <- false
   psi.RedirectStandardOutput <- true

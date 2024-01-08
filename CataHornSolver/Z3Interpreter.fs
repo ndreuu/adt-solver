@@ -128,7 +128,7 @@ module AST =
     | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
     | SMTExpr e -> e
     | o -> failwith $"{o}" 
-  type Definition = Name * Name list * Type * Expr
+  type Definition = Name * (Name) list * Type * Expr
 
   // type VarCtx = Map<Name, Microsoft.Z3.Expr>
   // type DecFunsCtx = Map<Name, FuncDecl>

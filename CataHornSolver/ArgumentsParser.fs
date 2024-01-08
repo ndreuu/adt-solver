@@ -37,8 +37,9 @@ let fileTimes =
     | FileTimes f -> Some f
     | _ -> None)
   >> function
-    | [ file ] -> Ok file
-    | _ -> Error "smt solver is chose wrong"
+    | [ file ] -> Ok <| Some file
+    | [] -> Ok None
+    | _ -> Error "file time is chose wrong"
     
 let outputContract =
   List.choose (function
@@ -169,7 +170,7 @@ let test () =
     printfn $"{x}"
   // List.map (fun r -> r.GetAllResults()) results
   match many (results.GetAllResults ()) with
-  | Error e -> printfn $"{e}"
-  | Ok xs -> printfn $"{xs}"
+  | Error e -> printfn $"E {e}"
+  | Ok xs -> printfn $"Ok {xs}"
   // printfn $"{results}"
   // printfn $"{parser.PrintUsage()}"

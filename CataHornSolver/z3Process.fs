@@ -2,6 +2,7 @@ module CataHornSolver.z3Process
 
 open System
 open System.IO
+open System.Numerics
 open System.Text.RegularExpressions
 open Antlr4.Runtime.Misc
 open Process.Process
@@ -79,7 +80,7 @@ module Instances =
     let logic, option, _ = instances |> Map.find instance
     $"""{logic}{setOption (join "\n" cmds) option}"""
 
-  let run tl instance cmds fTime =
+  let run tl instance cmds (fTime: _ option) =
     let _, _, flags = instances |> Map.find instance
     let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
     
@@ -102,7 +103,9 @@ module Instances =
       |> Array.filter (fun (s: string) -> s.Contains("real"))
       |> join "\n"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-    File.AppendAllText(fTime, $"{instance}, {time}\n")
+    (match fTime with
+      | Some fTime -> File.AppendAllText(fTime, $"{instance}, {time}\n")
+      | _ -> ())
     // printfn $"{instance}, {time}"  
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
     
@@ -158,7 +161,7 @@ module Interpreter =
       
     helper s []
     
-  let model cmds (adts: _ list) consts (content: string) =
+  let model  (adts: _ list) consts (content: string) =
     let p = Parser.Parser false
     // for x in content.Split '\n' do printfn $"< < < {x}" 
     
@@ -214,7 +217,7 @@ module Interpreter =
       List.map2
         (fun n s ->
           AST.Assert (
-            AST.Implies (AST.Var s, AST.Or [| AST.Eq (AST.Var n, AST.Int 0); AST.Eq (AST.Var n, AST.Int 1) |])
+            AST.Implies (AST.Var s, AST.Or [| AST.Eq (AST.Var n, AST.Int BigInteger.Zero); AST.Eq (AST.Var n, AST.Int BigInteger.One) |])
           ))
         softs
         softNames,
@@ -236,7 +239,7 @@ module Interpreter =
         | Instances.learner.Z3 ->
           $"{Instances.logic.NIA}(set-option :produce-unsat-cores true)\n{cmds}\n{softDecls}\n{softAsserts'}\n(check-sat-assuming ({softNames'}))\n(get-unsat-core)\n(get-model)"
       
-    let runLearner tl inputs content learnerInstance fTime =
+    let runLearner tl inputs content learnerInstance (fTime: string option) =
       let _, _, flags = Instances.instances |> Map.find Instances.instance.Learner
       // printfn $"INPUT:::::::::::::::\n{flags} {content}"
       let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
@@ -264,7 +267,9 @@ module Interpreter =
 
       
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
-      File.AppendAllText(fTime, $"{Instances.instance.Learner}, {time}\n")
+      match fTime with
+      | Some fTime -> File.AppendAllText(fTime, $"{Instances.instance.Learner}, {time}\n")
+      | None -> ()
       // printfn $"{Instances.instance.Learner}, {time}"
 ///////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT    
       
@@ -278,11 +283,7 @@ module Interpreter =
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
     
-    let solve tl constDefs cmds softs dbgPath iteration learnerInstance fTime =
-      // let content = content cmds softs
-
-      // printfn $"contentcontentcontentcontent\n\n{content}"
-      // printfn "solveSOFT"
+    let solve tl constDefs cmds softs dbgPath iteration learnerInstance (fTime: string option) =
       let rec helper i inputs assumings =
         let isActual (soft: string) =
           List.fold (fun acc (assuming: string) -> acc || (assuming.Contains soft)) false assumings
@@ -293,10 +294,10 @@ module Interpreter =
         // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
         
 ///////////////////////////////////////////////////////////////////
-        // printfn $"{iteration},   smt-input-{i}.smt2" 
-        // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
-        // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-        // File.WriteAllText ($"{path}", $"{softContent}\n")
+        printfn $"{iteration},   smt-input-{i}.smt2" 
+        let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
+        if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+        File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
         
         // printfn $"----------softContent----------\n{softContent}\n------------------"
@@ -326,7 +327,7 @@ module Interpreter =
           | SAT _ ->
             // printfn $"{out}"
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-            Some (SAT (Some <| model cmds [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
+            Some (SAT (Some <| model [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
           | UNSAT _ ->
             // for a in assumings do printfn $"{a}"
             // printfn $"{assumings}"
@@ -392,7 +393,7 @@ module Interpreter =
         // Environment.Exit 0
         failwith $"ERR: -proof- {e.Message}\n{mp}"
         
-  let solve' tl adts instance cmds constDefs softs dbgPath iteration learnerInstance fTime =
+  let solve' tl adts instance cmds constDefs softs dbgPath iteration learnerInstance (fTime: string option) =
     match instance with
     | Instances.instance.Learner ->
       SoftSolver.solve tl constDefs cmds softs dbgPath iteration learnerInstance fTime
@@ -403,9 +404,9 @@ module Interpreter =
 
 
 ////////////////////////////////////////////////////////////////
-      // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"--{instance}-{iteration}.smt2" |]
-      // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-      // File.WriteAllText ($"{path}", $"""{join "\n" input}""")
+      let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"--{instance}-{iteration}.smt2" |]
+      if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+      File.WriteAllText ($"{path}", $"""{join "\n" input}""")
 //////////////////////////////////////////////////////////////////
       
       let output =
@@ -446,11 +447,11 @@ module Interpreter =
           
           // join "\n" input |> printfn "%O"
           // printfn $"------>>>\n{output}"
-          Some (SAT (Some <| model cmds adts constDefs output), []), []
+          Some (SAT (Some <| model adts constDefs output), []), []
         | _ -> Some (UNKNOWN, []), []
         
   
-  let solve tl adts instance cmds constDefs softs dbgPath iteration fTimes =
+  let solve tl adts instance cmds constDefs softs dbgPath iteration (fTimes: string option) =
     solve' tl adts instance cmds constDefs softs dbgPath iteration Instances.CVC fTimes 
   
   let solveLearner tl adts cmds constDefs softs dbgPath iteration instance fTimes =

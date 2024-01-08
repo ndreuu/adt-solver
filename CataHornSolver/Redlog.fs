@@ -109,10 +109,9 @@ let rec rdNames =
   | otherwise -> otherwise
 
 
-let runRedlog timeout definitions formula fTime =
+let runRedlog timeout definitions formula (fTime: string option) =
   let file = Path.GetTempPath () + Path.GetRandomFileName () + ".red"
 
-  // printfn $"F\n{formula}"
   let query =
     redlogQuery
       (List.choose
@@ -136,7 +135,9 @@ let runRedlog timeout definitions formula fTime =
 
   // printfn $"{r.StdOut}"
   /////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-  File.AppendAllText (fTime, $"redlog, {time}\n")
+  match fTime with 
+  | Some fTime -> File.AppendAllText (fTime, $"redlog, {time}\n")
+  | None -> ()
   // printfn $"redlog, {time}"
   /////////////////////////////////////////////////////////////TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
   // printfn $"RDC: {r.ExitCode}"

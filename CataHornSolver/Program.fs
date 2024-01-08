@@ -11,6 +11,7 @@ open SMTLIB2
 
 
 module Program =
+  // let mutable FileTimes = false
   let withRedlog = true
 
   let runWithCVC file fileTimes =
@@ -68,16 +69,22 @@ module Program =
       Result.Ok
         (List.map (function
           | s, (tLearner, tTeacher, tChecker, Some tRedlog) ->
-            File.WriteAllText ($"{fTimes}-{s}-rd", "");
-            lazy run (tLearner, tTeacher, tChecker, tRedlog) file None None (solver s) withRedlog $"{fTimes}-{s}-rd"
+            match fTimes with
+              | Some fTimes ->
+                File.WriteAllText ($"{fTimes}-{s}-rd", "");
+                lazy run (tLearner, tTeacher, tChecker, tRedlog) file None None (solver s) withRedlog (Some $"{fTimes}-{s}-rd")
+              | None ->
+                lazy run (tLearner, tTeacher, tChecker, tRedlog) file None None (solver s) withRedlog None
           | s, (tLearner, tTeacher, tChecker, None) ->
-            File.WriteAllText ($"{fTimes}-{s}", "");
-            lazy run (tLearner, tTeacher, tChecker, 0) file None None (solver s) (not withRedlog) $"{fTimes}-{s}")
+            match fTimes with
+            | Some fTimes ->
+              File.WriteAllText ($"{fTimes}-{s}", "")
+              lazy run (tLearner, tTeacher, tChecker, 0) file None None (solver s) (not withRedlog) (Some $"{fTimes}-{s}")
+            | None ->  
+              lazy run (tLearner, tTeacher, tChecker, 0) file None None (solver s) (not withRedlog) None)
           modes)
     | Error err -> Error err
 
-      // Result<(string * (string * (SMTSolver * (int * int * int * 'a option)) list)),'b> -> Result<Lazy<(string * string) * (string * int64) list * string> list,'b>
-    
   let rec choice asyncs =
     asyncs
     |> Async.Choice
@@ -102,7 +109,11 @@ module Program =
   [<EntryPoint>]
   let main = function
     | args ->
-      let file = match ArgumentsParser.parse args with Result.Ok (file, _) -> file | Error err -> failwith err 
+      let file =
+        match ArgumentsParser.parse args with
+          | Result.Ok (file, _) -> file
+          | Error err -> failwith err 
+      
       match modes (ArgumentsParser.parse args) with
       | Error err ->
         printfn $"{err}"
@@ -124,8 +135,57 @@ module Program =
               printfn $"{result}"
               
             let cmds = Preprocessing.chcFF.notFF cmds
-            
-            let cmds = Preprocessing.ApproximateBooleans.rwrt cmds
+            let cmds =
+              if status = "unsat" then
+                let containsQ = function
+                  | originalCommand.Assert (QuantifierApplication (_, Hence (_, Apply (op, _))))
+                  | originalCommand.Assert (Hence (_, Apply (op, _)))
+                    when Operation.opName op = "q" -> true
+                  | _ -> false
+                let rec helper (acc, cmds) =
+                  match cmds with
+                  | x :: _ when containsQ x ->
+                    acc, cmds
+                  | x :: xs ->
+                    helper (x::acc, xs)
+                  | [] -> (acc, [])
+                let cmds =
+                  if
+                    List.filter (function
+                      | originalCommand.Assert (QuantifierApplication (_, Hence (_, BoolConst false)))
+                      | originalCommand.Assert (Hence (_, BoolConst false)) -> true
+                      | _ -> false)
+                    cmds
+                    |> List.length = 1
+                  then
+                    cmds
+                  else
+                    List.choose (function
+                      | originalCommand.Assert (QuantifierApplication (q, Hence (b, BoolConst false))) ->
+                        Some
+                          (originalCommand.Assert
+                             (QuantifierApplication
+                                (q,
+                                 Hence (b, smtExpr.Apply (ElementaryOperation ("q", [], BoolSort), [])))))
+                      | originalCommand.Assert (Hence (b, BoolConst false)) ->
+                        Some (originalCommand.Assert (Hence (b, smtExpr.Apply (ElementaryOperation ("q", [], BoolSort), []))))
+                      | otherwise -> Some otherwise)
+                      cmds
+                match helper ([], cmds) with
+                  | _, [] ->
+                    cmds
+                  | xs, tl ->
+                    // printfn $">>>> cmds"
+                    List.rev
+                      (originalCommand.Assert
+                         (Hence (smtExpr.Apply (ElementaryOperation ("q", [], BoolSort), []), BoolConst false)) ::
+                      originalCommand.Command (DeclareFun ("q", [], BoolSort)) ::
+                      xs) @ tl 
+                        
+
+              else cmds
+
+            // let cmds = Preprocessing.ApproximateBooleans.rwrt cmds
             // let cmds = Preprocessing.Selectors.run cmds
             let cmds = cmds |> List.map toString |> join "\n"
             
@@ -133,7 +193,8 @@ module Program =
             | Result.Ok file ->
               File.WriteAllText ($"{file}", $"{status}\n{cmds}\n{result}")
             | _ ->
-              File.WriteAllText ($".result", $"{status}\n{cmds}\n{result}")
+              ()
+              // File.WriteAllText ($".result", $"{status}\n{cmds}\n{result}")
             
 
       // printfn "9"
