@@ -154,23 +154,3 @@ let parse args =
   let tokens = (parser.Parse args).GetAllResults ()
   bind file (bind fileTimes many) tokens
   
-let test () =
-  let parser = ArgumentParser.Create<CliArguments> ()
-
-  let results =
-    parser.Parse
-      [| "--file"
-         "/sdf/sdf/"
-         "--learner"; "cvc"; "--timelimits"; "10"; "10"; "10"; "--redlogtimelimit"; "11"; "--async"
-         "--learner"; "cvc"; "--timelimits"; "10"; "10"; "10"; "--redlogtimelimit"; "11" |]
-
-  
-  
-  for x in results.GetAllResults () do
-    printfn $"{x}"
-  // List.map (fun r -> r.GetAllResults()) results
-  match many (results.GetAllResults ()) with
-  | Error e -> printfn $"E {e}"
-  | Ok xs -> printfn $"Ok {xs}"
-  // printfn $"{results}"
-  // printfn $"{parser.PrintUsage()}"

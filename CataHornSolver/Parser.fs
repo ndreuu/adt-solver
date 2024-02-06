@@ -168,7 +168,6 @@ let translateToSmt line =
 
   match tree.GetChild 1 with
   | :? RedTraceParser.FormulaContext as formula ->
-      // printfn $"{parseFormula formula}"
       parseFormula formula
   | _ -> __unreachable__ ()
 

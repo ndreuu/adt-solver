@@ -193,13 +193,13 @@ module Program =
             | Result.Ok file ->
               File.WriteAllText ($"{file}", $"{status}\n{cmds}\n{result}")
             | _ ->
-              ()
-              // File.WriteAllText ($".result", $"{status}\n{cmds}\n{result}")
+              // ()
+              File.WriteAllText ($".result", $"{status}\n{cmds}\n{result}")
             
 
       // printfn "9"
         with e ->
-          printfn $"{e.Message}"
+          printfn $"{e.Message}\n{e.StackTrace}"
           printfn $"ERR"
 
         0

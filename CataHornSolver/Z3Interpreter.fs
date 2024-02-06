@@ -44,7 +44,7 @@ module AST =
     | Var of Name
     | Apply of Name * Expr list
     | ForAllTyped of (Name * Type) list * Expr
-    | ForAll of Name array * Expr
+    // | ForAll of Name array * Expr
     | App of Name * Expr list
     | Ite of Expr * Expr * Expr
     | SMTExpr of smtExpr
@@ -70,7 +70,7 @@ module AST =
           Array.fold2 (fun acc x y -> acc && helper (x, y)) true exprs1 exprs2
         | Apply (name1, args1), Apply (name2, args2) when name1 = name2 ->
           List.fold2 (fun acc x y -> acc && helper (x, y)) true args1 args2
-        | ForAll (names1, expr1), ForAll (names2, expr2) when names1 = names2 -> helper (expr1, expr2)
+        | ForAllTyped (names1, expr1), ForAllTyped (names2, expr2) when names1 = names2 -> helper (expr1, expr2)
         | Neg expr1, Neg expr2
         | Not expr1, Not expr2 -> helper (expr1, expr2)
         | App (name1, args1), App (name2, args2) when name1 = name2 ->
@@ -80,11 +80,11 @@ module AST =
       helper (x, y)
   
   module Expr =
-    let forallBody =
-      function
-        | ForAllTyped (_, x) | ForAll (_, x) -> Some x
-        | x -> Some x
-        
+    // let forallBody =
+    //   function
+    //     | ForAllTyped (vars, x) -> Some (vars, x)
+    //     | x -> Some ([], x)
+    //     
     let And = function
       | [ expr ] -> expr
       | exprs -> And (Array.ofList exprs)
@@ -114,11 +114,11 @@ module AST =
     | Var n -> Ident (n, IntSort)
     | App (n, exprs)
     | Apply (n, exprs) -> smtExpr.Apply (UserDefinedOperation (n, [], IntSort), List.map expr2smtExpr exprs)
-    | ForAll (names, e) ->
-      QuantifierApplication (
-        names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> Quantifiers.forall,
-        expr2smtExpr e
-      )
+    // | ForAll (names, e) ->
+    //   QuantifierApplication (
+    //     names |> Array.map (fun n -> (n, IntSort)) |> Array.toList |> Quantifiers.forall,
+    //     expr2smtExpr e
+    //   )
     | ForAllTyped (vars, e) ->
       QuantifierApplication (
         vars |> List.map (fun (n, (t: Type)) -> (n, t.toSort)) |> Quantifiers.forall,
@@ -128,7 +128,8 @@ module AST =
     | Ite (expr1, expr2, expr3) -> smtExpr.Ite (expr2smtExpr expr1, expr2smtExpr expr2, expr2smtExpr expr3)
     | SMTExpr e -> e
     | o -> failwith $"{o}" 
-  type Definition = Name * (Name) list * Type * Expr
+  
+  type Definition = Name * (Name * Type) list * Type * Expr
 
   // type VarCtx = Map<Name, Microsoft.Z3.Expr>
   // type DecFunsCtx = Map<Name, FuncDecl>
@@ -158,7 +159,8 @@ module AST =
     | Def of Definition
     | DeclIntConst of Name
     | DeclConst of Name * Type
-    | Decl of Name * ArgsNum
+    // | Decl of Name * ArgsNum
+    | Decl of Name * Type list
     | Assert of Expr
     | DeclDataType of (Name * Constructor list) list 
 
@@ -169,7 +171,7 @@ module AST =
 
   let program2originalCommand = function
     | Def (n, ns, t, e) ->
-      Definition (DefineFun (n, List.map (fun n -> (n, IntSort)) ns, t.toSort, expr2smtExpr e))
+      Definition (DefineFun (n, List.map (fun (n, t': Type) -> (n, t'.toSort)) ns, t.toSort, expr2smtExpr e))
     | DeclIntConst n -> Command (DeclareConst (n, IntSort))
     | DeclConst (n, t) ->
       let t' =
@@ -178,8 +180,8 @@ module AST =
         | Boolean -> BoolSort
         | ADT s -> ADTSort s
       Command (DeclareConst (n, t'))
-    | Decl (n, num) ->
-      Command (DeclareFun (n, List.init num (fun _ -> IntSort), BoolSort))
+    | Decl (n, vars) -> 
+      Command (DeclareFun (n, List.map (fun (t: Type) -> t.toSort) vars, BoolSort))
     | Assert e -> originalCommand.Assert (expr2smtExpr e)
     | DeclDataType ds ->
       Command (command.DeclareDatatypes
@@ -194,7 +196,43 @@ module AST =
             (0, cs) ||> List.mapFold (fun acc (n', t) -> constructor acc n' (args t) n, List.length t + acc)
             |> fst)
         )))
+      
+  let sort2type = function
+    | IntSort -> Integer
+    | ADTSort adt -> ADT adt 
+    | _ -> Boolean
 
+  
+  let rec smtExpr2exprWithAbstr abstr =
+    function
+    | Number i when i >= BigInteger.Zero -> Int i
+    | Number i when i < BigInteger.Zero -> Neg (Int (BigInteger.MinusOne * i))
+    | BoolConst b -> Bool b
+    | Ident (ident, _) -> Var ident
+    | smtExpr.Apply (operation, exprs) ->
+      match operation, exprs with
+      | UserDefinedOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "+" -> Add (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "-" -> Subtract (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e ] when ident = "-" -> Neg (smtExpr2exprWithAbstr abstr e)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "*" -> Mul (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "=" -> Eq (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<" -> Lt (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">" -> Gt (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "<=" -> Le (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = ">=" -> Ge (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), [ e1; e2 ] when ident = "mod" -> Mod (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+      | ElementaryOperation (ident, _, _), es
+      | UserDefinedOperation (ident, _, _), es -> Apply (ident, es |> List.map (smtExpr2exprWithAbstr abstr))
+    | smtExpr.And e -> e |> List.toArray |> Array.map (smtExpr2exprWithAbstr abstr) |> And
+    | smtExpr.Or e -> e |> List.toArray |> Array.map (smtExpr2exprWithAbstr abstr) |> Or
+    | smtExpr.Not e -> smtExpr2exprWithAbstr abstr e |> Not
+    | Hence (e1, e2) -> Implies (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2)
+    | QuantifierApplication ([ ForallQuantifier args ], expr) ->
+      ForAllTyped (List.map (fun (n, s) -> (n, match s with ADTSort _ -> abstr | otherwise -> sort2type otherwise) ) args , smtExpr2exprWithAbstr abstr expr)
+    | smtExpr.Ite (e1, e2, e3) -> Ite (smtExpr2exprWithAbstr abstr e1, smtExpr2exprWithAbstr abstr e2, smtExpr2exprWithAbstr abstr e3)
+    | a -> SMTExpr a
+  
   let rec smtExpr2expr =
     function
     | Number i when i >= BigInteger.Zero -> Int i
@@ -221,7 +259,7 @@ module AST =
     | smtExpr.Not e -> smtExpr2expr e |> Not
     | Hence (e1, e2) -> Implies (smtExpr2expr e1, smtExpr2expr e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
-      ForAll (List.map fst args |> List.toArray, smtExpr2expr expr)
+      ForAllTyped (List.map (fun (n, s) -> (n, sort2type s)) args, smtExpr2expr expr)
     | smtExpr.Ite (e1, e2, e3) -> Ite (smtExpr2expr e1, smtExpr2expr e2, smtExpr2expr e3)
     | a -> SMTExpr a
 
@@ -250,9 +288,27 @@ module AST =
     | smtExpr.Not e -> smtExpr2expr' e |> Not
     | Hence (e1, e2) -> Implies (smtExpr2expr' e1, smtExpr2expr' e2)
     | QuantifierApplication ([ ForallQuantifier args ], expr) ->
-      ForAll (List.map fst args |> List.toArray, smtExpr2expr' expr)
+      ForAllTyped (List.map (fun (n, s) -> (n, sort2type s)) args, smtExpr2expr expr)
     | _ -> __notImplemented__()
 
+
+  
+  let rec origCommand2programWithAbstr abstr =
+    function
+    | Definition (DefineFun (name, args, sort, body)) ->
+      let t = 
+        match sort with
+        | IntSort -> Integer
+        | ADTSort adt -> ADT adt 
+        | _ -> Boolean
+      Def (name, List.map (fun (n, s )-> (n, sort2type s)) args, t, smtExpr2exprWithAbstr abstr body)
+    | Command (DeclareFun (name, args, _)) -> Decl (name, List.map (function | ADTSort _ -> abstr | otherwise -> sort2type otherwise) args)
+    | originalCommand.Assert expr -> Assert (smtExpr2exprWithAbstr abstr expr)
+    | o ->
+      printfn $"{o}"
+      __notImplemented__()
+    
+        
   let rec origCommand2program =
     function
     | Definition (DefineFun (name, args, sort, body)) ->
@@ -261,16 +317,15 @@ module AST =
         | IntSort -> Integer
         | ADTSort adt -> ADT adt 
         | _ -> Boolean
-      Def (name, List.map fst args, t, smtExpr2expr body)
-    | Command (DeclareFun (name, args, _)) -> Decl (name, args.Length)
+      Def (name, List.map (fun (n, s )-> (n, sort2type s)) args, t, smtExpr2expr body)
+    | Command (DeclareFun (name, args, _)) -> Decl (name, List.map sort2type args)
     | originalCommand.Assert expr -> Assert (smtExpr2expr expr)
     | o ->
       printfn $"{o}"
       __notImplemented__()
     
   let def2decVars =
-    let rec toVar =
-      function
+    let rec toVar = function
       | Apply (n, _) -> Var n
       | Int _
       | Bool _
@@ -290,9 +345,10 @@ module AST =
       | Not e -> toVar e |> Not
       | Implies (e1, e2) -> Implies (toVar e1, toVar e2)
       | Ite (e1, e2, e3) -> Ite (toVar e1, toVar e2, toVar e3)
-      | ForAll _
+      | ForAllTyped (vars, expr) -> ForAllTyped (vars, toVar expr)
       | App _ as otherwise -> otherwise
-
+      | otherwise -> otherwise
+        
     List.map (function
       | Def (n, args, t, e) -> Def (n, args, t, e |> toVar)
       | otherwise -> otherwise)
@@ -318,7 +374,7 @@ module AST =
       | Or exprs -> Or (Array.map helper' exprs)
       | Not expr -> Not (helper' expr)
       | Apply (n, exprs) -> Apply (n, exprs |> List.map helper')
-      | ForAll (ns, expr) -> ForAll (ns, helper' expr)
+      | ForAllTyped (ns, expr) -> ForAllTyped (ns, helper' expr)
       | App (n, exprs) -> App (n, exprs |> List.map helper')
       | Ite (expr1, expr2, expr3) -> Ite (helper' expr1, helper' expr2, helper' expr3)
       | Int _

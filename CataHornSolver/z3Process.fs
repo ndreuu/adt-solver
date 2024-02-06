@@ -44,12 +44,13 @@ module Instances =
     override x.ToString() =
       match x with
         | Z3 -> "z3"
-        | CVC ->  "cvc"
+        | CVC -> "cvc"
       
   
   let setOption x =
     function
     | Proof -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-proof)"
+    // | Model -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-model)"
     | Model -> $"(set-option :produce-proofs true)\n{x}\n(check-sat)\n(get-model)"
     | None -> $"{x}\n(check-sat)"
 
@@ -65,6 +66,9 @@ module Instances =
       ADTModel, (All, Model, "") ]
       
     |> Map
+    
+    
+    
 // false_productive_use_of_failure_rot_inj00.smt2
 //  >> Def ("c_2", [], Integer, Int 1L)
 //  >> Def ("c_5", [], Integer, Int 1L)
@@ -92,10 +96,8 @@ module Instances =
     // printfn $"{content instance cmds}"
     let result = execute "./z3" $"-T:{tl} {flags} {file}"
     // printfn $"---{instance}"
-
-    // let kek = execute timeout "ls" ""
-    // printfn $"Z3:\n {kek}"
-    
+    //
+    //
     // printfn $"rrrrrrrrrr {result}"
     
     let time =
@@ -132,7 +134,6 @@ module Interpreter =
   let constDefStrs consts (s: String) =
     let constantsWithName (def: string) = List.filter (fun c -> def.Contains $"define-fun {c}" || def.Contains $"declare-datatype") consts 
     let rec helper s acc =
-      // printfn $"<<< < {s}"
       let b = Regex "\("
       let brackets = b.Matches s
       match Seq.toList brackets with
@@ -161,7 +162,7 @@ module Interpreter =
       
     helper s []
     
-  let model  (adts: _ list) consts (content: string) =
+  let model (domain: Prelude.originalCommand list) (adts: _ list) consts (content: string) =
     let p = Parser.Parser false
     // for x in content.Split '\n' do printfn $"< < < {x}" 
     
@@ -174,14 +175,12 @@ module Interpreter =
 
     // for x in List.ofArray <| content.Split '\n' do printfn $"BBBLLLL {x}"
     
-    // printfn $"\n---------------content--------\n{content}"
-     
     if content.Contains("unknown constant !") then
       // printfn $"ERR: -ball-unbound-var-\n{content}"
       // Environment.Exit(0);
       failwith "ERR: -ball-unbound-var-"
     
-    let cmds = adts @ (List.ofArray <| content.Split '\n').[ 2..(List.ofArray <| content.Split '\n').Length - 2 ] |> join "\n"
+    let cmds = (List.map toString domain) @ adts @ (List.ofArray <| content.Split '\n').[ 2..(List.ofArray <| content.Split '\n').Length - 2 ] |> join "\n"
     let file = Path.GetTempPath () + Path.GetRandomFileName () + ".smt2"
     
     // printfn $"CCCCCCC\n{cmds}"
@@ -195,7 +194,6 @@ module Interpreter =
     try 
       let cmds = p.ParseFile file
       
-      // printfn $"--------------------------------------------\n\n{cmds}\\n^^^^^^^"
 
       cmds
       |> List.choose (function
@@ -208,7 +206,7 @@ module Interpreter =
         let d = constDefStrs consts cmds |> join "\n"
         // printfn $"ERR: -model- {e.Message}\n{d}"
         // Environment.Exit 0
-        failwith $"ERR: -model- {e.Message}\n{d}"
+        failwith $"ERR: -model- {e.Message}\n{e.StackTrace}\n{d}"
         
   module SoftSolver =
     let softAsserts softs =
@@ -283,7 +281,7 @@ module Interpreter =
       Regex.Replace (content, @"\(check-sat-assuming \(.*\)\)", $"(check-sat-assuming ({assumings'}))")
     
     
-    let solve tl constDefs cmds softs dbgPath iteration learnerInstance (fTime: string option) =
+    let solve tl domain constDefs cmds softs dbgPath iteration learnerInstance (fTime: string option) =
       let rec helper i inputs assumings =
         let isActual (soft: string) =
           List.fold (fun acc (assuming: string) -> acc || (assuming.Contains soft)) false assumings
@@ -294,10 +292,10 @@ module Interpreter =
         // File.AppendAllText("/home/andrew/adt-solver/v/unsat-sandbox/shiz.smt2", $"{content}\n---------------------")
         
 ///////////////////////////////////////////////////////////////////
-        printfn $"{iteration},   smt-input-{i}.smt2" 
-        let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
-        if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-        File.WriteAllText ($"{path}", $"{softContent}\n")
+        // printfn $"{iteration},   smt-input-{i}.smt2" 
+        // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"smt-input-{i}.smt2" |]
+        // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+        // File.WriteAllText ($"{path}", $"{softContent}\n")
 ///////////////////////////////////////////////////////////////////
         
         // printfn $"----------softContent----------\n{softContent}\n------------------"
@@ -327,7 +325,7 @@ module Interpreter =
           | SAT _ ->
             // printfn $"{out}"
             let out = out.Split "\n" |> Array.removeAt 1 |> join "\n"
-            Some (SAT (Some <| model [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
+            Some (SAT (Some <| model domain [] constDefs out), (List.map (fun (s: string) -> s.Remove (0, 5)) assumings)), inputs'
           | UNSAT _ ->
             // for a in assumings do printfn $"{a}"
             // printfn $"{assumings}"
@@ -350,7 +348,11 @@ module Interpreter =
         | Option.None -> None, inputs'
       helper 0 [] (softAsserts softs |> snd)
 
-
+  let replaceTesters str mp =
+    Regex(@"\(=").Matches mp
+    |> Seq.map (fun (m: Match) -> m.Index |> mp.Substring |> balancedBracket |> Option.get)
+    |> Seq.fold (fun (mp: string) s -> mp.Replace (s, str) ) mp
+        
   let proof cmds content =
     let queryDecs =
       Regex(@"\(declare-fun query").Matches content
@@ -365,20 +367,44 @@ module Interpreter =
       |> function
         | Some s -> s.Replace ("mp ", "proof mp ")
         | None -> ""
+      // |> fun (s: string) ->
+        // s.Replace ("(= A (ite ((_ is None ) C) (Some B) (Some 0)))", "(and true)")
+      |> replaceTesters "(and true)"
+    
+      
+      // |> function
+      //   | Some s -> s.Replace ("mp ", "proof mp ")
+      //   | None -> ""
 
     let p = Parser.Parser false
-
+    
+    // for x in cmds do printfn $"??? {x}" 
+    // for x in (List.choose
+    //     (function
+    //     | AST.DeclDataType _   
+    //     | _ -> None)
+    //     cmds) do printfn $"!!! {x}" 
+    //
+    
     for x in
-      queryDecs
+      (List.choose
+        (function
+        | AST.DeclDataType _ as x -> Some (toString <| AST.program2originalCommand x)   
+        | _ -> None)
+        cmds)
+      @ queryDecs
       @ List.choose
         (function
         | AST.Decl _ as x -> Some (AST.program2originalCommand x |> toString)
         | _ -> None)
         cmds do
+      // printfn $"{x}"
       p.ParseLine x |> ignore
 
     try
+      // printfn $"mpmpmpmpmpmpmpmpmpmpmp\n{mp}"
       let mp' = p.ParseLine mp
+      // printfn $"````````````````````\n{mp'}"
   
       (List.choose
         (function
@@ -391,27 +417,30 @@ module Interpreter =
       with e ->
         // printfn $"ERR: -proof- {e.Message}\n{mp}" 
         // Environment.Exit 0
-        failwith $"ERR: -proof- {e.Message}\n{mp}"
+        failwith $"ERR: -proof- {e.Message}\n{e.StackTrace}{mp}"
         
-  let solve' tl adts instance cmds constDefs softs dbgPath iteration learnerInstance (fTime: string option) =
+  let solve' tl (domain: Prelude.originalCommand list) adts instance cmds constDefs softs dbgPath iteration learnerInstance (fTime: string option) =
+    // printfn $"instanceinstanceinstanceinstance\n{instance}"
     match instance with
     | Instances.instance.Learner ->
-      SoftSolver.solve tl constDefs cmds softs dbgPath iteration learnerInstance fTime
+      SoftSolver.solve tl domain constDefs cmds softs dbgPath iteration learnerInstance fTime
     | _ ->
       let _, option, _ = Instances.instances |> Map.find instance
-
+      
+      
       let input = List.map (AST.program2originalCommand >> toString) cmds
 
 
 ////////////////////////////////////////////////////////////////
-      let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"--{instance}-{iteration}.smt2" |]
-      if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
-      File.WriteAllText ($"{path}", $"""{join "\n" input}""")
+      // let path = Path.Join [| Option.get dbgPath; "lol"; toString iteration; $"--{instance}-{iteration}.smt2" |]
+      // if not <| Directory.Exists (Path.GetDirectoryName path) then Directory.CreateDirectory (Path.GetDirectoryName path) |> ignore
+      // File.WriteAllText ($"{path}", $"""{join "\n" input}""")
 //////////////////////////////////////////////////////////////////
+      
       
       let output =
         Instances.run tl instance input fTime
-
+      
       // if instance = Instances.ADTModel then 
       //   printfn $"----------------------input for {instance}----------------------"
       //   join "\n" input |> printfn "%O"
@@ -421,6 +450,28 @@ module Interpreter =
       //   printfn $"{output}"
       //   printfn $"--------------------------------------------------------------|||||||||||||||||"
       // else ()
+
+      // if instance = Instances.TeacherModel then 
+      //   printfn $"----------------------input for {instance}----------------------"
+      //   let logic, option, _ = Instances.instances |> Map.find instance
+      //   let input = $"""{logic}{Instances.setOption (join "\n" input) option}"""
+      //   printfn $"input: \n{input}"
+      //   printfn $"----------------------------------------------------------------"
+      //
+      //   printfn $"output of {instance}-----------------------------------------"
+      //   printfn $"{output}"
+      //   printfn $"--------------------------------------------------------------|||||||||||||||||"
+      // else ()
+    
+      // printfn $"----------------------input for {instance}----------------------"
+      // let logic, option, _ = Instances.instances |> Map.find instance
+      // let input = $"""{logic}{Instances.setOption (join "\n" input) option}"""
+      // printfn $"input: \n{input}"
+      // printfn $"----------------------------------------------------------------"
+      //
+      // printfn $"output of {instance}-----------------------------------------"
+      // printfn $"{output}"
+      // printfn $"--------------------------------------------------------------|||||||||||||||||"
 
       // printfn $"output of {instance}-----------------------------------------"
       // printfn $"{output}"
@@ -444,18 +495,16 @@ module Interpreter =
         | Instances.option.None, SAT _ -> Some (SAT None, []), []
         | Instances.option.Proof, SAT _ -> Some (SAT None, []), []
         | Instances.option.Model, SAT _ ->
-          
           // join "\n" input |> printfn "%O"
-          // printfn $"------>>>\n{output}"
-          Some (SAT (Some <| model adts constDefs output), []), []
+          Some (SAT (Some <| model domain adts constDefs output), []), []
         | _ -> Some (UNKNOWN, []), []
         
   
-  let solve tl adts instance cmds constDefs softs dbgPath iteration (fTimes: string option) =
-    solve' tl adts instance cmds constDefs softs dbgPath iteration Instances.CVC fTimes 
+  let solve tl domain adts instance cmds constDefs softs dbgPath iteration (fTimes: string option) =
+    solve' tl domain adts instance cmds constDefs softs dbgPath iteration Instances.CVC fTimes 
   
-  let solveLearner tl adts cmds constDefs softs dbgPath iteration instance fTimes =
-    solve' tl adts Instances.instance.Learner cmds constDefs softs dbgPath iteration instance fTimes
+  let solveLearner tl domain adts cmds constDefs softs dbgPath iteration instance fTimes =
+    solve' tl domain adts Instances.instance.Learner cmds constDefs softs dbgPath iteration instance fTimes
     
   
 type snapshot =
@@ -521,9 +570,18 @@ let tstpp () =
   let p = Parser.Parser false
 
   for x in
-    [ "(declare-fun query!0 (Int Int Int) Bool)"
-      "(declare-fun Inv (Int Int Int) Bool)"
-      "(declare-fun length (Int Int) Bool)" ] do
+    [ "(declare-fun query!0 (Int Int) Bool)"
+      "(declare-datatypes ((AbstractDomain 0)) (((None) (Some (AbstractDomainx0 Int)))))"
+      "(declare-fun last (AbstractDomain Int) Bool)"
+      "(declare-fun last$_4_0 (AbstractDomain Int) Bool)"
+      "(declare-fun last$_5_1 (AbstractDomain Int) Bool)"
+      "(declare-fun $name_0 () Bool)"
+      "(declare-fun $name_1 () Bool)"
+      "(declare-fun $name_2 () Bool)"
+      "(declare-fun $name_3 () Bool)"
+      "(declare-fun $name_4 () Bool)"
+    ] do
+    
     p.ParseLine x |> ignore
 
   let cs =

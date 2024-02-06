@@ -9,7 +9,7 @@ open ProofBased.Utils.IntOps
 
 
 module Linearization =
-  let linearization file =
+  let linearization abstrSort file =
     let p = Parser (false)
     let commands = p.ParseFile file
 
@@ -82,7 +82,7 @@ module Linearization =
       (padding, functions |> List.rev)
 
     let asserts =
-      let quantiInt = List.map (fun (name, _) -> name, IntSort)
+      let quantiInt = List.map (fun (name, s) -> name, match s with IntSort -> IntSort | _ -> abstrSort)
 
       let eq_op typ =
         Operation.makeElementaryRelationFromSorts "=" [ typ; typ ]
